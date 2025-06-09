@@ -7,6 +7,7 @@ from telegram import Bot, Update, InlineQueryResultArticle, InputTextMessageCont
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.error import TelegramError, BadRequest, Forbidden
 import logging
+import re
 
 from ..db import supabase
 from ..models import TelegramUpdate
@@ -56,7 +57,7 @@ async def webhook(request: Request):
     except Exception as e:
         logger.error(f"Error processing update: {e}")
         return {
-            "status": "error",
+            "status": "error", 
             "message": str(e)
         }
 
@@ -100,41 +101,14 @@ async def handle_inline_query(bot: Bot, update: Update):
             target = parts[-1]
             message = " ".join(parts[:-1])
 
-            try:
-                # Try to get target user
-                if target.startswith('@'):
-                    target_user = await bot.get_chat(target)
-                else:
-                    target_user = await bot.get_chat(int(target))
-
+            # Validate and clean target
+            target_user = await get_target_user(bot, target, sender_id)
+            
+            if target_user:
                 # Create whisper result with proper target name
-                data_list = [sender_id, target_user.id]
-                
-                # Format target name properly
-                if hasattr(target_user, 'first_name'):
-                    name = target_user.first_name
-                    if hasattr(target_user, 'last_name') and target_user.last_name:
-                        name += f" {target_user.last_name}"
-                elif hasattr(target_user, 'title'):
-                    name = target_user.title
-                else:
-                    name = str(target_user.id)
-
-                # Store target user info for sender
-                target_user_data = {
-                    "id": target_user.id,
-                    "first_name": getattr(target_user, 'first_name', ''),
-                    "last_name": getattr(target_user, 'last_name', ''),
-                    "username": getattr(target_user, 'username', ''),
-                    "title": getattr(target_user, 'title', '')
-                }
-                await store_user(sender_id, target_user_data)
-
-                # Create mention link
-                if hasattr(target_user, 'username') and target_user.username:
-                    mention = f"@{target_user.username}"
-                else:
-                    mention = f"[{name}](tg://user?id={target_user.id})"
+                data_list = [sender_id, target_user["id"]]
+                name = target_user["name"]
+                mention = target_user["mention"]
 
                 results = [InlineQueryResultArticle(
                     id="whisper",
@@ -149,10 +123,8 @@ async def handle_inline_query(bot: Bot, update: Update):
                     ]])
                 )]
                 
-                logger.info(f"Created whisper result for {name} (ID: {target_user.id})")
-                
-            except Exception as e:
-                logger.error(f"Error getting target user: {e}")
+                logger.info(f"Created whisper result for {name} (ID: {target_user['id']})")
+            else:
                 # Fall back to previous targets or main result
                 results = await get_previous_target_results(sender_id) or [get_main_result()]
         else:
@@ -163,6 +135,89 @@ async def handle_inline_query(bot: Bot, update: Update):
         await query.answer(results, cache_time=1)
     except Exception as e:
         logger.error(f"Error answering inline query: {e}")
+
+
+async def get_target_user(bot: Bot, target: str, sender_id: int) -> Dict[str, Any]:
+    """Get target user information and store it."""
+    try:
+        target_user = None
+        
+        # Clean the target string
+        target = target.strip()
+        
+        if target.startswith('@'):
+            # Username lookup
+            username = target[1:]  # Remove @
+            logger.info(f"Looking up username: {username}")
+            
+            try:
+                # For usernames, we need to use get_chat
+                chat = await bot.get_chat(f"@{username}")
+                if chat.type == "private":
+                    target_user = chat
+                else:
+                    logger.warning(f"Target {username} is not a private chat: {chat.type}")
+                    return None
+            except Exception as e:
+                logger.error(f"Error getting chat for username @{username}: {e}")
+                return None
+                
+        elif target.isdigit():
+            # User ID lookup
+            try:
+                user_id = int(target)
+                logger.info(f"Looking up user ID: {user_id}")
+                target_user = await bot.get_chat(user_id)
+            except Exception as e:
+                logger.error(f"Error getting user by ID {target}: {e}")
+                return None
+        else:
+            logger.warning(f"Invalid target format: {target}")
+            return None
+
+        if target_user:
+            # Extract user information
+            user_data = {
+                "id": target_user.id,
+                "first_name": getattr(target_user, 'first_name', ''),
+                "last_name": getattr(target_user, 'last_name', ''),
+                "username": getattr(target_user, 'username', ''),
+                "title": getattr(target_user, 'title', ''),
+                "type": getattr(target_user, 'type', 'private')
+            }
+            
+            # Format name properly
+            if user_data["first_name"]:
+                name = user_data["first_name"]
+                if user_data["last_name"]:
+                    name += f" {user_data['last_name']}"
+            elif user_data["title"]:
+                name = user_data["title"]
+            elif user_data["username"]:
+                name = f"@{user_data['username']}"
+            else:
+                name = str(user_data["id"])
+
+            # Create mention
+            if user_data["username"]:
+                mention = f"@{user_data['username']}"
+            else:
+                mention = f'<a href="tg://user?id={user_data["id"]}">{name}</a>'
+
+            # Store target user info for sender
+            await store_user(sender_id, user_data)
+
+            return {
+                "id": user_data["id"],
+                "name": name,
+                "mention": mention,
+                "raw_data": user_data
+            }
+
+    except Exception as e:
+        logger.error(f"Error in get_target_user for {target}: {e}")
+    
+    return None
 
 
 async def handle_callback_query(bot: Bot, update: Update):
@@ -217,18 +272,18 @@ async def handle_navigation_callback(bot: Bot, callback_query):
     
     if callback_query.data == "home":
         text = f"""
-🔒 **Welcome to WhispierBot** 🔒
+🔒 <b>Welcome to WhispierBot</b> 🔒
 
 Hello {user.mention_html()}!
 
 I help you send secret messages (whispers) that only specific people can read, even in public groups!
 
-**How to use me:**
-1. Type `@whispierbot` in any chat
+<b>How to use me:</b>
+1. Type <code>@whispierbot</code> in any chat
 2. Write your message followed by the recipient's @username
 3. Send it - only they can open the whisper!
 
-**Example:** `@whispierbot Hello there! @username`
+<b>Example:</b> <code>@whispierbot Hello there! @username</code>
 
 Built with ❤️ using PyVueBot by @venopyx
         """
@@ -239,23 +294,23 @@ Built with ❤️ using PyVueBot by @venopyx
         ])
     elif callback_query.data == "help":
         text = """
-📖 **How to Use WhispierBot**
+📖 <b>How to Use WhispierBot</b>
 
-**Step 1:** Type `@whispierbot` in any chat
-**Step 2:** Write your secret message
-**Step 3:** Add the recipient's @username or ID at the end
-**Step 4:** Send it!
+<b>Step 1:</b> Type <code>@whispierbot</code> in any chat
+<b>Step 2:</b> Write your secret message
+<b>Step 3:</b> Add the recipient's @username or ID at the end
+<b>Step 4:</b> Send it!
 
-**Example:**
-`@whispierbot This is a secret message @john`
+<b>Example:</b>
+<code>@whispierbot This is a secret message @john</code>
 
-**Features:**
+<b>Features:</b>
 ✅ Works in any chat or group
 ✅ Only the recipient can read the message
 ✅ Messages are secure and private
 ✅ No one else can see the content
 
-**Note:** The recipient must have started the bot at least once.
+<b>Note:</b> The recipient must have started the bot at least once.
         """
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🔒 Try Now", switch_inline_query="")],
@@ -263,24 +318,24 @@ Built with ❤️ using PyVueBot by @venopyx
         ])
     elif callback_query.data == "about":
         text = """
-ℹ️ **About WhispierBot**
+ℹ️ <b>About WhispierBot</b>
 
-**What is this bot?**
+<b>What is this bot?</b>
 WhispierBot allows you to send secret messages that only specific people can read, even in public chats!
 
-**How it works:**
+<b>How it works:</b>
 - Your message is securely stored
 - Only you and the recipient can access it
 - Works in any Telegram chat or group
 - Messages expire after 7 days for security
 
-**Technology:**
+<b>Technology:</b>
 🚀 Built with FastAPI and PyVueBot
 💾 Powered by Supabase database
 ⚡ Deployed on Vercel for reliability
 
-**Developer:** @venopyx
-**Source:** Open source and secure
+<b>Developer:</b> @venopyx
+<b>Source:</b> Open source and secure
         """
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🔒 Send Whisper", switch_inline_query="")],
@@ -311,15 +366,12 @@ async def handle_chosen_inline_result(bot: Bot, update: Update):
             target = parts[-1]
             message = " ".join(parts[:-1])
 
-            # Get target user ID
-            try:
-                if target.startswith('@'):
-                    target_user = await bot.get_chat(target)
-                else:
-                    target_user = await bot.get_chat(int(target))
-
-                recipient_ids = [result.from_user.id, target_user.id]
-            except:
+            # Get target user info
+            target_user = await get_target_user(bot, target, result.from_user.id)
+            
+            if target_user:
+                recipient_ids = [result.from_user.id, target_user["id"]]
+            else:
                 recipient_ids = [result.from_user.id]
         else:
             message = result.query
@@ -351,8 +403,11 @@ async def get_previous_target_results(sender_id: int):
         
         if result.data and len(result.data) > 0:
             target_user_data = result.data[0].get("target_user")
-            if target_user_data:
-                receiver_id = target_user_data["id"]
+            if target_user_data and isinstance(target_user_data, dict):
+                receiver_id = target_user_data.get("id")
+                if not receiver_id:
+                    return None
+                    
                 data_list = [sender_id, receiver_id]
                 
                 # Build name from available data
@@ -376,7 +431,7 @@ async def get_previous_target_results(sender_id: int):
                 if username:
                     mention = f"@{username}"
                 else:
-                    mention = f"[{name}](tg://user?id={receiver_id})"
+                    mention = f'<a href="tg://user?id={receiver_id}">{name}</a>'
                 
                 text1 = f"🔒 A whisper message to {name}"
                 text2 = "Only they can open it."
@@ -387,7 +442,7 @@ async def get_previous_target_results(sender_id: int):
                         title=text1,
                         input_message_content=InputTextMessageContent(
                             f"🔒 A whisper message to {mention} 🔒\n{text2}",
-                            parse_mode="Markdown"
+                            parse_mode="HTML"
                         ),
                         description=text2,
                         reply_markup=InlineKeyboardMarkup([[
@@ -413,8 +468,9 @@ def get_main_result():
         description="Send secret messages that only specific users can read",
         input_message_content=InputTextMessageContent(
             "🔒 Write your message followed by the recipient's @username or ID\n\n"
-            "**Example:** `Hello there! @username`\n\n"
-            "Start typing to create your whisper message!"
+            "<b>Example:</b> <code>Hello there! @username</code>\n\n"
+            "Start typing to create your whisper message!",
+            parse_mode="HTML"
         ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("📖 Learn More", url="https://t.me/whispierbot?start=help")],
@@ -438,6 +494,7 @@ async def store_user(user_id: int, target_user_data: Dict[str, Any] = None):
                 supabase.table("users").update({
                     "target_user": target_user_data
                 }).eq("id", user_id).execute()
+                logger.info(f"Updated target user for {user_id}: {target_user_data.get('username', target_user_data.get('id'))}")
         else:
             # New user - insert with upsert to handle conflicts
             supabase.table("users").upsert({
@@ -453,18 +510,18 @@ async def send_start_message(bot: Bot, message):
     """Send start message."""
     user = message.from_user
     text = f"""
-🔒 **Welcome to WhispierBot** 🔒
+🔒 <b>Welcome to WhispierBot</b> 🔒
 
 Hello {user.mention_html()}!
 
 I help you send secret messages (whispers) that only specific people can read, even in public groups!
 
-**How to use me:**
-1. Type `@whispierbot` in any chat
+<b>How to use me:</b>
+1. Type <code>@whispierbot</code> in any chat
 2. Write your message followed by the recipient's @username
 3. Send it - only they can open the whisper!
 
-**Example:** `@whispierbot Hello there! @username`
+<b>Example:</b> <code>@whispierbot Hello there! @username</code>
 
 Built with ❤️ using PyVueBot by @venopyx
     """
@@ -489,23 +546,23 @@ Built with ❤️ using PyVueBot by @venopyx
 async def send_help_message(bot: Bot, message):
     """Send help message."""
     text = """
-📖 **How to Use WhispierBot**
+📖 <b>How to Use WhispierBot</b>
 
-**Step 1:** Type `@whispierbot` in any chat
-**Step 2:** Write your secret message
-**Step 3:** Add the recipient's @username or ID at the end
-**Step 4:** Send it!
+<b>Step 1:</b> Type <code>@whispierbot</code> in any chat
+<b>Step 2:</b> Write your secret message
+<b>Step 3:</b> Add the recipient's @username or ID at the end
+<b>Step 4:</b> Send it!
 
-**Example:**
-`@whispierbot This is a secret message @john`
+<b>Example:</b>
+<code>@whispierbot This is a secret message @john</code>
 
-**Features:**
+<b>Features:</b>
 ✅ Works in any chat or group
 ✅ Only the recipient can read the message
 ✅ Messages are secure and private
 ✅ No one else can see the content
 
-**Note:** The recipient must have started the bot at least once.
+<b>Note:</b> The recipient must have started the bot at least once.
     """
 
     keyboard = InlineKeyboardMarkup([
@@ -538,15 +595,15 @@ async def send_stats_message(bot: Bot, message):
         whispers_count = whispers_result.count or 0
 
         text = f"""
-📊 **WhispierBot Statistics**
+📊 <b>WhispierBot Statistics</b>
 
-👥 **Total Users:** {users_count:,}
-💬 **Total Whispers:** {whispers_count:,}
-🚀 **Status:** Active
-⚡ **Platform:** Vercel + Supabase
-🛠️ **Developer:** @venopyx
+👥 <b>Total Users:</b> {users_count:,}
+💬 <b>Total Whispers:</b> {whispers_count:,}
+🚀 <b>Status:</b> Active
+⚡ <b>Platform:</b> Vercel + Supabase
+🛠️ <b>Developer:</b> @venopyx
 
-**System Status:** ✅ All systems operational
+<b>System Status:</b> ✅ All systems operational
         """
 
         await bot.send_message(
