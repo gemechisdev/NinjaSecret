@@ -1,95 +1,198 @@
-# Whisper Bot [@WhisperStarkBot](https://t.me/WhisperStarkBot)
+# 🔒 WhispierBot
 
-> A star ⭐ from you means a lot to us!
+A modern Telegram bot for sending secret whisper messages that only specific people can read, even in public groups!
 
-<p align="center"><a href="https://www.github.com/StarkBotsIndustries/WhisperBot"><img src="https://telegra.ph/file/33af12f457b16532e1383.jpg" width="5000"></a></p>
+![WhispierBot](https://img.shields.io/badge/WhispierBot-1.0.0-purple?style=for-the-badge&logo=telegram)
 
-Telegram bot for Whisper Message.
+## ✨ Features
 
-[![Open Source Love svg1](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
+- 🔐 **Secret Messages**: Send whispers that only specific users can read
+- 👥 **Group Compatible**: Works in any chat or group, even if the bot isn't there
+- 🚀 **Fast & Reliable**: Built on modern serverless architecture
+- ⏰ **Auto-Expires**: Messages automatically expire after 7 days for security
+- 🆓 **Free**: Completely free to use
+- 🛡️ **Secure**: Messages are securely stored and encrypted
 
-## Usage
+## 🚀 How to Use
 
-### Deploy to Heroku
+1. **Start the bot**: Send `/start` to [@whispierbot](https://t.me/whispierbot)
+2. **Create a whisper**: Type `@whispierbot` in any chat
+3. **Write your message**: Add your secret message
+4. **Add recipient**: End with the recipient's @username or ID
+5. **Send**: Only the recipient can open and read the message!
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/StarkBotsIndustries/WhisperBot)
+### Example
+```
+@whispierbot This is a secret message @username
+```
 
-1. Tap on above button and fill `API_ID`, `API_HASH`, `BOT_TOKEN`.
-2. Then tap "Deploy App" below it. Wait till deploying is complete (will take atmost 2 minutes).
-3. After deploying is complete, tap on "Manage App"
-4. Check the logs to see if your bot is ready!
-5) **IMPORTANT** : You need to do two things on [@BotFather](https://t.me/BotFather).
-   1) Turn on Inline Mode in your bot settings.
-   2) Now go back to settings, Tap on `Inline Feedback` and then on `100%` (without this your bot is nothing.)
+## 🏗️ Tech Stack
 
-### Local Deploying
+- **Backend**: FastAPI with Python
+- **Database**: Supabase PostgreSQL
+- **Frontend**: Vue.js 3 with Tailwind CSS v4
+- **Deployment**: Vercel Serverless Functions
+- **Bot API**: python-telegram-bot library
+- **Architecture**: PyVueBot framework
 
-1. Clone the repo
-   ```markdown
-   git clone https://github.com/StarkBotsIndustries/WhisperBot
-   ```
-   
-2. Get a DATABASE_URL. If you don't know how, deploy using Heroku Button only.
-   
-3. Edit `Config.py` and fill the needed variables
+## 🔧 Development Setup
 
-4. Enter the directory
-   ```markdown
-   cd WhisperBot
-   ```
-5. Run the file
-   ```markdown
-   python3 whisper.py
-   ```
+### Prerequisites
+- Python 3.9+
+- Node.js 18+
+- Supabase account
+- Telegram Bot Token
 
-## Environment Variables
+### Installation
 
-#### Mandatory Vars
+1. **Clone the repository**
+```bash
+git clone https://github.com/venopyx/whispierbot.git
+cd whispierbot
+```
 
-- `API_ID` - Get this from [my.telegram.org](https://my.telegram.org/auth)
-- `API_HASH` - Get this from [my.telegram.org](https://my.telegram.org/auth)
-- `BOT_TOKEN` - Get this from [@BotFather](https://t.me/BotFather)
-- `DATABASE_URL` - Will be automatically added by Heroku.
+2. **Set up environment variables**
+```bash
+cp .env.example .env
+# Edit .env with your actual values
+```
 
-## Functions
+3. **Install Python dependencies**
+```bash
+pip install -r requirements.txt
+```
 
-> More features soon, this is a minimal example :)
+4. **Install Node.js dependencies**
+```bash
+npm install
+```
 
-## To-Do
+5. **Set up Supabase database**
+   - Create a new Supabase project
+   - Run the SQL commands from `api/db.py` in the SQL editor
+   - Get your project URL, anon key, and service role key
 
-> That's on you mainly...
+6. **Configure Telegram bot**
+   - Create a bot with [@BotFather](https://t.me/BotFather)
+   - Enable inline mode in bot settings
+   - Set inline feedback to 100%
+   - Get your bot token
 
-## Stats
+### Local Development
 
-[![GitHub forks](https://img.shields.io/github/forks/StarkBotsIndustries/WhisperBot.svg?style=social&label=Fork&maxAge=25920000)](https://github.com/StarkBotsIndustries/WhisperBot/network/) [![GitHub stars](https://img.shields.io/github/stars/StarkBotsIndustries/WhisperBot.svg?style=social&label=Star&maxAge=25920000)](https://github.com/StarkBotsIndustries/WhisperBot/stargazers/) [![GitHub watchers](https://img.shields.io/github/watchers/StarkBotsIndustries/WhisperBot.svg?style=social&label=Watch&maxAge=25920000)](https://github.com/StarkBotsIndustries/WhisperBot/watchers/)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/StarkBotsIndustries/WhisperBot/graphs/commit-activity)
+1. **Start the frontend**
+```bash
+npm run dev
+```
 
-## License
+2. **Start the backend** (in another terminal)
+```bash
+uvicorn api.index:app --reload --port 8000
+```
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+3. **Set up webhook** (for testing)
+```bash
+curl -X GET "http://localhost:8000/api/telegram/setup-webhook?webhook_url=https://your-ngrok-url.com/api/webhook"
+```
 
-## Contributing
+## 🚀 Deployment
 
-[![GitHub contributors](https://img.shields.io/github/contributors/StarkBotsIndustries/WhisperBot.svg)](https://github.com/StarkBotsIndustries/WhisperBot/graphs/contributors/)
+### Deploy to Vercel
 
-> Contributions are heartily accepted.
+1. **Connect your repository to Vercel**
+2. **Add environment variables in Vercel dashboard**
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+ADMIN_USER_ID=your_telegram_user_id
+NODE_ENV=production
+```
 
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+3. **Deploy**: Vercel will automatically build and deploy
+4. **Set webhook**: Visit `https://your-app.vercel.app/api/telegram/setup-webhook?webhook_url=https://your-app.vercel.app/api/webhook`
 
-## Credits
+### Important: Use Service Role Key
 
-- [Dan Tès](https://github.com/delivrance) for his [Pyrogram](https://docs.pyrogram.org) Library
+For production deployment, make sure to use the Supabase **Service Role Key** instead of the anon key. This bypasses Row Level Security and allows the backend to perform all database operations.
 
-## Support
+## 📊 Database Schema
 
-Channel :- [@StarkBots](https://t.me/StarkBots)
+### Users Table
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  target_user JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-Group Chat :- [@StarkBotsChat](https://t.me/StarkBotsChat)
+### Whispers Table
+```sql
+CREATE TABLE whispers (
+  inline_message_id VARCHAR PRIMARY KEY,
+  message TEXT NOT NULL,
+  sender_id BIGINT REFERENCES users(id),
+  recipient_ids BIGINT[] NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days')
+);
+```
 
-## :)
+## 🛠️ API Endpoints
 
-[![ForTheBadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/)
+- `POST /api/webhook` - Handle Telegram updates
+- `GET /api/telegram/setup-webhook` - Set up webhook URL
+- `GET /api/health` - Health check endpoint
+- `GET /api/docs` - API documentation
 
-[![ForTheBadge built-with-love](http://ForTheBadge.com/images/badges/built-with-love.svg)](https://github.com/StarkBotsIndustries)
+## 📝 Commands
 
-[![ForTheBadge makes-people-smile](http://ForTheBadge.com/images/badges/makes-people-smile.svg)](https://github.com/StarkBotsIndustries)
+- `/start` - Welcome message and instructions
+- `/help` - How to use the bot
+- `/stats` - Statistics (admin only)
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+1. **Webhook 404 errors**: Make sure the webhook URL matches the router configuration
+2. **Database RLS errors**: Use the service role key for backend operations
+3. **Target user names not showing**: Check that the inline query logic properly formats user names
+
+### Vercel Deployment
+
+- The webhook endpoint is now correctly mapped to `/api/webhook`
+- Database operations use the service role key to bypass RLS
+- Target user names are properly extracted and displayed
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👨‍💻 Developer
+
+Built with ❤️ by [@venopyx](https://t.me/venopyx)
+
+**Framework**: [PyVueBot](https://github.com/venopyx/pyvuebot) - Modern CLI tool for Telegram Mini Apps
+
+## 🔗 Links
+
+- **Bot**: [@whispierbot](https://t.me/whispierbot)
+- **Developer**: [@venopyx](https://t.me/venopyx)
+- **Framework**: [PyVueBot](https://github.com/venopyx/pyvuebot)
+
+---
+
+⭐ **Star this repository if you find it useful!**
