@@ -11,7 +11,7 @@ def register_callback_handlers(app: Client):
         await callback.edit_message_text(
             Strings.WELCOME,
             reply_markup=Keyboards.main_menu(),
-            parse_mode="markdown"
+            parse_mode="html"
         )
         await callback.answer()
 
@@ -20,7 +20,7 @@ def register_callback_handlers(app: Client):
         await callback.edit_message_text(
             Strings.TUTORIAL,
             reply_markup=Keyboards.back_to_home(),
-            parse_mode="markdown"
+            parse_mode="html"
         )
         await callback.answer("🐒 Time to become a secret ninja!")
 
@@ -29,7 +29,7 @@ def register_callback_handlers(app: Client):
         await callback.edit_message_text(
             Strings.HELP,
             reply_markup=Keyboards.back_to_home(),
-            parse_mode="markdown"
+            parse_mode="html"
         )
         await callback.answer()
 
@@ -43,7 +43,7 @@ def register_callback_handlers(app: Client):
                 level_info="🐒 Beginner Monkey"
             ),
             reply_markup=Keyboards.back_to_home(),
-            parse_mode="markdown"
+            parse_mode="html"
         )
         await callback.answer("📊 Your monkey statistics!")
 

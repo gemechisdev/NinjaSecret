@@ -10,5 +10,5 @@ def register_stats_handlers(app: Client):
         await message.reply_text(
             Strings.STATS.format(sent_count=0, received_count=0, active_count=0, level_info="🐒 Beginner Monkey"),
             reply_markup=Keyboards.back_to_home(),
-            parse_mode="markdown"
+            parse_mode="html"
         )
