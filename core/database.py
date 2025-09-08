@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
 from bson import ObjectId
-import ssl
 from config import Config
 
 
@@ -22,9 +21,9 @@ class Database:
         """Create database instance with proper SSL configuration."""
         client = AsyncIOMotorClient(
             mongodb_url,
-            ssl=True,
-            ssl_cert_reqs=ssl.CERT_NONE,
-            ssl_match_hostname=False,
+            tls=True,
+            tlsAllowInvalidCertificates=True,
+            tlsAllowInvalidHostnames=True,
             serverSelectionTimeoutMS=30000,
             connectTimeoutMS=30000,
             socketTimeoutMS=30000,
