@@ -1,15 +1,11 @@
 """Database operations for Whispier Bot."""
-
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
-from bson import ObjectId
 from config import Config
 
 
 class Database:
-    """MongoDB database wrapper."""
-
     def __init__(self, client: AsyncIOMotorClient):
         self.client = client
         self.db: AsyncIOMotorDatabase = client[Config.DB_NAME]
@@ -18,7 +14,6 @@ class Database:
 
     @classmethod
     async def create(cls, mongodb_url: str) -> 'Database':
-        """Create database instance with proper SSL configuration."""
         client = AsyncIOMotorClient(
             mongodb_url,
             tls=True,
@@ -27,9 +22,9 @@ class Database:
             serverSelectionTimeoutMS=30000,
             connectTimeoutMS=30000,
             socketTimeoutMS=30000,
-            maxPoolSize=10,
+            maxPoolSize=20,
             minPoolSize=1,
-            maxIdleTimeMS=30000,
+            maxIdleTimeMS=60000,
             retryWrites=True,
             w='majority',
             wtimeoutMS=5000
@@ -37,74 +32,65 @@ class Database:
         return cls(client)
 
     async def initialize(self):
-        """Create indexes and setup database."""
         try:
-            await self.whispers.create_index("inline_message_id", unique=True)
-            await self.whispers.create_index("expires_at", expireAfterSeconds=0)
+            await self.whispers.create_index("whisper_id", unique=True)
+            await self.whispers.create_index("inline_message_id")
             await self.whispers.create_index([("sender_id", 1), ("created_at", -1)])
             await self.users.create_index("user_id", unique=True)
+            await self.users.create_index("username")
         except Exception as e:
-            print(f"Index creation warning (may already exist): {e}")
+            print(f"Index creation warning: {e}")
 
     async def store_whisper(self, data: Dict[str, Any]) -> str:
-        """Store whisper in database."""
-        whisper_doc = {
-            "inline_message_id": data["inline_message_id"],
+        doc = {
+            "whisper_id": data["whisper_id"],            # internal id used in callback
+            "inline_message_id": data.get("inline_message_id"),
             "content": data["content"],
             "sender_id": data["sender_id"],
-            "target_username": data["target_username"],
+            "target_username": data.get("target_username"),
             "target_id": data.get("target_id"),
+            "original_target_token": data.get("original_target_token"),
             "created_at": datetime.utcnow(),
             "read_at": None,
+            "reader_id": None,
             "status": "active"
         }
+        await self.whispers.insert_one(doc)
+        return data["whisper_id"]
 
-        result = await self.whispers.insert_one(whisper_doc)
-        return str(result.inserted_id)
-
-    async def get_whisper(self, inline_message_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve whisper by inline message ID."""
-        return await self.whispers.find_one({"inline_message_id": inline_message_id})
-
-    async def mark_whisper_read(self, inline_message_id: str, reader_id: int):
-        """Mark whisper as read."""
+    async def attach_inline_message_id(self, whisper_id: str, inline_message_id: str):
         await self.whispers.update_one(
-            {"inline_message_id": inline_message_id},
-            {
-                "$set": {
-                    "read_at": datetime.utcnow(),
-                    "reader_id": reader_id,
-                    "status": "read"
-                }
-            }
+            {"whisper_id": whisper_id},
+            {"$set": {"inline_message_id": inline_message_id}}
+        )
+
+    async def get_whisper(self, whisper_id: str) -> Optional[Dict[str, Any]]:
+        return await self.whispers.find_one({"whisper_id": whisper_id})
+
+    async def mark_whisper_read(self, whisper_id: str, reader_id: int):
+        await self.whispers.update_one(
+            {"whisper_id": whisper_id},
+            {"$set": {"read_at": datetime.utcnow(), "reader_id": reader_id, "status": "read"}}
         )
 
     async def upsert_user(self, user_data: Dict[str, Any]):
-        """Insert or update user data."""
         await self.users.update_one(
             {"user_id": user_data["user_id"]},
             {"$set": {**user_data, "last_seen": datetime.utcnow()}},
             upsert=True
         )
 
-    async def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
-        """Get user by ID."""
-        return await self.users.find_one({"user_id": user_id})
-
     async def link_username_to_user(self, username: str, user_id: int):
-        """Link username to user ID for future resolution."""
         await self.users.update_one(
             {"user_id": user_id},
-            {"$set": {"username": username.lower()}},
+            {"$set": {"username": username.lower(), "last_seen": datetime.utcnow()}},
             upsert=True
         )
 
     async def resolve_username(self, username: str) -> Optional[int]:
-        """Resolve username to user ID."""
         user = await self.users.find_one({"username": username.lower()})
         return user["user_id"] if user else None
 
     async def close(self):
-        """Close database connection."""
         if hasattr(self, 'client'):
             self.client.close()
