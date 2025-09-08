@@ -1,10 +1,20 @@
-FROM python:3.11-slim
+FROM nikolaik/python-nodejs:python3.11-nodejs19
 
-WORKDIR /app
+RUN useradd -m -u 10014 -s /bin/bash appuser
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN apt-get update && \
+#     apt-get install -y ca-certificates && \
+#     apt-get clean && \
+#     rm -rf /var/lib/apt/lists/*
 
-COPY . .
+COPY --chown=appuser:appuser requirements.txt /app/
+WORKDIR /app/
 
-CMD ["python", "main.py"]
+RUN python3 -m pip install --upgrade pip setuptools && \
+    pip3 install --no-cache-dir --upgrade --requirement requirements.txt
+
+COPY --chown=appuser:appuser . /app/
+
+USER appuser
+
+CMD python3 main.py
