@@ -7,6 +7,11 @@ A modular, scalable Telegram whisper bot with MongoDB backend.
 import asyncio
 import logging
 from pyrogram import Client, idle
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+import uvicorn
+import threading
+from datetime import datetime
 
 from config import Config
 from core.database import Database
@@ -18,6 +23,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+app = FastAPI(title="Whispier Bot", version="1.0.0")
+
+@app.get("/")
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for render.com"""
+    return JSONResponse({
+        "status": "healthy",
+        "service": "whispier-bot",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
+    })
+
+@app.get("/ping")
+async def ping():
+    """Ping endpoint to keep service alive"""
+    return JSONResponse({"ping": "pong", "timestamp": datetime.utcnow().isoformat()})
 
 class WhispierBot:
     """Main application class for Whispier Bot."""
@@ -31,7 +53,7 @@ class WhispierBot:
         )
         self.db = None
 
-    async def start(self):
+    async def start_bot(self):
         """Initialize bot and database connections."""
         try:
             self.db = await Database.create(Config.MONGODB_URL)
@@ -59,12 +81,19 @@ class WhispierBot:
         if self.db:
             await self.db.close()
 
+def run_web_server():
+    """Run FastAPI web server in separate thread."""
+    uvicorn.run(app, host="0.0.0.0", port=int(Config.PORT))
 
 async def main():
     """Entry point."""
-    bot = WhispierBot()
-    await bot.start()
+    # Start web server in background thread
+    web_thread = threading.Thread(target=run_web_server, daemon=True)
+    web_thread.start()
 
+    # Start Telegram bot
+    bot = WhispierBot()
+    await bot.start_bot()
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -17,4 +17,6 @@ COPY --chown=appuser:appuser . /app/
 
 USER appuser
 
+EXPOSE 8000
+
 CMD python3 main.py

@@ -16,6 +16,8 @@ class Config:
     MONGODB_URL: str = os.environ.get("MONGODB_URL", "mongodb://localhost:27017")
     DB_NAME: str = os.environ.get("DB_NAME", "whispier_bot")
 
+    PORT: int = int(os.environ.get("PORT", "8000"))
+
     DEV_MODE: bool = os.environ.get("DEV_MODE", "false").lower() == "true"
 
     @classmethod
