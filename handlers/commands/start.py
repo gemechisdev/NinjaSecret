@@ -18,5 +18,5 @@ def register_start_command(app: Client):
         await message.reply_text(
             Strings.WELCOME,
             reply_markup=Keyboards.main_menu(),
-            parse_mode="markdown"
+            parse_mode="html"
         )

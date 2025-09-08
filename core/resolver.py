@@ -30,10 +30,13 @@ class TargetResolver:
                 pass
 
         # Try resolution with known mappings if username
-        if username and not target_id:
-            mapped = await self.db.resolve_username(username)
-            if mapped:
-                target_id = mapped
+        if username and not target_id and self.db:
+            try:
+                mapped = await self.db.resolve_username(username)
+                if mapped:
+                    target_id = mapped
+            except Exception as e:
+                print(f"Error resolving username {username} from DB: {e}")
 
         # Active network resolution if user_client exists
         if (username or target_id) and self.user_client:
@@ -41,9 +44,12 @@ class TargetResolver:
                 user_ref = username if username else target_id
                 tg_user = await self.user_client.get_users(user_ref)
                 target_id = tg_user.id
-                if tg_user.username:
+                if tg_user.username and self.db:
                     username = tg_user.username.lower()
-                    await self.db.link_username_to_user(username, tg_user.id)
+                    try:
+                        await self.db.link_username_to_user(username, tg_user.id)
+                    except Exception as e:
+                        print(f"Error linking username {username} to user {tg_user.id}: {e}")
                 display = tg_user.first_name + (f" {tg_user.last_name}" if tg_user.last_name else "")
                 return target_id, username, display
             except Exception:
@@ -55,9 +61,12 @@ class TargetResolver:
                 user_ref = username if username else target_id
                 tg_user = await self.bot.get_users(user_ref)
                 target_id = tg_user.id
-                if tg_user.username:
+                if tg_user.username and self.db:
                     username = tg_user.username.lower()
-                    await self.db.link_username_to_user(username, tg_user.id)
+                    try:
+                        await self.db.link_username_to_user(username, tg_user.id)
+                    except Exception as e:
+                        print(f"Error linking username {username} to user {tg_user.id}: {e}")
                 display = tg_user.first_name + (f" {tg_user.last_name}" if tg_user.last_name else "")
                 return target_id, username, display
             except Exception:

@@ -11,5 +11,5 @@ def register_help_command(app: Client):
         await message.reply_text(
             Strings.HELP,
             reply_markup=Keyboards.back_to_home(),
-            parse_mode="markdown"
+            parse_mode="html"
         )
