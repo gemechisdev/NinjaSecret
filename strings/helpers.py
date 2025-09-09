@@ -1,21 +1,16 @@
-HELP_1 = """<b><u>ᴀᴅᴍɪɴ ᴄᴏᴍᴍᴀɴᴅs :</b></u>
+HELP_1 = """<b><u>ᴄʜᴀᴛ ᴄᴏɴᴛʀᴏʟ ᴄᴏᴍᴍᴀɴᴅs :</b></u>
 
-ᴊᴜsᴛ ᴀᴅᴅ <b>ᴄ</b> ɪɴ ᴛʜᴇ sᴛᴀʀᴛɪɴɢ ᴏғ ᴛʜᴇ ᴄᴏᴍᴍᴀɴᴅs ᴛᴏ ᴜsᴇ ᴛʜᴇᴍ ғᴏʀ ᴄʜᴀɴɴᴇʟ.
+<b>Forward Control:</b>
+/forward [enable/disable/allow/block] : ᴄᴏɴᴛʀᴏʟ ғᴏʀᴡᴀʀᴅɪɴɢ ɪɴ ᴛʜᴇ ᴄʜᴀᴛ
+/forwardstatus : sʜᴏᴡ ᴄᴜʀʀᴇɴᴛ ғᴏʀᴡᴀʀᴅ sᴇᴛᴛɪɴɢs
 
+<b>Links Control:</b>
+/links [enable/disable/allow/block] : ᴄᴏɴᴛʀᴏʟ ʟɪɴᴋs ɪɴ ᴛʜᴇ ᴄʜᴀᴛ
+/linksstatus : sʜᴏᴡ ᴄᴜʀʀᴇɴᴛ ʟɪɴᴋ sᴇᴛᴛɪɴɢs
 
-/pause : ᴩᴀᴜsᴇ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ sᴛʀᴇᴀᴍ.
-
-/resume : ʀᴇsᴜᴍᴇ ᴛʜᴇ ᴩᴀᴜsᴇᴅ sᴛʀᴇᴀᴍ.
-
-/skip : sᴋɪᴩ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ sᴛʀᴇᴀᴍ ᴀɴᴅ sᴛᴀʀᴛ sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ɴᴇxᴛ ᴛʀᴀᴄᴋ ɪɴ ǫᴜᴇᴜᴇ.
-
-/end ᴏʀ /stop : ᴄʟᴇᴀʀs ᴛʜᴇ ǫᴜᴇᴜᴇ ᴀɴᴅ ᴇɴᴅ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ sᴛʀᴇᴀᴍ.
-
-/player : ɢᴇᴛ ᴀ ɪɴᴛᴇʀᴀᴄᴛɪᴠᴇ ᴩʟᴀʏᴇʀ ᴩᴀɴᴇʟ.
-
-/queue : sʜᴏᴡs ᴛʜᴇ ǫᴜᴇᴜᴇᴅ ᴛʀᴀᴄᴋs ʟɪsᴛ.
-
-/lyrics [sᴏɴɢ ɴᴀᴍᴇ] : sᴇᴀʀᴄʜ ʟʏʀɪᴄs ғᴏʀ ᴛʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ sᴏɴɢ ᴀɴᴅ sᴇɴᴅ ᴛʜᴇ ʀᴇsᴜʟᴛs.
+<b>Slowmode Control:</b>
+/slowmode [enable/disable] [seconds] : ᴄᴏɴᴛʀᴏʟ sʟᴏᴡᴍᴏᴅᴇ
+/slowmodestatus : sʜᴏᴡ sʟᴏᴡᴍᴏᴅᴇ sᴛᴀᴛᴜs
 """
 
 HELP_2 = """
@@ -62,16 +57,15 @@ sᴛᴀʀᴛs ɪɢɴᴏʀɪɴɢ ᴛʜᴇ ʙʟᴀᴄᴋʟɪsᴛᴇᴅ ᴜsᴇʀ, 
 /blockedusers : sʜᴏᴡs ᴛʜᴇ ʟɪsᴛ ᴏғ ʙʟᴏᴄᴋᴇᴅ ᴜsᴇʀs.
 """
 
-HELP_6 = """
-<u><b>ᴄʜᴀɴɴᴇʟ ᴩʟᴀʏ ᴄᴏᴍᴍᴀɴᴅs:</b></u>
+HELP_6 = """<u><b>ᴀᴜᴛᴏᴘʀᴏᴍᴏᴛᴇ ᴄᴏᴍᴍᴀɴᴅs:</b></u>
 
-ʏᴏᴜ ᴄᴀɴ sᴛʀᴇᴀᴍ ᴀᴜᴅɪᴏ/ᴠɪᴅᴇᴏ ɪɴ ᴄʜᴀɴɴᴇʟ.
+<b>Autopromote System:</b>
+/autopromote or /apromote : ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏᴘʀᴏᴍᴏᴛᴇ ғᴏʀ ᴀ ᴜsᴇʀ
+/toggleautopromote or /tap : ᴛᴏɢɢʟᴇ ᴀᴜᴛᴏᴘʀᴏᴍᴏᴛᴇ ᴏɴ/ᴏғғ
+/autopromotestatus or /aps : ᴄʜᴇᴄᴋ ᴀᴜᴛᴏᴘʀᴏᴍᴏᴛᴇ sᴛᴀᴛᴜs
 
-/cplay : sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ᴀᴜᴅɪᴏ ᴛʀᴀᴄᴋ ᴏɴ ᴄʜᴀɴɴᴇʟ's ᴠɪᴅᴇᴏᴄʜᴀᴛ.
-/cvplay : sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ᴠɪᴅᴇᴏ ᴛʀᴀᴄᴋ ᴏɴ ᴄʜᴀɴɴᴇʟ's ᴠɪᴅᴇᴏᴄʜᴀᴛ.
-/cplayforce or /cvplayforce : sᴛᴏᴩs ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ ᴀɴᴅ sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ᴛʀᴀᴄᴋ.
-
-/channelplay [ᴄʜᴀᴛ ᴜsᴇʀɴᴀᴍᴇ ᴏʀ ɪᴅ] ᴏʀ [ᴅɪsᴀʙʟᴇ] : ᴄᴏɴɴᴇᴄᴛ ᴄʜᴀɴɴᴇʟ ᴛᴏ ᴀ ɢʀᴏᴜᴩ ᴀɴᴅ sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʀᴀᴄᴋs ʙʏ ᴛʜᴇ ʜᴇʟᴩ ᴏғ ᴄᴏᴍᴍᴀɴᴅs sᴇɴᴛ ɪɴ ɢʀᴏᴜᴩ.
+<b>System Management:</b>
+/autoend : ᴇɴᴀʙʟᴇ ᴀᴜᴛᴏ ᴇɴᴅ sᴛʀᴇᴀᴍ (sᴜᴅᴏ ᴏɴʟʏ)
 """
 
 HELP_7 = """
@@ -82,13 +76,14 @@ HELP_7 = """
 /gbannedusers : sʜᴏᴡs ᴛʜᴇ ʟɪsᴛ ᴏғ ɢʟᴏʙᴀʟʟʏ ʙᴀɴɴᴇᴅ ᴜsᴇʀs.
 """
 
-HELP_8 = """
-<b><u>ʟᴏᴏᴘ sᴛʀᴇᴀᴍ :</b></u>
+HELP_8 = """<b><u>ʟᴀɴɢᴜᴀɢᴇ & sᴇᴛᴛɪɴɢs :</b></u>
 
-<b>sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ ɪɴ ʟᴏᴏᴘ</b>
+<b>Language Settings:</b>
+/lang or /setlang or /language : ᴄʜᴀɴɢᴇ ʙᴏᴛ ʟᴀɴɢᴜᴀɢᴇ
 
-/loop [enable/disable] : ᴇɴᴀʙʟᴇs/ᴅɪsᴀʙʟᴇs ʟᴏᴏᴘ ғᴏʀ ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ
-/loop [1, 2, 3, ...] : ᴇɴᴀʙʟᴇs ᴛʜᴇ ʟᴏᴏᴘ ғᴏʀ ᴛʜᴇ ɢɪᴠᴇɴ ᴠᴀʟᴜᴇ.
+<b>User Information:</b>
+/id : ɢᴇᴛ ᴄᴜʀʀᴇɴᴛ ᴄʜᴀᴛ/ᴜsᴇʀ ID
+/info or /userinfo : ɢᴇᴛ ᴜsᴇʀ ɪɴғᴏʀᴍᴀᴛɪᴏɴ
 """
 
 HELP_9 = """
@@ -112,42 +107,49 @@ HELP_10 = """
 /stats : sʜᴏᴡs ᴛʜᴇ ᴏᴠᴇʀᴀʟʟ sᴛᴀᴛs ᴏғ ᴛʜᴇ ʙᴏᴛ.
 """
 
-HELP_11 = """
-<u><b>ᴩʟᴀʏ ᴄᴏᴍᴍᴀɴᴅs :</b></u>
+HELP_11 = """<u><b>sʏsᴛᴇᴍ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ :</b></u>
 
-<b>v :</b> sᴛᴀɴᴅs ғᴏʀ ᴠɪᴅᴇᴏ ᴩʟᴀʏ.
-<b>force :</b> sᴛᴀɴᴅs ғᴏʀ ғᴏʀᴄᴇ ᴩʟᴀʏ.
+<b>System Commands (Sudo Only):</b>
+/restart : ʀᴇsᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ
+/getlog or /logs : ɢᴇᴛ ʙᴏᴛ ʟᴏɢs
+/update or /gitpull : ᴜᴘᴅᴀᴛᴇ ʙᴏᴛ ғʀᴏᴍ ɢɪᴛ
 
-/play ᴏʀ /vplay : sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ᴛʀᴀᴄᴋ ᴏɴ ᴠɪᴅᴇᴏᴄʜᴀᴛ.
-
-/playforce ᴏʀ /vplayforce : sᴛᴏᴩs ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ ᴀɴᴅ sᴛᴀʀᴛs sᴛʀᴇᴀᴍɪɴɢ ᴛʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ᴛʀᴀᴄᴋ.
+<b>System Status:</b>
+/cookies : ᴍᴀɴᴀɢᴇ ᴄᴏᴏᴋɪᴇs
 """
 
-HELP_12 = """
-<b><u>sʜᴜғғʟᴇ ᴏ̨ᴜᴇᴜᴇ :</b></u>
+HELP_12 = """<b><u>sᴜᴅᴏ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ :</b></u>
 
-/shuffle : sʜᴜғғʟᴇ's ᴛʜᴇ ᴏ̨ᴜᴇᴜᴇ.
-/queue : sʜᴏᴡs ᴛʜᴇ sʜᴜғғʟᴇᴅ ᴏ̨ᴜᴇᴜᴇ.
+<b>Sudo Management (Owner Only):</b>
+/addsudo : ᴀᴅᴅ ᴀ ᴜsᴇʀ ᴛᴏ sᴜᴅᴏ ʟɪsᴛ
+/delsudo or /rmsudo : ʀᴇᴍᴏᴠᴇ ᴀ ᴜsᴇʀ ғʀᴏᴍ sᴜᴅᴏ ʟɪsᴛ
+/sudolist or /listsudo or /sudoers : sʜᴏᴡ sᴜᴅᴏ ᴜsᴇʀs ʟɪsᴛ
 """
 
-HELP_13 = """
-<b><u>sᴇᴇᴋ sᴛʀᴇᴀᴍ :</b></u>
+HELP_13 = """<b><u>ʙᴏᴛ ɪɴғᴏʀᴍᴀᴛɪᴏɴ :</b></u>
 
-/seek [ᴅᴜʀᴀᴛɪᴏɴ ɪɴ sᴇᴄᴏɴᴅs] : sᴇᴇᴋ ᴛʜᴇ sᴛʀᴇᴀᴍ ᴛᴏ ᴛʜᴇ ɢɪᴠᴇɴ ᴅᴜʀᴀᴛɪᴏɴ.
-/seekback [ᴅᴜʀᴀᴛɪᴏɴ ɪɴ sᴇᴄᴏɴᴅs] : ʙᴀᴄᴋᴡᴀʀᴅ sᴇᴇᴋ ᴛʜᴇ sᴛʀᴇᴀᴍ ᴛᴏ ᴛʜᴇ ᴛʜᴇ ɢɪᴠᴇɴ ᴅᴜʀᴀᴛɪᴏɴ.
+<b>Basic Commands:</b>
+/start : sᴛᴀʀᴛ ᴛʜᴇ ʙᴏᴛ
+/help : sʜᴏᴡ ʜᴇʟᴘ ᴍᴇɴᴜ
+/ping or /alive : ᴄʜᴇᴄᴋ ʙᴏᴛ sᴛᴀᴛᴜs
+/stats or /gstats : sʜᴏᴡ ʙᴏᴛ sᴛᴀᴛɪsᴛɪᴄs
 """
 
-HELP_14 = """
-<b><u>sᴏɴɢ ᴅᴏᴡɴʟᴏᴀᴅ</b></u>
+HELP_14 = """<b><u>ᴀᴅᴠᴀɴᴄᴇᴅ ғᴇᴀᴛᴜʀᴇs</b></u>
 
-/song [sᴏɴɢ ɴᴀᴍᴇ/ʏᴛ ᴜʀʟ] : ᴅᴏᴡɴʟᴏᴀᴅ ᴀɴʏ ᴛʀᴀᴄᴋ ғʀᴏᴍ ʏᴏᴜᴛᴜʙᴇ ɪɴ ᴍᴘ3 ᴏʀ ᴍᴘ4 ғᴏʀᴍᴀᴛs.
+<b>System Features:</b>
+/maintenance : ᴇɴᴀʙʟᴇ/ᴅɪsᴀʙʟᴇ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ ᴍᴏᴅᴇ (ᴏᴡɴᴇʀ ᴏɴʟʏ)
+/logger : ᴇɴᴀʙʟᴇ/ᴅɪsᴀʙʟᴇ ʟᴏɢɢɪɴɢ (sᴜᴅᴏ ᴏɴʟʏ)
+
+<b>Database:</b>
+/mongochk : ᴄʜᴇᴄᴋ ᴍᴏɴɢᴏᴅʙ ᴄᴏɴɴᴇᴄᴛɪᴏɴ
 """
 
-HELP_15 = """
-<b><u>sᴘᴇᴇᴅ ᴄᴏᴍᴍᴀɴᴅs :</b></u>
+HELP_15 = """<b><u>ᴜᴛɪʟɪᴛʏ ᴄᴏᴍᴍᴀɴᴅs :</b></u>
 
-ʏᴏᴜ ᴄᴀɴ ᴄᴏɴᴛʀᴏʟ ᴛʜᴇ ᴘʟᴀʏʙᴀᴄᴋ sᴘᴇᴇᴅ ᴏғ ᴛʜᴇ ᴏɴɢᴏɪɴɢ sᴛʀᴇᴀᴍ. [ᴀᴅᴍɪɴs ᴏɴʟʏ]
+<b>Database Cleanup:</b>
+/cleanup_slowmode : ᴄʟᴇᴀɴ ᴏʟᴅ sʟᴏᴡᴍᴏᴅᴇ ᴇɴᴛʀɪᴇs (ᴏᴡɴᴇʀ ᴏɴʟʏ)
 
-/speed or /playback : ғᴏʀ ᴀᴅᴊᴜsᴛɪɴɢ ᴛʜᴇ ᴀᴜᴅɪᴏ ᴘʟᴀʏʙᴀᴄᴋ sᴘᴇᴇᴅ ɪɴ ɢʀᴏᴜᴘ.
-/cspeed or /cplayback : ғᴏʀ ᴀᴅᴊᴜsᴛɪɴɢ ᴛʜᴇ ᴀᴜᴅɪᴏ ᴘʟᴀʏʙᴀᴄᴋ sᴘᴇᴇᴅ ɪɴ ᴄʜᴀɴɴᴇʟ.
+<b>Additional Features:</b>
+ᴍᴏʀᴇ ғᴇᴀᴛᴜʀᴇs ᴄᴏᴍɪɴɢ sᴏᴏɴ...
 """
