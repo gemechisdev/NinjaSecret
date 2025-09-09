@@ -99,12 +99,80 @@ gban_reason: "The bot will gban only work when you will give username and reason
 ungban_reason: "As well as you gbanned!\nThe bot will ungban someone with their reason of ungbanning!!"
 too_short: "Hahaha!!\nIf you think that bot will gban by giving reason for making me fool, then think about the owner of bot is not stupid!!"
 
+# GBan Messages
+gban_1: "» Why did you wanna gban yourself baby?"
+gban_2: "» Why should I gban myself?"
+gban_3: "» You can't gban my sudoers."
+gban_4: "» {0} is already globally banned from the bot."
+gban_5: "» Initializing global ban on {0}.\n\n<b>Time expected:</b> {1}"
+gban_6: "<b><u>New global ban on {0}:</u></b>\n\n<b>Originated from:</b> {1} [<code>{2}</code>]\n<b>User:</b> {3}\n<b>User ID:</b> {4}\n\n<b>Banned by:</b> {5}\n<b>Chats:</b> </code>{6}</code>"
+gban_7: "» {0} is not gbanned from the bot."
+gban_8: "» Lifting global ban from {0}.\n\n<b>Expected time:</b> {1}"
+gban_9: "» Lifted global ban from {0}.\n\nUnbanned in {1} chats."
+gban_10: "» No one is globally banned from the bot."
+gban_11: "» Fetching gbanned users list..."
+gban_12: "🙂 <b>Globally banned users:</b>\n\n"
+
+# Blacklist Chat Messages
+black_1: "<b>Example:</b>\n\n/blacklistchat [chat id]"
+black_2: "» This chat is already blacklisted."
+black_3: "» Successfully added to blacklisted chats."
+black_4: "<b>Example:</b>\n\n/whitelistchat [chat id]"
+black_5: "» This chat is not blacklisted."
+black_6: "» Successfully removed from blacklisted chats."
+black_7: "» List of blacklisted chats:\n\n"
+black_8: "» No blacklisted chats on {0}."
+black_9: "» Something went wrong."
+
+# Maintenance Messages
+maint_1: "<b>Example:</b>\n/maintenance [enable | disable]"
+maint_2: "» {0} maintenance mode enabled."
+maint_3: "» {0} maintenance mode disabled."
+maint_4: "» Maintenance mode is already enabled."
+maint_5: "» Maintenance mode is already disabled."
+
+# Logger Messages
+log_1: "<b>Example:</b>\n/logger [enable | disable]"
+log_2: "Enabled logging."
+log_3: "Disabled logging."
+
+# Block Messages
+block_1: "» {0} is already blocked from the bot."
+block_2: "» Added {0} to blocked users list."
+block_3: "» {0} is not in blocked users list."
+block_4: "» Removed {0} from blocked users list."
+block_5: "» No blocked users found."
+block_6: "» Getting blocked users list..."
+block_7: "<b>😫 Blocked users:</b>\n\n"
+
+# Server Messages
+server_1: "» Failed to get logs."
+server_2: "Please make sure that your heroku api key and app name are configured correctly."
+server_3: "Checking for available updates..."
+server_4: "Git command error."
+server_5: "Invalid git repository."
+server_6: "» Bot is up-to-date."
+server_7: "» Bot updated successfully! Now wait for few minutes until the bot restarts and push changes!"
+server_8: "{0} is restarting...\n\nYou can start playing again after 15-20 seconds."
+server_9: "Something went wrong, please check logs."
+server_10: "An exception occurred at #updater due to: <code>{0}</code>"
+
 # Broadcast Messages
 broadcast_1: "» Broadcast started! It will take around {0} seconds to complete."
 broadcast_2: "» Assistant {0} started broadcasting your message."
 broadcast_3: "**Broadcast Completed**\n\n**Sent to:** {0} chats\n**Failed:** {1} chats\n**Time taken:** {2}"
 broadcast_4: "» Global broadcast mode is already enabled."
 broadcast_5: "» Please reply to a message to broadcast it."
+
+# Additional Broadcast Messages
+broad_1: "» Started broadcasting..."
+broad_2: "<b>Example:</b>\n\n/broadcast [message or reply to a message]"
+broad_3: "» Broadcasted message to {0} chats with {1} pins from the bot."
+broad_4: "» Broadcasted message to {0} users."
+broad_5: "» Starting assistant broadcast..."
+broad_6: "➻ Assistant broadcast:\n\n"
+broad_7: "↬ Assistant {0} broadcasted in {1} chats."
+broad_8: "» Please provide some text to broadcast."
 
 # MongoDB Messages
 mongo_1: "MongoDB URL is valid and connection successful✅"
@@ -125,6 +193,16 @@ S_B_6: "🥀 ᴄʜᴀɴɴᴇʟ 🥀"
 S_B_7: "🥀 sᴏᴜʀᴄᴇ 🥀"
 S_B_8: "🥀 ʏᴏᴜᴛᴜʙᴇ 🥀"
 S_B_9: "🥀 sᴜᴩᴩᴏʀᴛ 🥀"
+
+# Sudo Messages
+sudo_1: "» {0} is already in sudo users list."
+sudo_2: "» Added {0} to sudo users list."
+sudo_3: "» {0} is not in sudo users list."
+sudo_4: "» Removed {0} from sudo users list."
+sudo_5: "<u><b>🥀 Owner:</b></u>\n"
+sudo_6: "\n<u><b>✨ Sudo Users:</b></u>\n"
+sudo_7: "» No sudo users found."
+sudo_8: "Failed."
 
 # Help Button Messages
 H_B_1: "Cʜᴀᴛ Cᴏɴᴛʀᴏʟ"
