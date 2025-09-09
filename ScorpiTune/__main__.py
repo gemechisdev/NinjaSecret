@@ -11,6 +11,7 @@ from ScorpiTune import LOGGER, app, userbot
 from ScorpiTune.misc import sudo
 from ScorpiTune.plugins import ALL_MODULES
 from ScorpiTune.utils.database import get_banned_users, get_gbanned
+from ScorpiTune.web_server import start_health_server, stop_health_server
 from config import BANNED_USERS
 
 
@@ -245,13 +246,25 @@ async def init():
     asyncio.create_task(memory_cleanup_task())
     LOGGER(__name__).info("Memory cleanup task started")
 
+    # Start health server for deployment platforms like Render
+    try:
+        await start_health_server()
+        LOGGER(__name__).info("Health server started successfully")
+    except Exception as e:
+        LOGGER(__name__).error(f"Failed to start health server: {e}")
+        # Don't exit on health server failure, bot can still work
+
     LOGGER("ScorpiTune").info(
         "Bot started successfully! Ready for whisper functionality."
     )
     await idle()
+    
+    # Cleanup
+    LOGGER("ScorpiTune").info("Stopping Bot...")
+    await stop_health_server()
     await app.stop()
     await userbot.stop()
-    LOGGER("ScorpiTune").info("Stopping Bot...")
+    LOGGER("ScorpiTune").info("Bot stopped successfully")
 
 
 if __name__ == "__main__":
