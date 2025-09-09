@@ -167,10 +167,5 @@ class TeleAPI:
                 await mystic.edit_text(_["tg_3"])
 
         task = asyncio.create_task(down_load())
-        config.lyrical[mystic.id] = task
         await task
-        verify = config.lyrical.get(mystic.id)
-        if not verify:
-            return False
-        config.lyrical.pop(mystic.id)
         return True
