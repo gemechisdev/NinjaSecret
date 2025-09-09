@@ -36,7 +36,7 @@ start_4: "» {0} is alive and running fine."
 start_5: "» Something went wrong while starting the bot."
 start_6: "» {0} is now online.\n\nThanks for adding me in {1}."
 
-# Help Messages  
+# Help Messages
 help_1: "Click on the buttons below for more information. If you are facing any problem you can ask in our support chat.\n\nAll commands can be used with : /"
 help_2: "Contact me in private for help."
 
@@ -75,6 +75,8 @@ setting_19: "Admins Only"
 
 # Button Messages
 BACK_BUTTON: "⬅ Back"
+BACK_PAGE: "◁"
+NEXT_PAGE: "▷"
 CLOSE_BUTTON: "✯ Close ✯"
 CLOSEMENU_BUTTON: "🗑 Close Menu"
 SUPPORT_BUTTON: "Support"
@@ -112,3 +114,40 @@ mongo_3: "Invalid MongoDB URL format💔"
 # Info Messages
 info_1: "» Getting user information..."
 info_2: "**User Information**\n\n**Name:** {0}\n**Username:** {1}\n**User ID:** `{2}`\n**Mention:** {3}"
+
+# Start Button Messages
+S_B_1: "🥀 ᴀᴅᴅ ᴍᴇ 🥀"
+S_B_2: "🥀 sᴜᴘᴘᴏʀᴛ 🥀"
+S_B_3: "➕ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ➕"
+S_B_4: "🥀 ʜᴇʟᴘ ᴀɴᴅ ᴄᴏᴍᴍᴀɴᴅ 🥀"
+S_B_5: "🥀 ᴏᴡɴᴇʀ 🥀"
+S_B_6: "🥀 ᴄʜᴀɴɴᴇʟ 🥀"
+S_B_7: "🥀 sᴏᴜʀᴄᴇ 🥀"
+S_B_8: "🥀 ʏᴏᴜᴛᴜʙᴇ 🥀"
+S_B_9: "🥀 sᴜᴩᴩᴏʀᴛ 🥀"
+
+# Help Button Messages
+H_B_1: "Aᴅᴍɪɴ"
+H_B_2: "Aᴜᴛʜ"
+H_B_3: "Bʀᴏᴀᴅᴄᴀsᴛ"
+H_B_4: "Bʟ-Cʜᴀᴛ"
+H_B_5: "Bʟ-Usᴇʀ"
+H_B_6: "C-Pʟᴀʏ"
+H_B_7: "G-Bᴀɴ"
+H_B_8: "Lᴏᴏᴘ"
+H_B_9: "Mᴀɪɴᴛᴇɴᴀɴᴄᴇ"
+H_B_10: "Pɪɴɢ"
+H_B_11: "Pʟᴀʏ"
+H_B_12: "Sʜᴜғғʟᴇ"
+H_B_13: "Sᴇᴇᴋ"
+H_B_14: "Sᴏɴɢ"
+H_B_15: "Sᴘᴇᴇᴅ"
+H_B_16: "ɢᴘᴛ"
+H_B_17: "Rᴇᴇʟ"
+H_B_18: "ᴛᴀɢ-ᴀʟʟ"
+H_B_19: "ɪɴғᴏ"
+H_B_20: "Hɪsᴛᴏʀʏ"
+H_B_21: "ᴇxᴛʀᴀ"
+H_B_22: "ɪᴍᴀɢᴇ"
+H_B_23: "ᴀᴄᴛɪᴏɴ"
+H_B_24: "sᴇᴀʀᴄʜ"
