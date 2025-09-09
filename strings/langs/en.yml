@@ -1,0 +1,114 @@
+name: 🇺🇸 English
+
+# General Messages
+general_1: "» Reply to a user's message or give username/user id."
+general_2: "» Something went wrong while processing your query.\n\nException : <code>{0}</code>"
+general_3: "You're an anonymous admin in this chat, revert back to user account for using me."
+general_4: "» You don't have permissions to manage this chat.\n\nReload admin cache via /reload"
+
+# Chat Control Messages
+chat_control_1: "**Forward Control:** Forwarding for non-admins has been **{0}**."
+chat_control_2: "**Forward Control:** Forwarding for everyone has been **{0}**."
+chat_control_3: "**Links Control:** Links from non-admins have been **{0}**."
+chat_control_4: "**Links Control:** Links from everyone has been **{0}**."
+chat_control_5: "**Slowmode enabled!** Users can send one message every **{0}** seconds."
+chat_control_6: "**Slowmode disabled!** Users can now send messages normally."
+chat_control_7: "**Invalid action!**\n\n**Available actions:**\n• `enable` - Enable forwarding for non-admins\n• `disable` - Disable forwarding for non-admins\n• `allow` - Allow forwarding for everyone\n• `block` - Block forwarding for everyone"
+chat_control_8: "**Invalid action!**\n\n**Available actions:**\n• `enable` - Allow links from non-admins\n• `disable` - Block links from non-admins\n• `allow` - Allow links from everyone\n• `block` - Block links from everyone"
+chat_control_9: "**Invalid action!**\n\n**Available actions:**\n• `enable [seconds]` - Enable slowmode with specified seconds\n• `disable` - Disable slowmode"
+chat_control_10: "**Usage:**\n/forward [enable/disable/allow/block]"
+chat_control_11: "**Usage:**\n/links [enable/disable/allow/block]"
+chat_control_12: "**Usage:**\n/slowmode [enable/disable] [seconds]"
+chat_control_13: "**Usage:**\n/slowmode enable [seconds]\n\n**Example:** `/slowmode enable 10` (one message per 10 seconds)"
+chat_control_14: "**Invalid time!** Please use a value between 0 and 86400 seconds (24 hours)."
+chat_control_15: "**Invalid time!** Please provide a valid number of seconds."
+chat_control_16: "**Forward Control Status for {0}**\n\n**Non-admin forwarding:** {1}\n**Global forwarding:** {2}"
+chat_control_17: "**Links Control Status for {0}**\n\n**Non-admin links:** {1}\n**Global links:** {2}"
+chat_control_18: "**Slowmode Status for {0}**\n\n**Status:** {1}\n**Interval:** {2} seconds per message"
+chat_control_19: "**Cleanup completed!** Removed {0} old slowmode entries."
+chat_control_20: "**Error during cleanup:** {0}"
+
+# Start Messages
+start_1: "Hey {0}, thanks for starting me."
+start_2: "» I'm a Telegram bot with some useful features."
+start_3: "» Click on the buttons below for more information."
+start_4: "» {0} is alive and running fine."
+start_5: "» Something went wrong while starting the bot."
+start_6: "» {0} is now online.\n\nThanks for adding me in {1}."
+
+# Help Messages  
+help_1: "Click on the buttons below for more information. If you are facing any problem you can ask in our support chat.\n\nAll commands can be used with : /"
+help_2: "Contact me in private for help."
+
+# Ping Messages
+ping_1: "Pinging...."
+ping_2: "🏓 **Pong !**\n\n<b>Ping :</b> <code>{0}ms</code>\n<b>Bot :</b> {1}\n<b>Uptime :</b> <code>{2}</code>\n<b>RAM :</b> <code>{3}</code>\n<b>CPU :</b> <code>{4}</code>\n<b>Disk :</b> <code>{5}</code>\n<b>PyTgCalls :</b> <code>{6}</code>"
+
+# Stats Messages
+gstats_1: "Selecting global stats, this could take some time..."
+gstats_2: "No stats found, start chatting with {0} first."
+gstats_3: "<u>**Global Stats of {0} :**</u>\n\n🙋‍♀️**Users :** {1}\n👥**Chats :** {2}\n💬**Queries :** {3}\n\n🔥**Most Active :** {4}\n**Count :** {5}\n\n💾**Top User :** {6}"
+
+# Admin Messages
+admin_1: "» Nothing is currently running."
+admin_2: "» Request processed by {0}."
+
+# Auth Messages
+auth_1: "You can only have 25 users in your group's authorized users list (AUL)"
+auth_2: "Added to authorized users list of your group."
+auth_3: "Already in the authorized users list."
+auth_4: "Removed from authorized users list of this group."
+auth_5: "Targeted user is not an authorized user."
+auth_6: "Fetching authorized users... please wait"
+auth_7: "**Authorized Users List[AUL]:**\n\n"
+auth_8: "┗ Added by:-"
+
+# Language Messages
+setting_1: "⚙️ **Bot Settings**\n\n🖇**Group:** {0}\n🔖**Group ID:** `{1}`\n💭**Language:** {2}\n\n✅ **Auth Users:** {3}\n👮‍♀️ **Admin Only:** {4}\n👨‍⚖️ **Admin Command:** {5}"
+setting_5: "No authorized users found\n\nYou can allow any non-admin to use my commands by /auth and delete by using /unauth"
+setting_14: "Non-admin"
+setting_15: "Disabled"
+setting_16: "Enabled"
+setting_17: "Admins"
+setting_18: "Everyone"
+setting_19: "Admins Only"
+
+# Button Messages
+BACK_BUTTON: "⬅ Back"
+CLOSE_BUTTON: "✯ Close ✯"
+CLOSEMENU_BUTTON: "🗑 Close Menu"
+SUPPORT_BUTTON: "Support"
+STATS_BUTTON: "📊 Stats"
+SETTINGS_BUTTON: "⚙ Settings"
+LANGUAGE_BUTTON: "🌐 Language"
+
+# Stats Button Messages
+SA_B_1: "📊 Overall Stats"
+SA_B_2: "🤖 Bot Stats"
+SA_B_3: "📈 Overall Stats"
+
+# Error Messages
+error_1: "» An error occurred while processing your request."
+error_2: "» Please try again later."
+error_3: "» Command not found."
+
+# Ban/Unban Messages
+gban_reason: "The bot will gban only work when you will give username and reason too!!"
+ungban_reason: "As well as you gbanned!\nThe bot will ungban someone with their reason of ungbanning!!"
+too_short: "Hahaha!!\nIf you think that bot will gban by giving reason for making me fool, then think about the owner of bot is not stupid!!"
+
+# Broadcast Messages
+broadcast_1: "» Broadcast started! It will take around {0} seconds to complete."
+broadcast_2: "» Assistant {0} started broadcasting your message."
+broadcast_3: "**Broadcast Completed**\n\n**Sent to:** {0} chats\n**Failed:** {1} chats\n**Time taken:** {2}"
+broadcast_4: "» Global broadcast mode is already enabled."
+broadcast_5: "» Please reply to a message to broadcast it."
+
+# MongoDB Messages
+mongo_1: "MongoDB URL is valid and connection successful✅"
+mongo_2: "Failed to connect to MongoDB: {0}"
+mongo_3: "Invalid MongoDB URL format💔"
+
+# Info Messages
+info_1: "» Getting user information..."
+info_2: "**User Information**\n\n**Name:** {0}\n**Username:** {1}\n**User ID:** `{2}`\n**Mention:** {3}"
