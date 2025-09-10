@@ -102,26 +102,44 @@ def is_single_target_valid(part: str) -> bool:
 
     return False
 
-def create_enhanced_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, lang: str = "en") -> Dict:
+def create_enhanced_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
     """Create enhanced inline query result that supports special features"""
     if modifiers:
         # Use advanced result with special features
-        targets_dict = [{"display_name": target_display, "type": "user"}] if targets else []
+        # Create proper target dictionaries for the advanced formatter
+        targets_dict = []
+        if targets:
+            for target_id, target_username, original_token in targets:
+                if original_token.lower() in ["@all", "@everyone"]:
+                    targets_dict.append({"display_name": "Everyone", "type": "all"})
+                else:
+                    # Use mention format if we have target_id, otherwise use display
+                    if target_id and target_mentions:
+                        # Extract the mention for this specific target from combined mentions
+                        display_name = target_mentions
+                    else:
+                        display_name = target_display
+                    targets_dict.append({"display_name": display_name, "type": "user"})
+
         return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
     else:
         # Use simple result for compatibility
-        return create_simple_whisper_inline_result(whisper_id, content, target_display, lang)
+        return create_simple_whisper_inline_result(whisper_id, content, target_display, target_mentions, lang)
 
-def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, lang: str = "en") -> Dict:
+def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
     """Create simplified inline query result for whisper"""
     language = get_string(lang)
+
+    # Use mentions if provided, otherwise fall back to display
+    target_for_message = target_mentions if target_mentions else target_display
+
     return {
         "id": whisper_id,
         "title": language["whisper_simple_title"].format(target_display),
         "description": language["whisper_simple_desc"],
         "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
         "input_message_content": {
-            "message_text": language["whisper_simple_message"].format(target_display),
+            "message_text": language["whisper_simple_message"].format(target_for_message),
             "parse_mode": "MARKDOWN"
         },
         "reply_markup": create_whisper_keyboard(whisper_id)
@@ -161,17 +179,25 @@ async def handle_inline_query(client, query: InlineQuery):
         target_tokens = [token.strip() for token in target_token.split(",")]
         resolved_targets = []
         display_names = []
+        target_mentions = []  # For creating mentions in the message
 
         for token in target_tokens:
             # Handle special @all/@everyone cases
             if token.lower() in ["@all", "@everyone"]:
                 resolved_targets.append((None, None, token))
                 display_names.append("Everyone")
+                target_mentions.append("Everyone")
             else:
                 target_id, target_username, display_name = await resolve_target(token, app)
                 resolved_targets.append((target_id, target_username, token))
                 # Use the display name returned by resolve_target (it handles all cases properly)
                 display_names.append(display_name or token)
+
+                # Create mention for the message
+                if target_id:
+                    target_mentions.append(f"[{display_name or token}](tg://user?id={target_id})")
+                else:
+                    target_mentions.append(display_name or token)
 
         # Create combined display name
         if len(display_names) == 1:
@@ -180,6 +206,14 @@ async def handle_inline_query(client, query: InlineQuery):
             combined_display = f"{display_names[0]} & {display_names[1]}"
         else:
             combined_display = f"{', '.join(display_names[:-1])} & {display_names[-1]}"
+
+        # Create combined mention string for the message
+        if len(target_mentions) == 1:
+            combined_mentions = target_mentions[0]
+        elif len(target_mentions) == 2:
+            combined_mentions = f"{target_mentions[0]} & {target_mentions[1]}"
+        else:
+            combined_mentions = f"{', '.join(target_mentions[:-1])} & {target_mentions[-1]}"
 
         # Generate whisper ID
         whisper_id = generate_whisper_id()
@@ -195,7 +229,8 @@ async def handle_inline_query(client, query: InlineQuery):
             "target_username": primary_target[1],
             "target_id": primary_target[0],
             "original_target_token": target_token,  # Store the full target string for multiple targets
-            "all_targets": resolved_targets  # Store all targets for future use
+            "all_targets": resolved_targets,  # Store all targets for future use
+            "target_mentions": combined_mentions  # Store formatted mentions for the message
         }
 
         # Add modifiers if present (special features)
@@ -205,7 +240,7 @@ async def handle_inline_query(client, query: InlineQuery):
         await store_whisper(store_data)
 
         # Create inline result (enhanced with special features support)
-        result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, "en")
+        result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
 
         # Convert to Pyrogram format
         pyrogram_result = InlineQueryResultArticle(
