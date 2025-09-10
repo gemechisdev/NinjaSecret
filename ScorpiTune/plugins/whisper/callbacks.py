@@ -51,6 +51,24 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             )
             return
 
+        # Check if whisper has expired (timer feature)
+        settings = whisper.get("settings", {})
+        if settings.get("expires_at"):
+            if datetime.utcnow() > settings["expires_at"]:
+                await callback_query.answer(
+                    f"{MONKEY_EMOJIS['timer']} This secret has expired!",
+                    show_alert=True
+                )
+                return
+
+        # Check if whisper was burned (burn after reading feature)
+        if whisper.get("status") == "burned":
+            await callback_query.answer(
+                f"{MONKEY_EMOJIS['fire']} This secret was burned after reading!",
+                show_alert=True
+            )
+            return
+
         # Authorization check
         sender_id = whisper["sender_id"]
         target_username = whisper.get("target_username")
@@ -70,17 +88,25 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             is_target = True
         else:
             # Check if user matches any of the multiple targets in original_target_token
-            if original_token and "," in original_token:
-                target_tokens = [token.strip() for token in original_token.split(",")]
-                for token in target_tokens:
-                    if token.startswith("@") and callback_query.from_user.username:
-                        if token[1:].lower() == callback_query.from_user.username.lower():
+            if original_token:
+                # Handle @all/@everyone - everyone can access
+                if original_token.lower() in ["@all", "@everyone"]:
+                    is_target = True
+                elif "," in original_token:
+                    target_tokens = [token.strip() for token in original_token.split(",")]
+                    for token in target_tokens:
+                        # Check for @all/@everyone in multiple targets
+                        if token.lower() in ["@all", "@everyone"]:
                             is_target = True
                             break
-                    elif token.isdigit() and 4 <= len(token) <= 15:
-                        if int(token) == user_id:
-                            is_target = True
-                            break
+                        elif token.startswith("@") and callback_query.from_user.username:
+                            if token[1:].lower() == callback_query.from_user.username.lower():
+                                is_target = True
+                                break
+                        elif token.isdigit() and 4 <= len(token) <= 15:
+                            if int(token) == user_id:
+                                is_target = True
+                                break
 
         if not (is_sender or is_target):
             await callback_query.answer(
@@ -109,6 +135,15 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         if not whisper.get("read_at"):
             await mark_whisper_read(whisper_id, user_id)
 
+            # Handle burn after reading for simple whispers (single target)
+            if settings.get("burn_after_reading"):
+                # For simple whispers, burn immediately after first read
+                from ScorpiTune.core.mongo import mongodb
+                await mongodb.whispers.update_one(
+                    {"whisper_id": whisper_id},
+                    {"$set": {"status": "burned"}}
+                )
+
         # Get sender name for display
         try:
             sender = await app.get_users(sender_id)
@@ -119,8 +154,28 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Get the whisper content (no truncation - user should have been warned during creation)
         content = whisper['content']
 
-        # Show as alert (popup) with banana title
-        await callback_query.answer(f"{content}", show_alert=True)
+        # Add special features info if present
+        display_content = content
+        settings = whisper.get("settings", {})
+
+        # Add timer info if present
+        if settings.get("expires_at"):
+            time_left = get_time_remaining_text(settings["expires_at"])
+            if time_left != "Expired":
+                display_content += f"\n\n⏰ Expires in: {time_left}"
+
+        # Add burn info if present
+        if settings.get("burn_after_reading"):
+            display_content += f"\n💀 Burns after reading!"
+
+        # Add style emoji based on settings
+        if settings.get("style") == "vip":
+            display_content = f"👑 {display_content}"
+        elif settings.get("style") == "cute":
+            display_content = f"💕 {display_content}"
+
+        # Show as alert (popup) with enhanced content
+        await callback_query.answer(display_content, show_alert=True)
 
     except Exception as e:
         print(f"Whisper view error: {e}")

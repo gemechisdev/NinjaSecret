@@ -13,7 +13,7 @@ whisper_stats = mongodb.whisper_stats
 whisper_achievements = mongodb.whisper_achievements
 
 async def store_whisper(data: Dict) -> str:
-    """Store a new whisper message with simplified data model"""
+    """Store a new whisper message with optional special features support"""
     whisper_data = {
         "whisper_id": data["whisper_id"],
         "inline_message_id": data.get("inline_message_id"),
@@ -27,6 +27,27 @@ async def store_whisper(data: Dict) -> str:
         "reader_id": None,
         "status": "active"
     }
+
+    # Add special features settings if provided
+    if data.get("modifiers"):
+        settings = {}
+        modifiers = data["modifiers"]
+
+        # Handle timer expiration
+        if modifiers.get("timer"):
+            expires_at = datetime.utcnow() + timedelta(seconds=modifiers["timer"])
+            settings["expires_at"] = expires_at
+
+        # Handle burn after reading
+        if modifiers.get("burn_after_reading"):
+            settings["burn_after_reading"] = True
+
+        # Handle styling
+        if modifiers.get("style"):
+            settings["style"] = modifiers["style"]
+
+        if settings:
+            whisper_data["settings"] = settings
 
     await whisperdb.insert_one(whisper_data)
     return data["whisper_id"]

@@ -30,8 +30,22 @@ from ScorpiTune.utils.whisper_utils import (
     create_empty_query_response,
     generate_whisper_id,
     create_whisper_keyboard,
+    parse_whisper_command,
     MONKEY_EMOJIS
 )
+
+def extract_message_and_target_with_modifiers(text: str):
+    """Enhanced extraction that supports special features while maintaining compatibility"""
+    # First try the advanced parser for special features
+    message_content, targets_string, modifiers = parse_whisper_command(text)
+
+    # If advanced parser found everything, return it
+    if message_content and targets_string:
+        return message_content, targets_string, modifiers
+
+    # Fallback to simple parsing (existing logic) for compatibility
+    message_content, targets_string = extract_message_and_target(text)
+    return message_content, targets_string, {}
 
 def extract_message_and_target(text: str):
     """Extract message and target from query text - targets must be at the END only"""
@@ -56,7 +70,7 @@ def is_target_token(token: str) -> bool:
     if not token:
         return False
 
-    # Single @username
+    # Single @username, @all, or @everyone
     if token.startswith("@") and len(token) > 1:
         return True
 
@@ -78,7 +92,7 @@ def is_single_target_valid(part: str) -> bool:
     if not part:
         return False
 
-    # @username
+    # @username, @all, or @everyone
     if part.startswith("@") and len(part) > 1:
         return True
 
@@ -87,6 +101,16 @@ def is_single_target_valid(part: str) -> bool:
         return True
 
     return False
+
+def create_enhanced_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, lang: str = "en") -> Dict:
+    """Create enhanced inline query result that supports special features"""
+    if modifiers:
+        # Use advanced result with special features
+        targets_dict = [{"display_name": target_display, "type": "user"}] if targets else []
+        return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
+    else:
+        # Use simple result for compatibility
+        return create_simple_whisper_inline_result(whisper_id, content, target_display, lang)
 
 def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, lang: str = "en") -> Dict:
     """Create simplified inline query result for whisper"""
@@ -117,8 +141,8 @@ async def handle_inline_query(client, query: InlineQuery):
             await query.answer(results, cache_time=1, is_personal=True)
             return
 
-        # Extract message and target
-        message_content, target_token = extract_message_and_target(query_text)
+        # Extract message, target, and modifiers (with fallback to simple parsing)
+        message_content, target_token, modifiers = extract_message_and_target_with_modifiers(query_text)
 
         # Invalid format - show help with example
         if not message_content or not target_token:
@@ -139,11 +163,15 @@ async def handle_inline_query(client, query: InlineQuery):
         display_names = []
 
         for token in target_tokens:
-            target_id, target_username, display_name = await resolve_target(token, app)
-            resolved_targets.append((target_id, target_username, token))
-
-            # Use the display name returned by resolve_target (it handles all cases properly)
-            display_names.append(display_name or token)
+            # Handle special @all/@everyone cases
+            if token.lower() in ["@all", "@everyone"]:
+                resolved_targets.append((None, None, token))
+                display_names.append("Everyone")
+            else:
+                target_id, target_username, display_name = await resolve_target(token, app)
+                resolved_targets.append((target_id, target_username, token))
+                # Use the display name returned by resolve_target (it handles all cases properly)
+                display_names.append(display_name or token)
 
         # Create combined display name
         if len(display_names) == 1:
@@ -160,7 +188,7 @@ async def handle_inline_query(client, query: InlineQuery):
         primary_target = resolved_targets[0] if resolved_targets else (None, None, target_token)
 
         # Pre-store whisper (so callbacks work immediately)
-        await store_whisper({
+        store_data = {
             "whisper_id": whisper_id,
             "content": message_content,
             "sender_id": query.from_user.id,
@@ -168,10 +196,16 @@ async def handle_inline_query(client, query: InlineQuery):
             "target_id": primary_target[0],
             "original_target_token": target_token,  # Store the full target string for multiple targets
             "all_targets": resolved_targets  # Store all targets for future use
-        })
+        }
 
-        # Create inline result (simplified - no complex modifiers for now)
-        result = create_simple_whisper_inline_result(whisper_id, message_content, combined_display, "en")
+        # Add modifiers if present (special features)
+        if modifiers:
+            store_data["modifiers"] = modifiers
+
+        await store_whisper(store_data)
+
+        # Create inline result (enhanced with special features support)
+        result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, "en")
 
         # Convert to Pyrogram format
         pyrogram_result = InlineQueryResultArticle(
@@ -235,9 +269,9 @@ def create_invalid_format_response() -> InlineQueryResultArticle:
 📝 **Examples:**
 • `@whispierbot pizza party tonight @alice`
 • `@whispierbot meeting at 3pm @bob,@charlie`
-• `@whispierbot mixed targets 2342,@bona`
-• `@whispierbot surprise! @everyone`
-• `@whispierbot secret message 6153949909`
+• `@whispierbot confidential info @boss !delete`
+• `@whispierbot party at 8pm @friends !timer:3600`
+• `@whispierbot announcement @all !vip`
 
 {MONKEY_EMOJIS['banana']} Try again, monkey friend!""",
             parse_mode=enums.ParseMode.MARKDOWN

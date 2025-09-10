@@ -71,8 +71,8 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         text = text.replace('!cute', '').strip()
 
     # Extract targets (last @mention, series of @mentions, or user IDs)
-    # Updated pattern to handle: @username, user_id, @username,user_id, etc.
-    target_pattern = r'((?:@[\w]+|[\d]{6,15})(?:\s*,\s*(?:@[\w]+|[\d]{6,15}))*)\s*$'
+    # Updated pattern to handle: @username, user_id, @all, @everyone, etc.
+    target_pattern = r'((?:@(?:[\w]+|all|everyone)|[\d]{6,15})(?:\s*,\s*(?:@(?:[\w]+|all|everyone)|[\d]{6,15}))*)\s*$'
     target_match = re.search(target_pattern, text)
 
     if target_match:
@@ -80,7 +80,7 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         message_content = text[:target_match.start()].strip()
     else:
         # Try alternative pattern for single target at the end
-        alt_pattern = r'(@[\w]+|[\d]{6,15})\s*$'
+        alt_pattern = r'(@(?:[\w]+|all|everyone)|[\d]{6,15})\s*$'
         alt_match = re.search(alt_pattern, text)
         if alt_match:
             targets_string = alt_match.group(1).strip()
