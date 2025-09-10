@@ -1,44 +1,49 @@
 from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent
 
+# Whisper-related inline query results (legacy fallback)
+# Main whisper functionality is handled by the dedicated whisper plugin
+
 answer = []
 
 answer.extend(
     [
         InlineQueryResultArticle(
-            title="Pᴀᴜsᴇ",
-            description=f"ᴩᴀᴜsᴇ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ sᴛʀᴇᴀᴍ ᴏɴ ᴠɪᴅᴇᴏᴄʜᴀᴛ.",
-            thumb_url="https://te.legra.ph/file/df8fa2868f8a277718a47.jpg",
-            input_message_content=InputTextMessageContent("/pause"),
+            title="🐒 WhispierBot Tutorial",
+            description="Learn how to use WhispierBot for secret messaging",
+            thumb_url="https://i.imgur.com/monkey-whisper.gif",
+            input_message_content=InputTextMessageContent(
+                "🐒 **WhispierBot Tutorial**\n\n"
+                "🎯 **How to Send Secrets:**\n"
+                "Type `@whispierbot` in any chat, then:\n\n"
+                "📝 **Basic Format:**\n"
+                "`@whispierbot [your message] [targets]`\n\n"
+                "🎪 **Examples:**\n"
+                "• Single person: `@whispierbot secret message @alice`\n"
+                "• Multiple people: `@whispierbot group news @bob,@charlie`\n"
+                "• Everyone: `@whispierbot pizza time! @all`\n\n"
+                "🔥 **Special Features:**\n"
+                "• `!delete` - Burns after all read\n"
+                "• `!timer:3600` - Expires in 1 hour\n"
+                "• `!vip` - VIP styling with crown\n"
+                "• `!cute` - Extra cute monkey styling\n\n"
+                "🍌 **Ready to swing into action?**"
+            ),
         ),
         InlineQueryResultArticle(
-            title="Rᴇsᴜᴍᴇ",
-            description=f"ʀᴇsᴜᴍᴇ ᴛʜᴇ ᴩᴀᴜsᴇᴅ sᴛʀᴇᴀᴍ ᴏɴ ᴠɪᴅᴇᴏᴄʜᴀᴛ.",
-            thumb_url="https://te.legra.ph/file/df8fa2868f8a277718a47.jpg",
-            input_message_content=InputTextMessageContent("/resume"),
-        ),
-        InlineQueryResultArticle(
-            title="Sᴋɪᴩ",
-            description=f"sᴋɪᴩ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ sᴛʀᴇᴀᴍ ᴏɴ ᴠɪᴅᴇᴏᴄʜᴀᴛ ᴀɴᴅ ᴍᴏᴠᴇs ᴛᴏ ᴛʜᴇ ɴᴇxᴛ sᴛʀᴇᴀᴍ.",
-            thumb_url="https://te.legra.ph/file/df8fa2868f8a277718a47.jpg",
-            input_message_content=InputTextMessageContent("/skip"),
-        ),
-        InlineQueryResultArticle(
-            title="Eɴᴅ",
-            description="ᴇɴᴅ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ sᴛʀᴇᴀᴍ ᴏɴ ᴠɪᴅᴇᴏᴄʜᴀᴛ.",
-            thumb_url="https://te.legra.ph/file/df8fa2868f8a277718a47.jpg",
-            input_message_content=InputTextMessageContent("/end"),
-        ),
-        InlineQueryResultArticle(
-            title="Sʜᴜғғʟᴇ",
-            description="sʜᴜғғʟᴇ ᴛʜᴇ ǫᴜᴇᴜᴇᴅ sᴏɴɢs ɪɴ ᴩʟᴀʏʟɪsᴛ.",
-            thumb_url="https://te.legra.ph/file/df8fa2868f8a277718a47.jpg",
-            input_message_content=InputTextMessageContent("/shuffle"),
-        ),
-        InlineQueryResultArticle(
-            title="Lᴏᴏᴩ",
-            description="ʟᴏᴏᴩ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴩʟᴀʏɪɴɢ ᴛʀᴀᴄᴋ ᴏɴ ᴠɪᴅᴇᴏᴄʜᴀᴛ.",
-            thumb_url="https://te.legra.ph/file/df8fa2868f8a277718a47.jpg",
-            input_message_content=InputTextMessageContent("/loop 3"),
+            title="🤫 Create Secret Message",
+            description="Start creating a whisper message",
+            thumb_url="https://i.imgur.com/monkey-whisper.gif",
+            input_message_content=InputTextMessageContent(
+                "🤫 **Ready to Send a Secret?**\n\n"
+                "🐒 Use the format: `@whispierbot [message] [targets]`\n\n"
+                "📝 **Example:**\n"
+                "`@whispierbot pizza party tonight! @alice,@bob`\n\n"
+                "💡 **Pro Tips:**\n"
+                "• Use `@all` to message everyone\n"
+                "• Add `!delete` to burn after reading\n"
+                "• Add `!timer:3600` to expire in 1 hour\n\n"
+                "🍌 **Start typing your secret above!**"
+            ),
         ),
     ]
 )
