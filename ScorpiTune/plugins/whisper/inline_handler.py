@@ -34,29 +34,61 @@ from ScorpiTune.utils.whisper_utils import (
 )
 
 def extract_message_and_target(text: str):
-    """Extract message and target from query text"""
+    """Extract message and target from query text - supports mixed targets like 'id2342,@bona'"""
     parts = text.split()
     if len(parts) < 2:
         return None, None
 
-    # Check last part first
-    last = parts[-1]
-    if last.startswith("@") or (last.isdigit() and 5 <= len(last) <= 15):
-        msg = " ".join(parts[:-1]).strip()
-        if not msg:
-            return None, None
-        return msg, last
-
-    # Look for @username anywhere in the text
+    # Look for targets starting from the end
+    # Targets can be: @username, user_id, or comma-separated mix like id2342,@bona
     for i in range(len(parts) - 1, -1, -1):
         token = parts[i]
-        if token.startswith("@"):
+
+        # Check if this looks like a target token
+        if is_target_token(token):
             msg = " ".join(parts[:i]).strip()
             if not msg:
                 return None, None
             return msg, token
 
     return None, None
+
+def is_target_token(token: str) -> bool:
+    """Check if a token looks like a target (username, user_id, or mixed targets)"""
+    if not token:
+        return False
+
+    # Single @username
+    if token.startswith("@") and len(token) > 1:
+        return True
+
+    # Single user_id (pure digits) - Telegram user IDs are typically 8-10 digits
+    if token.isdigit() and 4 <= len(token) <= 15:
+        return True
+
+    # Mixed targets separated by commas (e.g., "2342,@bona", "@alice,123456789")
+    if "," in token:
+        parts = [part.strip() for part in token.split(",")]
+        if len(parts) >= 2:
+            # All parts must be valid individual targets
+            return all(is_single_target_valid(part) for part in parts if part)
+
+    return False
+
+def is_single_target_valid(part: str) -> bool:
+    """Check if a single target part is valid"""
+    if not part:
+        return False
+
+    # @username
+    if part.startswith("@") and len(part) > 1:
+        return True
+
+    # Pure digit user_id - Telegram user IDs are typically 8-10 digits
+    if part.isdigit() and 4 <= len(part) <= 15:
+        return True
+
+    return False
 
 def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, lang: str = "en") -> Dict:
     """Create simplified inline query result for whisper"""
@@ -96,24 +128,50 @@ async def handle_inline_query(client, query: InlineQuery):
             await query.answer(results, cache_time=1, is_personal=True)
             return
 
-        # Resolve target
-        target_id, target_username, display_name = await resolve_target(target_token, app)
+        # Check message length (Telegram callback answer limit is ~200 chars)
+        max_content_length = 180  # Leave buffer for safety
+        if len(message_content) > max_content_length:
+            results = [create_message_too_long_response(len(message_content), max_content_length)]
+            await query.answer(results, cache_time=1, is_personal=True)
+            return
+
+        # Parse multiple targets
+        target_tokens = [token.strip() for token in target_token.split(",")]
+        resolved_targets = []
+        display_names = []
+
+        for token in target_tokens:
+            target_id, target_username, display_name = await resolve_target(token, app)
+            resolved_targets.append((target_id, target_username, token))
+            display_names.append(display_name or token)
+
+        # Create combined display name
+        if len(display_names) == 1:
+            combined_display = display_names[0]
+        elif len(display_names) == 2:
+            combined_display = f"{display_names[0]} & {display_names[1]}"
+        else:
+            combined_display = f"{', '.join(display_names[:-1])} & {display_names[-1]}"
 
         # Generate whisper ID
         whisper_id = generate_whisper_id()
+
+        # For simplified storage, use the first target (maintaining compatibility)
+        primary_target = resolved_targets[0] if resolved_targets else (None, None, target_token)
 
         # Pre-store whisper (so callbacks work immediately)
         await store_whisper({
             "whisper_id": whisper_id,
             "content": message_content,
             "sender_id": query.from_user.id,
-            "target_username": target_username,
-            "target_id": target_id,
-            "original_target_token": target_token
+            "target_username": primary_target[1],
+            "target_id": primary_target[0],
+            "original_target_token": target_token,  # Store the full target string for multiple targets
+            "all_targets": resolved_targets  # Store all targets for future use
         })
 
         # Create inline result (simplified - no complex modifiers for now)
-        result = create_simple_whisper_inline_result(whisper_id, message_content, display_name or target_token, "en")
+        result = create_simple_whisper_inline_result(whisper_id, message_content, combined_display, "en")
 
         # Convert to Pyrogram format
         pyrogram_result = InlineQueryResultArticle(
@@ -177,6 +235,7 @@ def create_invalid_format_response() -> InlineQueryResultArticle:
 📝 **Examples:**
 • `@whispierbot pizza party tonight @alice`
 • `@whispierbot meeting at 3pm @bob,@charlie`
+• `@whispierbot mixed targets 2342,@bona`
 • `@whispierbot surprise! @everyone`
 • `@whispierbot secret message 6153949909`
 
@@ -220,6 +279,36 @@ def create_no_targets_response() -> InlineQueryResultArticle:
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 f"{MONKEY_EMOJIS['lightning']} Try Again",
+                switch_inline_query_current_chat=""
+            )]
+        ])
+    )
+
+def create_message_too_long_response(current_length: int, max_length: int) -> InlineQueryResultArticle:
+    """Create response for message that's too long"""
+    return InlineQueryResultArticle(
+        id="message_too_long",
+        title=f"{MONKEY_EMOJIS['see_no_evil']} Message Too Long!",
+        description=f"Your message is {current_length} characters, but max is {max_length}. Please shorten it!",
+        thumb_url="https://i.imgur.com/monkey-error.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=f"""{MONKEY_EMOJIS['see_no_evil']} **Message Too Long, Monkey!**
+
+{MONKEY_EMOJIS['monkey']} Your secret message is **{current_length} characters** long, but the maximum allowed is **{max_length} characters**.
+
+📏 **Please reduce your message by {current_length - max_length} characters.**
+
+💡 **Tips for shorter secrets:**
+• Use abbreviations where possible
+• Remove unnecessary words
+• Split into multiple whispers if needed
+
+{MONKEY_EMOJIS['banana']} Try again with a shorter message!""",
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                f"{MONKEY_EMOJIS['lightning']} Try Shorter Message",
                 switch_inline_query_current_chat=""
             )]
         ])

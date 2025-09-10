@@ -68,6 +68,20 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 is_target = True
         elif original_token and original_token.isdigit() and int(original_token) == user_id:
             is_target = True
+        else:
+            # Check if user matches any of the multiple targets in original_target_token
+            if original_token and "," in original_token:
+                target_tokens = [token.strip() for token in original_token.split(",")]
+                for token in target_tokens:
+                    if token.startswith("@") and callback_query.from_user.username:
+                        if token[1:].lower() == callback_query.from_user.username.lower():
+                            is_target = True
+                            break
+                    elif token.isdigit() and 4 <= len(token) <= 15:
+                        if int(token) == user_id:
+                            is_target = True
+                            break
+
 
         if not (is_sender or is_target):
             await callback_query.answer(
