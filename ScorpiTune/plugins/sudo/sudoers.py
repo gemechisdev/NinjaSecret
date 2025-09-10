@@ -1,4 +1,4 @@
-from pyrogram import filters
+from pyrogram import filters, enums
 from pyrogram.types import Message
 
 from ScorpiTune import app
@@ -50,7 +50,7 @@ async def sudoers_list(client, message: Message, _):
     if message.from_user.id not in SUDOERS:
         return await message.reply_text("💔 <b>ᴏᴡɴᴇʀ:</b>\n1➤ <a href='https://t.me/venopyx'>🇪🇹⛦°𝗦𝗰𝗼𝗿𝗽𝗶 𓆩🇽𓆪</a>",
                                         disable_web_page_preview=True,
-                                        parse_mode="html")
+                                        parse_mode=enums.ParseMode.HTML)
     text = _["sudo_5"]
     user = await app.get_users(OWNER_ID)
     user = user.first_name if not user.mention else user.mention
