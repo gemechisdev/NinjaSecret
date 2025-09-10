@@ -119,18 +119,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Get the whisper content (no truncation - user should have been warned during creation)
         content = whisper['content']
 
-        # Create banana-themed title for the callback dialog
-        banana_titles = [
-            "🍌 Revealed Banana",
-            "🍌 Secret Banana",
-            "🍌 Peeked Banana Secret",
-            "🍌 Peeled Secret Banana"
-        ]
-        import random
-        title = random.choice(banana_titles)
-
         # Show as alert (popup) with banana title
-        await callback_query.answer(f"{title}\n\n{content}", show_alert=True)
+        await callback_query.answer(f"{content}", show_alert=True)
 
     except Exception as e:
         print(f"Whisper view error: {e}")
