@@ -60,7 +60,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         is_sender = user_id == sender_id
         is_target = False
 
-        # Check if user is the target
+        # Check if user is the target (support multiple targets)
         if target_id and user_id == target_id:
             is_target = True
         elif callback_query.from_user.username and target_username:
@@ -81,7 +81,6 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                         if int(token) == user_id:
                             is_target = True
                             break
-
 
         if not (is_sender or is_target):
             await callback_query.answer(
@@ -117,11 +116,21 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         except Exception:
             sender_name = "Someone"
 
-        # Create revealed message using language system
-        revealed_text = _["whisper_3"].format(whisper['content'])
+        # Get the whisper content (no truncation - user should have been warned during creation)
+        content = whisper['content']
 
-        # Show as alert (popup)
-        await callback_query.answer(revealed_text, show_alert=True)
+        # Create banana-themed title for the callback dialog
+        banana_titles = [
+            "🍌 Revealed Banana",
+            "🍌 Secret Banana",
+            "🍌 Peeked Banana Secret",
+            "🍌 Peeled Secret Banana"
+        ]
+        import random
+        title = random.choice(banana_titles)
+
+        # Show as alert (popup) with banana title
+        await callback_query.answer(f"{title}\n\n{content}", show_alert=True)
 
     except Exception as e:
         print(f"Whisper view error: {e}")

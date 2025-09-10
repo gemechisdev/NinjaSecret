@@ -142,19 +142,8 @@ async def handle_inline_query(client, query: InlineQuery):
             target_id, target_username, display_name = await resolve_target(token, app)
             resolved_targets.append((target_id, target_username, token))
 
-            # Better display name logic for resolved targets
-            if display_name and display_name != token:
-                # We got a resolved name (first name + last name)
-                display_names.append(display_name)
-            elif target_username:
-                # We have a username
-                display_names.append(f"@{target_username}")
-            elif target_id:
-                # We have an ID but no username, show as User ID
-                display_names.append(f"User {target_id}")
-            else:
-                # Fallback to original token
-                display_names.append(token)
+            # Use the display name returned by resolve_target (it handles all cases properly)
+            display_names.append(display_name or token)
 
         # Create combined display name
         if len(display_names) == 1:
