@@ -77,8 +77,8 @@ async def get_whisper_by_id(whisper_id: str) -> Optional[Dict]:
     
     return whisper
 
-async def mark_whisper_read(inline_message_id: str, user_id: int) -> bool:
-    """Mark whisper as read by a user"""
+async def mark_whisper_read_by_inline_id(inline_message_id: str, user_id: int) -> bool:
+    """Mark whisper as read by a user using inline message ID"""
     whisper = await get_whisper_message(inline_message_id)
     if not whisper:
         return False
@@ -150,8 +150,8 @@ async def increment_whisper_view_by_id(whisper_id: str):
         {"$inc": {"analytics.views": 1}}
     )
 
-async def mark_whisper_read_by_id(whisper_id: str, user_id: int) -> bool:
-    """Mark whisper as read by a user using whisper ID"""
+async def mark_whisper_read_complex(whisper_id: str, user_id: int) -> bool:
+    """Mark whisper as read by a user using whisper ID (complex targets system)"""
     whisper = await get_whisper_by_id(whisper_id)
     if not whisper:
         return False
