@@ -10,10 +10,15 @@ from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBu
 from ScorpiTune import app
 from ScorpiTune.mongo.whisperdb import (
     get_whisper_message,
+    get_whisper_by_id,
     is_user_target,
+    is_user_target_by_id,
     mark_whisper_read,
+    mark_whisper_read_by_id,
     increment_whisper_view,
+    increment_whisper_view_by_id,
     increment_whisper_click,
+    increment_whisper_click_by_id,
     get_user_whisper_stats,
     update_user_stats
 )
@@ -40,10 +45,10 @@ async def handle_whisper_view(client, callback_query: CallbackQuery):
         user_id = callback_query.from_user.id
         
         # Increment click analytics
-        await increment_whisper_click(whisper_id)
+        await increment_whisper_click_by_id(whisper_id)
         
         # Get whisper message
-        whisper = await get_whisper_message(whisper_id)
+        whisper = await get_whisper_by_id(whisper_id)
         
         if not whisper:
             await callback_query.answer(
@@ -53,7 +58,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery):
             return
         
         # Check if user is authorized to view
-        if not await is_user_target(whisper_id, user_id):
+        if not await is_user_target_by_id(whisper_id, user_id):
             # Show unauthorized message
             await callback_query.answer(
                 f"{MONKEY_EMOJIS['see_no_evil']} This banana isn't for you, curious monkey!",
@@ -62,7 +67,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery):
             return
         
         # Mark as read and check if message should burn
-        message_burned = await mark_whisper_read(whisper_id, user_id)
+        message_burned = await mark_whisper_read_by_id(whisper_id, user_id)
         
         # Update receiver stats
         await update_user_stats(user_id, 'secrets_received', 1)
@@ -111,10 +116,10 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery):
         whisper_id = callback_query.matches[0].group(1)
         
         # Increment view analytics
-        await increment_whisper_view(whisper_id)
+        await increment_whisper_view_by_id(whisper_id)
         
         # Get whisper message
-        whisper = await get_whisper_message(whisper_id)
+        whisper = await get_whisper_by_id(whisper_id)
         
         if not whisper:
             await callback_query.answer(
@@ -238,6 +243,7 @@ Type `@whispierbot` in any chat, then:
 
 🎪 **Examples:**
 • Single person: `@whispierbot secret message @alice`
+• With user ID: `@whispierbot secret message 6153949909`
 • Multiple people: `@whispierbot group news @bob,@charlie`
 • Everyone: `@whispierbot pizza time! @all`
 

@@ -69,16 +69,24 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         modifiers['style'] = 'cute'
         text = text.replace('!cute', '').strip()
     
-    # Extract targets (last @mention or series of @mentions)
-    target_pattern = r'(@[\w,@\s]+)$'
+    # Extract targets (last @mention, series of @mentions, or user IDs)
+    # Updated pattern to handle: @username, user_id, @username,user_id, etc.
+    target_pattern = r'((?:@[\w]+|[\d]{6,15})(?:\s*,\s*(?:@[\w]+|[\d]{6,15}))*)\s*$'
     target_match = re.search(target_pattern, text)
     
     if target_match:
         targets_string = target_match.group(1).strip()
         message_content = text[:target_match.start()].strip()
     else:
-        # No targets found
-        return text.strip() if text.strip() else None, None, modifiers
+        # Try alternative pattern for single target at the end
+        alt_pattern = r'(@[\w]+|[\d]{6,15})\s*$'
+        alt_match = re.search(alt_pattern, text)
+        if alt_match:
+            targets_string = alt_match.group(1).strip()
+            message_content = text[:alt_match.start()].strip()
+        else:
+            # No targets found
+            return text.strip() if text.strip() else None, None, modifiers
     
     return message_content if message_content else None, targets_string, modifiers
 
@@ -95,10 +103,17 @@ def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
     # Format individual targets
     target_names = []
     for target in targets[:max_display]:
+        display_name = target.get("display_name", target.get("value", "unknown"))
         if target.get("resolved_id"):
-            target_names.append(f"@{target['value']}")
+            # Use display name (username or first name)
+            if not display_name.startswith("@"):
+                display_name = f"@{display_name}"
+            target_names.append(display_name)
         else:
-            target_names.append(f"@{target['value']} (not found)")
+            # Target not found
+            if not display_name.startswith("@"):
+                display_name = f"@{display_name}"
+            target_names.append(f"{display_name} (not found)")
     
     if len(targets) > max_display:
         remaining = len(targets) - max_display
@@ -318,6 +333,7 @@ def create_empty_query_help_text() -> str:
 
 💡 **Quick Examples:**
 • Single person: `@whispierbot secret @alice`
+• With user ID: `@whispierbot secret 6153949909`
 • Multiple people: `@whispierbot news @bob,@charlie`  
 • Everyone: `@whispierbot pizza time! @all`
 • Burn after read: `@whispierbot confidential @boss !delete`
