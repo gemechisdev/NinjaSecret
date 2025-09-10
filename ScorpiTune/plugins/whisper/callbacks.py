@@ -4,7 +4,7 @@ Handles secret viewing, stats, dashboard, and other callback interactions
 """
 
 from datetime import datetime
-from pyrogram import filters
+from pyrogram import filters, enums
 from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from ScorpiTune import app
@@ -131,18 +131,66 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 {"$set": {"target_id": user_id}}
             )
 
-        # Mark as read
+        # Mark as read only if target is viewing (sender viewing doesn't count as "read")
+        # Exception: if sender IS the target (self-whisper), then it counts as read
+        should_mark_read = False
         if not whisper.get("read_at"):
+            if is_target and not is_sender:
+                # Target (not sender) is viewing - mark as read
+                should_mark_read = True
+            elif is_sender and is_target:
+                # Sender is also the target (self-whisper) - mark as read
+                should_mark_read = True
+
+        if should_mark_read:
             await mark_whisper_read(whisper_id, user_id)
 
-            # Handle burn after reading for simple whispers (single target)
+            # Handle burn after reading
             if settings.get("burn_after_reading"):
-                # For simple whispers, burn immediately after first read
-                from ScorpiTune.core.mongo import mongodb
-                await mongodb.whispers.update_one(
-                    {"whisper_id": whisper_id},
-                    {"$set": {"status": "burned"}}
-                )
+                should_burn = False
+                original_token = whisper.get("original_target_token", "")
+
+                # Check if this is a single target or @all/@everyone (burn immediately)
+                if original_token.lower() in ["@all", "@everyone"] or "," not in original_token:
+                    should_burn = True
+                else:
+                    # Multiple targets - would need complex tracking, for now burn immediately
+                    # TODO: Implement proper multi-target burn tracking
+                    should_burn = True
+
+                if should_burn:
+                    # Burn the whisper
+                    from ScorpiTune.core.mongo import mongodb
+                    await mongodb.whispers.update_one(
+                        {"whisper_id": whisper_id},
+                        {"$set": {"status": "burned"}}
+                    )
+
+                    # Edit the message to show it was read and remove button
+                    if whisper.get("inline_message_id"):
+                        try:
+                            # Get target's display name
+                            target_display_name = callback_query.from_user.first_name
+                            if callback_query.from_user.username:
+                                target_display_name = f"@{callback_query.from_user.username}"
+
+                            # Get original target display for the message
+                            original_target = whisper.get("original_target_token", "Target")
+                            if original_target.lower() in ["@all", "@everyone"]:
+                                target_for_display = "Everyone"
+                            else:
+                                target_for_display = original_target
+
+                            burned_message = f"💀🔥 **Burn After Reading Banana**\n\n💌 **For:** {target_for_display}\n🔒 **Monkey-secured & encrypted**\n\n✅ **{target_display_name} read the whisper**"
+
+                            await app.edit_inline_text(
+                                inline_message_id=whisper["inline_message_id"],
+                                text=burned_message,
+                                parse_mode=enums.ParseMode.MARKDOWN,
+                                reply_markup=None  # Remove the button
+                            )
+                        except Exception as e:
+                            print(f"Failed to edit burned message: {e}")
 
         # Get sender name for display
         try:
