@@ -12,43 +12,46 @@ whisperdb = mongodb.whispers
 whisper_stats = mongodb.whisper_stats
 whisper_achievements = mongodb.whisper_achievements
 
-async def create_whisper_message(
-    inline_message_id: str,
-    content: str,
-    sender_id: int,
-    sender_username: str,
-    targets: List[Dict],
-    burn_after_reading: bool = False,
-    expires_at: Optional[datetime] = None,
-    style_theme: str = "classic",
-    whisper_id: str = None
-) -> str:
-    """Create a new whisper message"""
+async def store_whisper(data: Dict) -> str:
+    """Store a new whisper message with simplified data model"""
     whisper_data = {
-        "inline_message_id": inline_message_id,
-        "whisper_id": whisper_id,  # UUID for callback data
-        "content": content,
-        "sender": {
-            "id": sender_id,
-            "username": sender_username
-        },
-        "targets": targets,  # [{"type": "username|id|all", "value": str, "resolved_id": int, "read_at": None}]
-        "settings": {
-            "burn_after_reading": burn_after_reading,
-            "expires_at": expires_at,
-            "style_theme": style_theme,
-            "created_at": datetime.utcnow()
-        },
-        "analytics": {
-            "views": 0,
-            "clicks": 0,
-            "completed_reads": 0
-        },
-        "status": "active"  # active, expired, burned
+        "whisper_id": data["whisper_id"],
+        "inline_message_id": data.get("inline_message_id"),
+        "content": data["content"],
+        "sender_id": data["sender_id"],
+        "target_username": data.get("target_username"),
+        "target_id": data.get("target_id"),
+        "original_target_token": data.get("original_target_token"),
+        "created_at": datetime.utcnow(),
+        "read_at": None,
+        "reader_id": None,
+        "status": "active"
     }
     
     await whisperdb.insert_one(whisper_data)
-    return inline_message_id
+    return data["whisper_id"]
+
+async def attach_inline_message_id(whisper_id: str, inline_message_id: str):
+    """Attach inline_message_id to a whisper after it's chosen"""
+    await whisperdb.update_one(
+        {"whisper_id": whisper_id},
+        {"$set": {"inline_message_id": inline_message_id}}
+    )
+
+async def get_whisper(whisper_id: str) -> Optional[Dict]:
+    """Get whisper message by whisper_id"""
+    return await whisperdb.find_one({"whisper_id": whisper_id})
+
+async def mark_whisper_read(whisper_id: str, reader_id: int):
+    """Mark whisper as read"""
+    await whisperdb.update_one(
+        {"whisper_id": whisper_id},
+        {"$set": {
+            "read_at": datetime.utcnow(),
+            "reader_id": reader_id,
+            "status": "read"
+        }}
+    )
 
 async def get_whisper_message(inline_message_id: str) -> Optional[Dict]:
     """Get whisper message by inline message ID"""
@@ -344,65 +347,65 @@ async def check_and_award_achievements(user_id: int):
     
     return new_achievements
 
-async def resolve_targets(target_string: str, app) -> List[Dict]:
-    """Resolve target string to list of target dictionaries"""
-    targets = []
+async def resolve_target(token: str, app) -> tuple:
+    """Resolve a single target token to (target_id, username, display_name)"""
+    username = None
+    target_id = None
+    display = token
+
+    # Parse token
+    if token.startswith("@"):
+        username = token[1:].lower()
+        # Check if we have this username cached
+        cached_user = await get_user_by_username(username)
+        if cached_user:
+            target_id = cached_user["user_id"]
+    elif token.isdigit() and 5 <= len(token) <= 15:
+        target_id = int(token)
+
+    # Try to resolve via Telegram API
+    try:
+        ref = username if username else target_id
+        if ref:
+            user = await app.get_users(ref)
+            target_id = user.id
+            if user.username:
+                username = user.username.lower()
+                await upsert_user({
+                    "user_id": user.id,
+                    "username": username,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name
+                })
+            display = user.first_name + (f" {user.last_name}" if user.last_name else "")
+    except Exception:
+        pass
+
+    # Fallback display if unresolved
+    if not display or display == token:
+        if target_id:
+            display = f"User {target_id}"
+        elif username:
+            display = f"@{username}"
+        else:
+            display = token
+
+    return target_id, username, display
+
+async def upsert_user(user_data: Dict):
+    """Insert or update user data"""
+    from ScorpiTune.core.mongo import mongodb
+    users_db = mongodb.users
     
-    # Handle @all or @everyone
-    if target_string.lower() in ["@all", "@everyone", "all", "everyone"]:
-        return [{"type": "all", "value": "everyone", "resolved_id": None, "read_at": None}]
+    await users_db.update_one(
+        {"user_id": user_data["user_id"]},
+        {"$set": {**user_data, "last_seen": datetime.utcnow()}},
+        upsert=True
+    )
+
+async def get_user_by_username(username: str) -> Optional[Dict]:
+    """Get user by username from cache"""
+    from ScorpiTune.core.mongo import mongodb
+    users_db = mongodb.users
     
-    # Split multiple targets by comma
-    target_list = [t.strip() for t in target_string.split(",")]
-    
-    for target in target_list:
-        target = target.strip()
-        if not target:
-            continue
-        
-        original_target = target
-        # Remove @ symbol if present
-        if target.startswith("@"):
-            target = target[1:]
-        
-        target_data = {
-            "type": "username",
-            "value": target,
-            "resolved_id": None,
-            "read_at": None,
-            "display_name": target  # For UI display
-        }
-        
-        # Try to resolve target to user info
-        try:
-            if target.isdigit() and len(target) >= 6:
-                # It's a user ID
-                target_data["type"] = "id"
-                user_id = int(target)
-                target_data["resolved_id"] = user_id
-                target_data["value"] = str(user_id)
-                
-                # Try to get username for display
-                try:
-                    user = await app.get_users(user_id)
-                    target_data["display_name"] = user.username or user.first_name or f"user{user_id}"
-                except:
-                    # Can't get user info, use ID for display
-                    target_data["display_name"] = f"user{user_id}"
-            else:
-                # It's a username
-                target_data["type"] = "username"
-                try:
-                    user = await app.get_users(target)
-                    target_data["resolved_id"] = user.id
-                    target_data["display_name"] = user.username or user.first_name or f"user{user.id}"
-                except:
-                    # Username doesn't exist, but we'll keep it for graceful handling
-                    target_data["display_name"] = target
-        except Exception as e:
-            print(f"Error resolving target {target}: {e}")
-            target_data["display_name"] = target
-        
-        targets.append(target_data)
-    
-    return targets
+    return await users_db.find_one({"username": username.lower()})

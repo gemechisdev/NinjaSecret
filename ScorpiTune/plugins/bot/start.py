@@ -16,6 +16,7 @@ from ScorpiTune.utils.database import (
     is_banned_user,
     is_on_off,
 )
+from ScorpiTune.mongo.whisperdb import upsert_user
 from ScorpiTune.utils.decorators.language import LanguageStart
 from ScorpiTune.utils.formatters import get_readable_time
 from ScorpiTune.utils.inline import help_pannel, private_panel, start_panel
@@ -27,6 +28,15 @@ from strings import get_string
 @LanguageStart
 async def start_pm(client, message: Message, _):
     await add_served_user(message.from_user.id)
+    
+    # Register user for whisper functionality
+    await upsert_user({
+        "user_id": message.from_user.id,
+        "username": message.from_user.username.lower() if message.from_user.username else None,
+        "first_name": message.from_user.first_name,
+        "last_name": message.from_user.last_name
+    })
+    
     await message.react("❤")
     if len(message.text.split()) > 1:
         name = message.text.split(None, 1)[1]
