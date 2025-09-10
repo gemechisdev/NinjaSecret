@@ -20,6 +20,12 @@ def private_panel(_):
     buttons = [
         [
             InlineKeyboardButton(
+                text="🐒🤫 Whisper Mode",
+                callback_data="whisper_dashboard"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 text=_["S_B_3"],
                 url=f"https://t.me/{app.username}?startgroup=true",
             )
