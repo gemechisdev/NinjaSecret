@@ -33,7 +33,6 @@ async def handle_whisper_view(client, callback_query: CallbackQuery):
     """Handle viewing a whisper secret"""
     try:
         print(f"DEBUG: Whisper view callback triggered for user {callback_query.from_user.id}")
-        await callback_query.answer()
         
         whisper_id = callback_query.matches[0].group(1)
         user_id = callback_query.from_user.id
