@@ -22,21 +22,21 @@ async def whisper_start(client, message: Message):
     try:
         user_id = message.from_user.id
         username = message.from_user.first_name or "Monkey Friend"
-        
+
         # Get user stats
         stats = await get_user_whisper_stats(user_id)
-        
+
         # Create welcome message
         welcome_text = f"""{MONKEY_EMOJIS['monkey']} *Monkey swings into chat*
 
-🎉 **Hey there, {username}! I'm Whispier!** 
+🎉 **Hey there, {username}! I'm Whispier!**
 
 🤫 I'm your personal secret-delivery monkey!
 Drop private messages in any chat without the drama.
 
 ✨ **What I do:**
 🎯 Send secrets to specific people only
-💀 Messages that vanish after reading  
+💀 Messages that vanish after reading
 ⏰ Timed secrets that self-destruct
 🎪 Multi-target whispers made easy
 
@@ -44,20 +44,20 @@ Ready to swing into action? {MONKEY_EMOJIS['tree']}"""
 
         # Show stats if user has used the bot before
         if stats.get('secrets_sent', 0) > 0 or stats.get('secrets_received', 0) > 0:
-            welcome_text += f"\n\n{format_user_stats(stats)}"
-        
+            welcome_text += f"\n\n{format_user_stats(stats, 'en')}"
+
         # Create keyboard
         keyboard = create_dashboard_keyboard()
-        
+
         # Send sticker first
         await message.reply_sticker("CAACAgUAAxkBAAEQI1BlTLmx7PtOO3aPNshEU2gCy7iAFgACNQUAApqMuVeA6eJ50VbvmDME")
-        
+
         # Send main message
         await message.reply_text(
             welcome_text,
             reply_markup=keyboard
         )
-        
+
     except Exception as e:
         print(f"Whisper start error: {e}")
         await message.reply_text(

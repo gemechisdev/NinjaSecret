@@ -8,16 +8,17 @@ from datetime import datetime, timedelta
 from typing import Dict
 from pyrogram import filters, enums
 from pyrogram.types import (
-    InlineQuery, 
-    InlineQueryResultArticle, 
+    InlineQuery,
+    InlineQueryResultArticle,
     InputTextMessageContent,
     InlineKeyboardMarkup,
     InlineKeyboardButton
 )
+from strings import get_string
 
 from ScorpiTune import app
 from ScorpiTune.mongo.whisperdb import (
-    store_whisper, 
+    store_whisper,
     resolve_target,
     update_user_stats,
     check_and_award_achievements,
@@ -37,7 +38,7 @@ def extract_message_and_target(text: str):
     parts = text.split()
     if len(parts) < 2:
         return None, None
-    
+
     # Check last part first
     last = parts[-1]
     if last.startswith("@") or (last.isdigit() and 5 <= len(last) <= 15):
@@ -45,7 +46,7 @@ def extract_message_and_target(text: str):
         if not msg:
             return None, None
         return msg, last
-    
+
     # Look for @username anywhere in the text
     for i in range(len(parts) - 1, -1, -1):
         token = parts[i]
@@ -54,18 +55,19 @@ def extract_message_and_target(text: str):
             if not msg:
                 return None, None
             return msg, token
-    
+
     return None, None
 
-def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str) -> Dict:
+def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, lang: str = "en") -> Dict:
     """Create simplified inline query result for whisper"""
+    language = get_string(lang)
     return {
         "id": whisper_id,
-        "title": f"🤫 Secret for {target_display}",
-        "description": "Only sender & target can view",
+        "title": language["whisper_simple_title"].format(target_display),
+        "description": language["whisper_simple_desc"],
         "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
         "input_message_content": {
-            "message_text": f"🤫🐒 **Secret Banana Delivery**\n\n💌 **For:** {target_display}\n🔒 **Monkey-secured & encrypted**",
+            "message_text": language["whisper_simple_message"].format(target_display),
             "parse_mode": "MARKDOWN"
         },
         "reply_markup": create_whisper_keyboard(whisper_id)
@@ -78,28 +80,28 @@ async def handle_inline_query(client, query: InlineQuery):
     """Handle inline queries for whisper messages"""
     try:
         query_text = query.query.strip()
-        
+
         # Empty query - show help
         if not query_text:
-            results = [create_empty_query_response()]
+            results = [create_empty_query_response("en")]
             await query.answer(results, cache_time=1, is_personal=True)
             return
-        
+
         # Extract message and target
         message_content, target_token = extract_message_and_target(query_text)
-        
+
         # Invalid format - show help with example
         if not message_content or not target_token:
             results = [create_invalid_format_response()]
             await query.answer(results, cache_time=1, is_personal=True)
             return
-        
+
         # Resolve target
         target_id, target_username, display_name = await resolve_target(target_token, app)
-        
+
         # Generate whisper ID
         whisper_id = generate_whisper_id()
-        
+
         # Pre-store whisper (so callbacks work immediately)
         await store_whisper({
             "whisper_id": whisper_id,
@@ -109,10 +111,10 @@ async def handle_inline_query(client, query: InlineQuery):
             "target_id": target_id,
             "original_target_token": target_token
         })
-        
+
         # Create inline result (simplified - no complex modifiers for now)
-        result = create_simple_whisper_inline_result(whisper_id, message_content, display_name or target_token)
-        
+        result = create_simple_whisper_inline_result(whisper_id, message_content, display_name or target_token, "en")
+
         # Convert to Pyrogram format
         pyrogram_result = InlineQueryResultArticle(
             id=result["id"],
@@ -125,14 +127,14 @@ async def handle_inline_query(client, query: InlineQuery):
             ),
             reply_markup=result.get("reply_markup")
         )
-        
+
         # Store whisper data temporarily for when the message is actually sent
         # We'll use the chosen inline result handler for this
-        
+
         await query.answer([pyrogram_result], cache_time=1, is_personal=True)
-        
+
         # No need to store temp data - whisper is already in database
-        
+
     except Exception as e:
         # Log error and return error response
         print(f"Inline query error: {e}")
@@ -144,15 +146,15 @@ async def handle_chosen_inline_result(client, chosen_result):
     """Handle when user sends an inline result"""
     try:
         whisper_id = chosen_result.result_id
-        
+
         # Skip if it's not a whisper
         if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
             return
-        
+
         # Attach the inline_message_id to the existing whisper
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
-        
+
     except Exception as e:
         print(f"Chosen inline result error: {e}")
 
