@@ -27,7 +27,7 @@ async def store_whisper(data: Dict) -> str:
         "reader_id": None,
         "status": "active"
     }
-    
+
     await whisperdb.insert_one(whisper_data)
     return data["whisper_id"]
 
@@ -56,25 +56,25 @@ async def mark_whisper_read(whisper_id: str, reader_id: int):
 async def get_whisper_message(inline_message_id: str) -> Optional[Dict]:
     """Get whisper message by inline message ID"""
     whisper = await whisperdb.find_one({"inline_message_id": inline_message_id})
-    
+
     # Check if message has expired
     if whisper and whisper.get("settings", {}).get("expires_at"):
         if datetime.utcnow() > whisper["settings"]["expires_at"]:
             await mark_whisper_expired(inline_message_id)
             return None
-    
+
     return whisper
 
 async def get_whisper_by_id(whisper_id: str) -> Optional[Dict]:
     """Get whisper message by whisper ID (UUID)"""
     whisper = await whisperdb.find_one({"whisper_id": whisper_id})
-    
+
     # Check if message has expired
     if whisper and whisper.get("settings", {}).get("expires_at"):
         if datetime.utcnow() > whisper["settings"]["expires_at"]:
             await mark_whisper_expired(whisper["inline_message_id"])
             return None
-    
+
     return whisper
 
 async def mark_whisper_read_by_inline_id(inline_message_id: str, user_id: int) -> bool:
@@ -82,16 +82,16 @@ async def mark_whisper_read_by_inline_id(inline_message_id: str, user_id: int) -
     whisper = await get_whisper_message(inline_message_id)
     if not whisper:
         return False
-    
+
     # Update target read status
     targets = whisper.get("targets", [])
     for target in targets:
         if target.get("resolved_id") == user_id and not target.get("read_at"):
             target["read_at"] = datetime.utcnow()
-    
+
     # Check if all targets have read (for burn after reading)
     all_read = all(target.get("read_at") is not None for target in targets)
-    
+
     # Update analytics
     await whisperdb.update_one(
         {"inline_message_id": inline_message_id},
@@ -100,12 +100,12 @@ async def mark_whisper_read_by_inline_id(inline_message_id: str, user_id: int) -
             "$inc": {"analytics.completed_reads": 1}
         }
     )
-    
+
     # Burn message if all have read and burn_after_reading is enabled
     if all_read and whisper.get("settings", {}).get("burn_after_reading"):
         await mark_whisper_burned(inline_message_id)
         return True
-    
+
     return False
 
 async def mark_whisper_burned(inline_message_id: str):
@@ -155,16 +155,16 @@ async def mark_whisper_read_complex(whisper_id: str, user_id: int) -> bool:
     whisper = await get_whisper_by_id(whisper_id)
     if not whisper:
         return False
-    
+
     # Update target read status
     targets = whisper.get("targets", [])
     for target in targets:
         if target.get("resolved_id") == user_id and not target.get("read_at"):
             target["read_at"] = datetime.utcnow()
-    
+
     # Check if all targets have read (for burn after reading)
     all_read = all(target.get("read_at") is not None for target in targets)
-    
+
     # Update analytics
     await whisperdb.update_one(
         {"whisper_id": whisper_id},
@@ -173,7 +173,7 @@ async def mark_whisper_read_complex(whisper_id: str, user_id: int) -> bool:
             "$inc": {"analytics.completed_reads": 1}
         }
     )
-    
+
     # Burn message if all have read and burn_after_reading is enabled
     if all_read and whisper.get("settings", {}).get("burn_after_reading"):
         await whisperdb.update_one(
@@ -181,7 +181,7 @@ async def mark_whisper_read_complex(whisper_id: str, user_id: int) -> bool:
             {"$set": {"status": "burned"}}
         )
         return True
-    
+
     return False
 
 async def is_user_target(inline_message_id: str, user_id: int) -> bool:
@@ -189,16 +189,16 @@ async def is_user_target(inline_message_id: str, user_id: int) -> bool:
     whisper = await get_whisper_message(inline_message_id)
     if not whisper:
         return False
-    
+
     targets = whisper.get("targets", [])
-    
+
     # Check for @all or @everyone
     for target in targets:
         if target.get("type") == "all":
             return True
         if target.get("resolved_id") == user_id:
             return True
-    
+
     return False
 
 async def is_user_target_by_id(whisper_id: str, user_id: int) -> bool:
@@ -206,33 +206,33 @@ async def is_user_target_by_id(whisper_id: str, user_id: int) -> bool:
     whisper = await get_whisper_by_id(whisper_id)
     if not whisper:
         return False
-    
+
     targets = whisper.get("targets", [])
-    
+
     # Check for @all or @everyone
     for target in targets:
         if target.get("type") == "all":
             return True
         if target.get("resolved_id") == user_id:
             return True
-    
+
     return False
 
 async def cleanup_expired_whispers():
     """Clean up expired whispers (run periodically)"""
     current_time = datetime.utcnow()
-    
+
     # Find and mark expired whispers
     expired_whispers = whisperdb.find({
         "settings.expires_at": {"$lt": current_time},
         "status": "active"
     })
-    
+
     count = 0
     async for whisper in expired_whispers:
         await mark_whisper_expired(whisper["inline_message_id"])
         count += 1
-    
+
     return count
 
 # User Statistics Functions
@@ -258,13 +258,13 @@ async def get_user_whisper_stats(user_id: int) -> Dict:
         }
         await whisper_stats.insert_one(default_stats)
         return default_stats
-    
+
     return stats
 
 async def update_user_stats(user_id: int, stat_type: str, increment: int = 1, **kwargs):
     """Update user statistics"""
     stats = await get_user_whisper_stats(user_id)
-    
+
     # Reset weekly stats if needed
     week_start = stats.get("weekly_stats", {}).get("week_start", datetime.utcnow())
     if datetime.utcnow() - week_start > timedelta(days=7):
@@ -278,15 +278,15 @@ async def update_user_stats(user_id: int, stat_type: str, increment: int = 1, **
                 }
             }
         )
-    
+
     # Update specific stat
     update_data = {f"$inc": {stat_type: increment}}
-    
+
     # Handle special cases
     if stat_type == "secrets_sent" and "targets" in kwargs:
         update_data["$inc"]["total_targets_reached"] = len(kwargs["targets"])
         update_data["$inc"]["weekly_stats.secrets_sent"] = increment
-        
+
         # Update favorite targets
         favorite_targets = stats.get("favorite_targets", {})
         for target_id in kwargs["targets"]:
@@ -294,10 +294,10 @@ async def update_user_stats(user_id: int, stat_type: str, increment: int = 1, **
             if target_key not in update_data.get("$inc", {}):
                 update_data["$inc"][target_key] = 0
             update_data["$inc"][target_key] += 1
-    
+
     elif stat_type == "secrets_received":
         update_data["$inc"]["weekly_stats.secrets_received"] = increment
-    
+
     await whisper_stats.update_one(
         {"user_id": user_id},
         update_data,
@@ -310,11 +310,11 @@ async def get_top_whisper_users(limit: int = 10) -> List[Dict]:
         {"$sort": {"secrets_sent": -1}},
         {"$limit": limit}
     ]
-    
+
     top_users = []
     async for user in whisper_stats.aggregate(pipeline):
         top_users.append(user)
-    
+
     return top_users
 
 # Achievement System
@@ -323,7 +323,7 @@ async def check_and_award_achievements(user_id: int):
     stats = await get_user_whisper_stats(user_id)
     current_achievements = set(stats.get("achievements", []))
     new_achievements = []
-    
+
     # Define achievements
     achievement_rules = [
         {"id": "secret_swinger", "name": "Secret Swinger", "condition": stats["secrets_sent"] >= 50},
@@ -333,18 +333,18 @@ async def check_and_award_achievements(user_id: int):
         {"id": "whisper_rookie", "name": "Whisper Rookie", "condition": stats["secrets_sent"] >= 1},
         {"id": "banana_collector", "name": "Banana Collector", "condition": stats["secrets_received"] >= 25},
     ]
-    
+
     for achievement in achievement_rules:
         if achievement["condition"] and achievement["id"] not in current_achievements:
             new_achievements.append(achievement["id"])
             current_achievements.add(achievement["id"])
-    
+
     if new_achievements:
         await whisper_stats.update_one(
             {"user_id": user_id},
             {"$set": {"achievements": list(current_achievements)}}
         )
-    
+
     return new_achievements
 
 async def resolve_target(token: str, app) -> tuple:
@@ -360,8 +360,15 @@ async def resolve_target(token: str, app) -> tuple:
         cached_user = await get_user_by_username(username)
         if cached_user:
             target_id = cached_user["user_id"]
-    elif token.isdigit() and 5 <= len(token) <= 15:
+    elif token.isdigit() and 6 <= len(token) <= 15:
         target_id = int(token)
+        # Check if we have this user ID cached
+        cached_user = await get_user_by_id(target_id)
+        if cached_user:
+            username = cached_user.get("username")
+            display = cached_user.get("first_name", "") + (f" {cached_user.get('last_name', '')}" if cached_user.get("last_name") else "")
+            if display.strip():
+                return target_id, username, display.strip()
 
     # Try to resolve via Telegram API
     try:
@@ -371,12 +378,15 @@ async def resolve_target(token: str, app) -> tuple:
             target_id = user.id
             if user.username:
                 username = user.username.lower()
-                await upsert_user({
-                    "user_id": user.id,
-                    "username": username,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name
-                })
+
+            # Cache user information regardless of whether they have a username
+            await upsert_user({
+                "user_id": user.id,
+                "username": username,  # Will be None if no username
+                "first_name": user.first_name,
+                "last_name": user.last_name
+            })
+
             display = user.first_name + (f" {user.last_name}" if user.last_name else "")
     except Exception:
         pass
@@ -396,7 +406,7 @@ async def upsert_user(user_data: Dict):
     """Insert or update user data"""
     from ScorpiTune.core.mongo import mongodb
     users_db = mongodb.users
-    
+
     await users_db.update_one(
         {"user_id": user_data["user_id"]},
         {"$set": {**user_data, "last_seen": datetime.utcnow()}},
@@ -407,5 +417,12 @@ async def get_user_by_username(username: str) -> Optional[Dict]:
     """Get user by username from cache"""
     from ScorpiTune.core.mongo import mongodb
     users_db = mongodb.users
-    
+
     return await users_db.find_one({"username": username.lower()})
+
+async def get_user_by_id(user_id: int) -> Optional[Dict]:
+    """Get user by user ID from cache"""
+    from ScorpiTune.core.mongo import mongodb
+    users_db = mongodb.users
+
+    return await users_db.find_one({"user_id": user_id})
