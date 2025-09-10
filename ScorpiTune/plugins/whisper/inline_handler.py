@@ -34,22 +34,20 @@ from ScorpiTune.utils.whisper_utils import (
 )
 
 def extract_message_and_target(text: str):
-    """Extract message and target from query text - supports mixed targets like 'id2342,@bona'"""
+    """Extract message and target from query text - targets must be at the END only"""
     parts = text.split()
     if len(parts) < 2:
         return None, None
 
-    # Look for targets starting from the end
-    # Targets can be: @username, user_id, or comma-separated mix like id2342,@bona
-    for i in range(len(parts) - 1, -1, -1):
-        token = parts[i]
+    # Only check the LAST part as target (targets must be at the end)
+    last_token = parts[-1]
 
-        # Check if this looks like a target token
-        if is_target_token(token):
-            msg = " ".join(parts[:i]).strip()
-            if not msg:
-                return None, None
-            return msg, token
+    # Check if the last token looks like a target token
+    if is_target_token(last_token):
+        msg = " ".join(parts[:-1]).strip()
+        if not msg:
+            return None, None
+        return msg, last_token
 
     return None, None
 
@@ -143,7 +141,20 @@ async def handle_inline_query(client, query: InlineQuery):
         for token in target_tokens:
             target_id, target_username, display_name = await resolve_target(token, app)
             resolved_targets.append((target_id, target_username, token))
-            display_names.append(display_name or token)
+
+            # Better display name logic for resolved targets
+            if display_name and display_name != token:
+                # We got a resolved name (first name + last name)
+                display_names.append(display_name)
+            elif target_username:
+                # We have a username
+                display_names.append(f"@{target_username}")
+            elif target_id:
+                # We have an ID but no username, show as User ID
+                display_names.append(f"User {target_id}")
+            else:
+                # Fallback to original token
+                display_names.append(token)
 
         # Create combined display name
         if len(display_names) == 1:
