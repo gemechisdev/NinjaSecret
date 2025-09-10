@@ -103,12 +103,12 @@ async def handle_whisper_view(client, callback_query: CallbackQuery):
             sender_name = "Someone"
         
         # Create revealed message
-        revealed_text = f"""{MONKEY_EMOJIS['banana']} **BANANA REVEALED!** {MONKEY_EMOJIS['monkey']}
+        revealed_text = f"""🤫 **Message Revealed** 🤫
 💌 **From:** {sender_name}
 
 "{whisper['content']}"
 
-{MONKEY_EMOJIS['monkey']} Keep it between us monkeys!"""
+🤐 Keep it between us only!"""
         
         # Show as alert (popup)
         await callback_query.answer(revealed_text, show_alert=True)
