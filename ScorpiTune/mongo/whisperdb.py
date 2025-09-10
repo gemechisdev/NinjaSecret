@@ -22,6 +22,7 @@ async def store_whisper(data: Dict) -> str:
         "target_username": data.get("target_username"),
         "target_id": data.get("target_id"),
         "original_target_token": data.get("original_target_token"),
+        "target_mentions": data.get("target_mentions"),  # Store formatted mentions
         "created_at": datetime.utcnow(),
         "read_at": None,
         "reader_id": None,

@@ -174,12 +174,15 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                             if callback_query.from_user.username:
                                 target_display_name = f"@{callback_query.from_user.username}"
 
-                            # Get original target display for the message
-                            original_target = whisper.get("original_target_token", "Target")
-                            if original_target.lower() in ["@all", "@everyone"]:
-                                target_for_display = "Everyone"
-                            else:
-                                target_for_display = original_target
+                            # Get original target display for the message (with mentions if available)
+                            target_for_display = whisper.get("target_mentions")
+                            if not target_for_display:
+                                # Fallback to original token
+                                original_target = whisper.get("original_target_token", "Target")
+                                if original_target.lower() in ["@all", "@everyone"]:
+                                    target_for_display = "Everyone"
+                                else:
+                                    target_for_display = original_target
 
                             burned_message = f"💀🔥 **Burn After Reading Banana**\n\n💌 **For:** {target_for_display}\n🔒 **Monkey-secured & encrypted**\n\n✅ **{target_display_name} read the whisper**"
 
