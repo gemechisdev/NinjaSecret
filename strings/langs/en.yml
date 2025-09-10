@@ -224,7 +224,7 @@ H_B_15: "Uᴛɪʟɪᴛʏ"
 # Whisper Messages
 whisper_1: "🐒 **Monkey See, Monkey Do!**\nType your secret + who gets it\n📝 `@whispierbot banana party tonight! @bestie`"
 whisper_2: "🤫🐒 **Secret Banana Delivery**\n\n💌 **For:** {0}\n⏰ **Expires:** {1}\n💀 **Self-destructs when all read**\n🔒 **Monkey-secured & encrypted**"
-whisper_3: "{0}"
+whisper_3: "🍌 **Peeked Banana Secret**\n\n{0}"
 whisper_4: "🙈 **No Peeking, Curious Monkey!**\n\n🐒 This banana isn't for you...\nBut you can drop your own secrets!\n\n💭 Type: @whispierbot [secret] [target]"
 whisper_5: "🍌 **Your Monkey Business Stats**\n\n🐒 **This Week's Swinging:**\n• {0} secrets dropped 🎯\n• {1} bananas received 📥\n• {2} burned after reading 💀\n• {3} timed secrets ⏰"
 whisper_6: "🔥🐒 **Secret Banana Drop!**\n🎯 **For:** {0} ({1} monkeys)\n💀 **Burns after all read**\n⏰ **Expires:** {2}\n🎪 **Style:** {3} Whisper"
