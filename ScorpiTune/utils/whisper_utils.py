@@ -373,11 +373,11 @@ def create_secret_revealed_text(content: str, sender_username: str, whisper_data
         if time_remaining != "Expired":
             timer_info = f"\n⏰ {time_remaining} left {MONKEY_EMOJIS['timer']}"
     
-    return f"""{MONKEY_EMOJIS['banana']} **BANANA REVEALED!** {MONKEY_EMOJIS['monkey']}
+    return f"""🤫 **Message Revealed** 🤫
 💌 **From:** @{sender_username}
 
 "{content}"{burn_info}{timer_info}
-{MONKEY_EMOJIS['monkey']} Keep it between us monkeys!"""
+🤐 Keep it between us only!"""
 
 def create_unauthorized_access_text() -> str:
     """Create text for unauthorized access attempt"""
