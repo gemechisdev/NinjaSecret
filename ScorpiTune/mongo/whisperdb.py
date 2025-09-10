@@ -20,11 +20,13 @@ async def create_whisper_message(
     targets: List[Dict],
     burn_after_reading: bool = False,
     expires_at: Optional[datetime] = None,
-    style_theme: str = "classic"
+    style_theme: str = "classic",
+    whisper_id: str = None
 ) -> str:
     """Create a new whisper message"""
     whisper_data = {
         "inline_message_id": inline_message_id,
+        "whisper_id": whisper_id,  # UUID for callback data
         "content": content,
         "sender": {
             "id": sender_id,
@@ -56,6 +58,18 @@ async def get_whisper_message(inline_message_id: str) -> Optional[Dict]:
     if whisper and whisper.get("settings", {}).get("expires_at"):
         if datetime.utcnow() > whisper["settings"]["expires_at"]:
             await mark_whisper_expired(inline_message_id)
+            return None
+    
+    return whisper
+
+async def get_whisper_by_id(whisper_id: str) -> Optional[Dict]:
+    """Get whisper message by whisper ID (UUID)"""
+    whisper = await whisperdb.find_one({"whisper_id": whisper_id})
+    
+    # Check if message has expired
+    if whisper and whisper.get("settings", {}).get("expires_at"):
+        if datetime.utcnow() > whisper["settings"]["expires_at"]:
+            await mark_whisper_expired(whisper["inline_message_id"])
             return None
     
     return whisper
@@ -119,9 +133,74 @@ async def increment_whisper_click(inline_message_id: str):
         {"$inc": {"analytics.clicks": 1}}
     )
 
+async def increment_whisper_click_by_id(whisper_id: str):
+    """Increment click count for analytics by whisper ID"""
+    await whisperdb.update_one(
+        {"whisper_id": whisper_id},
+        {"$inc": {"analytics.clicks": 1}}
+    )
+
+async def increment_whisper_view_by_id(whisper_id: str):
+    """Increment view count for analytics by whisper ID"""
+    await whisperdb.update_one(
+        {"whisper_id": whisper_id},
+        {"$inc": {"analytics.views": 1}}
+    )
+
+async def mark_whisper_read_by_id(whisper_id: str, user_id: int) -> bool:
+    """Mark whisper as read by a user using whisper ID"""
+    whisper = await get_whisper_by_id(whisper_id)
+    if not whisper:
+        return False
+    
+    # Update target read status
+    targets = whisper.get("targets", [])
+    for target in targets:
+        if target.get("resolved_id") == user_id and not target.get("read_at"):
+            target["read_at"] = datetime.utcnow()
+    
+    # Check if all targets have read (for burn after reading)
+    all_read = all(target.get("read_at") is not None for target in targets)
+    
+    # Update analytics
+    await whisperdb.update_one(
+        {"whisper_id": whisper_id},
+        {
+            "$set": {"targets": targets},
+            "$inc": {"analytics.completed_reads": 1}
+        }
+    )
+    
+    # Burn message if all have read and burn_after_reading is enabled
+    if all_read and whisper.get("settings", {}).get("burn_after_reading"):
+        await whisperdb.update_one(
+            {"whisper_id": whisper_id},
+            {"$set": {"status": "burned"}}
+        )
+        return True
+    
+    return False
+
 async def is_user_target(inline_message_id: str, user_id: int) -> bool:
     """Check if user is a target for this whisper"""
     whisper = await get_whisper_message(inline_message_id)
+    if not whisper:
+        return False
+    
+    targets = whisper.get("targets", [])
+    
+    # Check for @all or @everyone
+    for target in targets:
+        if target.get("type") == "all":
+            return True
+        if target.get("resolved_id") == user_id:
+            return True
+    
+    return False
+
+async def is_user_target_by_id(whisper_id: str, user_id: int) -> bool:
+    """Check if user is a target for this whisper by whisper ID"""
+    whisper = await get_whisper_by_id(whisper_id)
     if not whisper:
         return False
     
@@ -281,6 +360,7 @@ async def resolve_targets(target_string: str, app) -> List[Dict]:
         if not target:
             continue
         
+        original_target = target
         # Remove @ symbol if present
         if target.startswith("@"):
             target = target[1:]
@@ -289,25 +369,39 @@ async def resolve_targets(target_string: str, app) -> List[Dict]:
             "type": "username",
             "value": target,
             "resolved_id": None,
-            "read_at": None
+            "read_at": None,
+            "display_name": target  # For UI display
         }
         
-        # Try to resolve username to ID
+        # Try to resolve target to user info
         try:
-            if target.isdigit():
-                # It's already an ID
+            if target.isdigit() and len(target) >= 6:
+                # It's a user ID
                 target_data["type"] = "id"
-                target_data["resolved_id"] = int(target)
+                user_id = int(target)
+                target_data["resolved_id"] = user_id
+                target_data["value"] = str(user_id)
+                
+                # Try to get username for display
+                try:
+                    user = await app.get_users(user_id)
+                    target_data["display_name"] = user.username or user.first_name or f"user{user_id}"
+                except:
+                    # Can't get user info, use ID for display
+                    target_data["display_name"] = f"user{user_id}"
             else:
-                # Try to get user by username
+                # It's a username
+                target_data["type"] = "username"
                 try:
                     user = await app.get_users(target)
                     target_data["resolved_id"] = user.id
+                    target_data["display_name"] = user.username or user.first_name or f"user{user.id}"
                 except:
                     # Username doesn't exist, but we'll keep it for graceful handling
-                    pass
-        except:
-            pass
+                    target_data["display_name"] = target
+        except Exception as e:
+            print(f"Error resolving target {target}: {e}")
+            target_data["display_name"] = target
         
         targets.append(target_data)
     

@@ -134,7 +134,8 @@ async def handle_chosen_inline_result(client, chosen_result):
             targets=whisper_data['targets'],
             burn_after_reading=whisper_data['modifiers'].get('burn_after_reading', False),
             expires_at=whisper_data.get('expires_at'),
-            style_theme=whisper_data['modifiers'].get('style', 'classic')
+            style_theme=whisper_data['modifiers'].get('style', 'classic'),
+            whisper_id=result_id  # Pass the UUID
         )
         
         # Update user stats
@@ -198,11 +199,13 @@ def create_invalid_format_response() -> InlineQueryResultArticle:
 
 ✅ **Correct format:**
 `@whispierbot your secret message @username`
+`@whispierbot your secret message 123456789`
 
 📝 **Examples:**
 • `@whispierbot pizza party tonight @alice`
 • `@whispierbot meeting at 3pm @bob,@charlie`
 • `@whispierbot surprise! @everyone`
+• `@whispierbot secret message 6153949909`
 
 {MONKEY_EMOJIS['banana']} Try again, monkey friend!""",
             parse_mode=enums.ParseMode.MARKDOWN
