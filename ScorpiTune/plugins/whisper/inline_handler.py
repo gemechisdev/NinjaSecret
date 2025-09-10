@@ -5,6 +5,7 @@ Handles inline whisper message creation with monkey-themed responses
 
 import asyncio
 from datetime import datetime, timedelta
+from typing import Dict
 from pyrogram import filters, enums
 from pyrogram.types import (
     InlineQuery, 
@@ -16,18 +17,60 @@ from pyrogram.types import (
 
 from ScorpiTune import app
 from ScorpiTune.mongo.whisperdb import (
-    create_whisper_message, 
-    resolve_targets,
+    store_whisper, 
+    resolve_target,
     update_user_stats,
-    check_and_award_achievements
+    check_and_award_achievements,
+    attach_inline_message_id,
+    upsert_user
 )
 from ScorpiTune.utils.whisper_utils import (
-    parse_whisper_command,
     create_whisper_inline_result,
     create_empty_query_response,
     generate_whisper_id,
+    create_whisper_keyboard,
     MONKEY_EMOJIS
 )
+
+def extract_message_and_target(text: str):
+    """Extract message and target from query text"""
+    parts = text.split()
+    if len(parts) < 2:
+        return None, None
+    
+    # Check last part first
+    last = parts[-1]
+    if last.startswith("@") or (last.isdigit() and 5 <= len(last) <= 15):
+        msg = " ".join(parts[:-1]).strip()
+        if not msg:
+            return None, None
+        return msg, last
+    
+    # Look for @username anywhere in the text
+    for i in range(len(parts) - 1, -1, -1):
+        token = parts[i]
+        if token.startswith("@"):
+            msg = " ".join(parts[:i]).strip()
+            if not msg:
+                return None, None
+            return msg, token
+    
+    return None, None
+
+def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str) -> Dict:
+    """Create simplified inline query result for whisper"""
+    return {
+        "id": whisper_id,
+        "title": f"🤫 Secret for {target_display}",
+        "description": "Only sender & target can view",
+        "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
+        "input_message_content": {
+            "message_text": f"🤫🐒 **Secret Banana Delivery**\n\n💌 **For:** {target_display}\n🔒 **Monkey-secured & encrypted**",
+            "parse_mode": "MARKDOWN"
+        },
+        "reply_markup": create_whisper_keyboard(whisper_id)
+    }
+
 from config import BANNED_USERS
 
 @app.on_inline_query(~BANNED_USERS)
@@ -42,36 +85,33 @@ async def handle_inline_query(client, query: InlineQuery):
             await query.answer(results, cache_time=1, is_personal=True)
             return
         
-        # Parse the whisper command
-        message_content, targets_string, modifiers = parse_whisper_command(query_text)
+        # Extract message and target
+        message_content, target_token = extract_message_and_target(query_text)
         
         # Invalid format - show help with example
-        if not message_content or not targets_string:
+        if not message_content or not target_token:
             results = [create_invalid_format_response()]
             await query.answer(results, cache_time=1, is_personal=True)
             return
         
-        # Resolve targets
-        targets = await resolve_targets(targets_string, app)
-        
-        if not targets:
-            results = [create_no_targets_response()]
-            await query.answer(results, cache_time=1, is_personal=True)
-            return
+        # Resolve target
+        target_id, target_username, display_name = await resolve_target(target_token, app)
         
         # Generate whisper ID
         whisper_id = generate_whisper_id()
         
-        # Calculate expiry time if timer is set
-        expires_at = None
-        if modifiers.get('timer'):
-            expires_at = datetime.utcnow() + timedelta(seconds=modifiers['timer'])
+        # Pre-store whisper (so callbacks work immediately)
+        await store_whisper({
+            "whisper_id": whisper_id,
+            "content": message_content,
+            "sender_id": query.from_user.id,
+            "target_username": target_username,
+            "target_id": target_id,
+            "original_target_token": target_token
+        })
         
-        # Create the whisper in database (will be created when message is sent)
-        # For now, we'll create the inline result
-        
-        # Create inline result
-        result = create_whisper_inline_result(whisper_id, message_content, targets, modifiers)
+        # Create inline result (simplified - no complex modifiers for now)
+        result = create_simple_whisper_inline_result(whisper_id, message_content, display_name or target_token)
         
         # Convert to Pyrogram format
         pyrogram_result = InlineQueryResultArticle(
@@ -91,16 +131,7 @@ async def handle_inline_query(client, query: InlineQuery):
         
         await query.answer([pyrogram_result], cache_time=1, is_personal=True)
         
-        # Store the whisper data for the chosen inline result handler
-        app.whisper_temp_data = getattr(app, 'whisper_temp_data', {})
-        app.whisper_temp_data[whisper_id] = {
-            'content': message_content,
-            'targets': targets,
-            'modifiers': modifiers,
-            'sender_id': query.from_user.id,
-            'sender_username': query.from_user.username or f"user{query.from_user.id}",
-            'expires_at': expires_at
-        }
+        # No need to store temp data - whisper is already in database
         
     except Exception as e:
         # Log error and return error response
@@ -112,75 +143,15 @@ async def handle_inline_query(client, query: InlineQuery):
 async def handle_chosen_inline_result(client, chosen_result):
     """Handle when user sends an inline result"""
     try:
-        result_id = chosen_result.result_id
+        whisper_id = chosen_result.result_id
         
         # Skip if it's not a whisper
-        if result_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
+        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
             return
         
-        # Get stored whisper data
-        whisper_temp_data = getattr(app, 'whisper_temp_data', {})
-        whisper_data = whisper_temp_data.get(result_id)
-        
-        if not whisper_data:
-            return
-        
-        # Create the whisper message in database
-        await create_whisper_message(
-            inline_message_id=chosen_result.inline_message_id,
-            content=whisper_data['content'],
-            sender_id=whisper_data['sender_id'],
-            sender_username=whisper_data['sender_username'],
-            targets=whisper_data['targets'],
-            burn_after_reading=whisper_data['modifiers'].get('burn_after_reading', False),
-            expires_at=whisper_data.get('expires_at'),
-            style_theme=whisper_data['modifiers'].get('style', 'classic'),
-            whisper_id=result_id  # Pass the UUID
-        )
-        
-        # Update user stats
-        target_ids = [t.get('resolved_id') for t in whisper_data['targets'] if t.get('resolved_id')]
-        await update_user_stats(
-            whisper_data['sender_id'], 
-            'secrets_sent', 
-            1,
-            targets=target_ids
-        )
-        
-        # Update specific stats based on modifiers
-        if whisper_data['modifiers'].get('burn_after_reading'):
-            await update_user_stats(whisper_data['sender_id'], 'secrets_burned', 1)
-        
-        if whisper_data['modifiers'].get('timer'):
-            await update_user_stats(whisper_data['sender_id'], 'secrets_timed', 1)
-        
-        # Check for achievements
-        new_achievements = await check_and_award_achievements(whisper_data['sender_id'])
-        
-        # Send achievement notification if any new achievements
-        if new_achievements:
-            try:
-                achievement_text = f"{MONKEY_EMOJIS['banana']} **New Achievement{'s' if len(new_achievements) > 1 else ''}!**\n\n"
-                for achievement in new_achievements:
-                    achievement_names = {
-                        "secret_swinger": "🥇 Secret Swinger - 50+ secrets sent!",
-                        "burn_master": "💀 Burn Master - 10+ burn-after-reading messages!",
-                        "time_keeper": "⏰ Time Keeper - 5+ timed secrets!",
-                        "social_butterfly": f"{MONKEY_EMOJIS['circus']} Social Butterfly - 20+ different targets!",
-                        "whisper_rookie": f"{MONKEY_EMOJIS['banana']} Whisper Rookie - First secret sent!",
-                        "banana_collector": f"{MONKEY_EMOJIS['banana']} Banana Collector - 25+ secrets received!"
-                    }
-                    achievement_text += f"{achievement_names.get(achievement, achievement)}\n"
-                
-                achievement_text += f"\n{MONKEY_EMOJIS['monkey']} Keep swinging those secrets!"
-                
-                await app.send_message(whisper_data['sender_id'], achievement_text)
-            except:
-                pass  # User might have blocked the bot
-        
-        # Clean up temporary data
-        if result_id in whisper_temp_data:
-            del whisper_temp_data[result_id]
+        # Attach the inline_message_id to the existing whisper
+        if chosen_result.inline_message_id:
+            await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
         
     except Exception as e:
         print(f"Chosen inline result error: {e}")

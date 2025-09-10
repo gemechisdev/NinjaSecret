@@ -9,18 +9,11 @@ from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBu
 
 from ScorpiTune import app
 from ScorpiTune.mongo.whisperdb import (
-    get_whisper_message,
-    get_whisper_by_id,
-    is_user_target,
-    is_user_target_by_id,
+    get_whisper,
     mark_whisper_read,
-    mark_whisper_read_by_id,
-    increment_whisper_view,
-    increment_whisper_view_by_id,
-    increment_whisper_click,
-    increment_whisper_click_by_id,
     get_user_whisper_stats,
-    update_user_stats
+    update_user_stats,
+    upsert_user
 )
 from ScorpiTune.utils.whisper_utils import (
     create_secret_revealed_text,
@@ -39,69 +32,92 @@ from config import BANNED_USERS
 async def handle_whisper_view(client, callback_query: CallbackQuery):
     """Handle viewing a whisper secret"""
     try:
+        print(f"DEBUG: Whisper view callback triggered for user {callback_query.from_user.id}")
         await callback_query.answer()
         
         whisper_id = callback_query.matches[0].group(1)
         user_id = callback_query.from_user.id
-        
-        # Increment click analytics
-        await increment_whisper_click_by_id(whisper_id)
+        print(f"DEBUG: Extracted whisper_id: {whisper_id}, user_id: {user_id}")
         
         # Get whisper message
-        whisper = await get_whisper_by_id(whisper_id)
+        whisper = await get_whisper(whisper_id)
+        print(f"DEBUG: Retrieved whisper data: {whisper is not None}")
         
         if not whisper:
+            print(f"DEBUG: No whisper found for ID: {whisper_id}")
             await callback_query.answer(
                 f"{MONKEY_EMOJIS['see_no_evil']} This secret has expired or been burned!",
                 show_alert=True
             )
             return
         
-        # Check if user is authorized to view
-        if not await is_user_target_by_id(whisper_id, user_id):
-            # Show unauthorized message
+        # Authorization check
+        sender_id = whisper["sender_id"]
+        target_username = whisper.get("target_username")
+        target_id = whisper.get("target_id")
+        original_token = whisper.get("original_target_token")
+        
+        is_sender = user_id == sender_id
+        is_target = False
+        
+        # Check if user is the target
+        if target_id and user_id == target_id:
+            is_target = True
+        elif callback_query.from_user.username and target_username:
+            if callback_query.from_user.username.lower() == target_username.lower():
+                is_target = True
+        elif original_token and original_token.isdigit() and int(original_token) == user_id:
+            is_target = True
+        
+        if not (is_sender or is_target):
             await callback_query.answer(
                 f"{MONKEY_EMOJIS['see_no_evil']} This banana isn't for you, curious monkey!",
                 show_alert=True
             )
             return
         
-        # Mark as read and check if message should burn
-        message_burned = await mark_whisper_read_by_id(whisper_id, user_id)
+        # Late-link target if needed (when target clicks but wasn't resolved before)
+        if is_target and not target_id:
+            if callback_query.from_user.username:
+                await upsert_user({
+                    "user_id": user_id,
+                    "username": callback_query.from_user.username.lower(),
+                    "first_name": callback_query.from_user.first_name,
+                    "last_name": callback_query.from_user.last_name
+                })
+            # Update the whisper with the resolved target_id
+            from ScorpiTune.core.mongo import mongodb
+            await mongodb.whispers.update_one(
+                {"whisper_id": whisper_id},
+                {"$set": {"target_id": user_id}}
+            )
         
-        # Update receiver stats
-        await update_user_stats(user_id, 'secrets_received', 1)
+        # Mark as read
+        if not whisper.get("read_at"):
+            await mark_whisper_read(whisper_id, user_id)
+        
+        # Get sender name for display
+        try:
+            sender = await app.get_users(sender_id)
+            sender_name = f"@{sender.username}" if sender.username else sender.first_name
+        except Exception:
+            sender_name = "Someone"
         
         # Create revealed message
-        revealed_text = create_secret_revealed_text(
-            whisper['content'],
-            whisper['sender']['username'],
-            whisper
-        )
+        revealed_text = f"""{MONKEY_EMOJIS['banana']} **BANANA REVEALED!** {MONKEY_EMOJIS['monkey']}
+💌 **From:** {sender_name}
+
+"{whisper['content']}"
+
+{MONKEY_EMOJIS['monkey']} Keep it between us monkeys!"""
         
         # Show as alert (popup)
         await callback_query.answer(revealed_text, show_alert=True)
         
-        # If message burned, update the original message
-        if message_burned:
-            try:
-                await callback_query.edit_message_text(
-                    f"{MONKEY_EMOJIS['fire']} **Secret Burned!** {MONKEY_EMOJIS['fire']}\n\n"
-                    f"{MONKEY_EMOJIS['monkey']} This banana has been consumed by all targets!\n"
-                    f"💀 Message successfully self-destructed.\n\n"
-                    f"{MONKEY_EMOJIS['banana']} Want to send another secret?",
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton(
-                            f"{MONKEY_EMOJIS['banana']} {MONKEY_EMOJIS['thought']} Create New Secret",
-                            switch_inline_query_current_chat=""
-                        )]
-                    ])
-                )
-            except:
-                pass  # Message might be too old to edit
-        
     except Exception as e:
         print(f"Whisper view error: {e}")
+        import traceback
+        traceback.print_exc()
         await callback_query.answer(
             f"{MONKEY_EMOJIS['see_no_evil']} Error viewing secret! Try again later.",
             show_alert=True

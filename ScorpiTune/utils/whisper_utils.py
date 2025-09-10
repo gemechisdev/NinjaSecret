@@ -264,10 +264,6 @@ def create_whisper_keyboard(whisper_id: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton(
                 f"{MONKEY_EMOJIS['banana']} {MONKEY_EMOJIS['thought']} Peek Secret",
                 callback_data=f"whisper_view_{whisper_id}"
-            ),
-            InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['eyes']} {MONKEY_EMOJIS['monkey']} Who's It For?",
-                callback_data=f"whisper_targets_{whisper_id}"
             )
         ]
     ]
