@@ -5,7 +5,7 @@ Handles inline whisper message creation with monkey-themed responses
 
 import asyncio
 from datetime import datetime, timedelta
-from pyrogram import filters
+from pyrogram import filters, enums
 from pyrogram.types import (
     InlineQuery, 
     InlineQueryResultArticle, 
@@ -81,7 +81,7 @@ async def handle_inline_query(client, query: InlineQuery):
             thumb_url=result.get("thumb_url"),
             input_message_content=InputTextMessageContent(
                 message_text=result["input_message_content"]["message_text"],
-                parse_mode=result["input_message_content"].get("parse_mode", "Markdown")
+                parse_mode=enums.ParseMode.MARKDOWN
             ),
             reply_markup=result.get("reply_markup")
         )
@@ -184,16 +184,15 @@ async def handle_chosen_inline_result(client, chosen_result):
     except Exception as e:
         print(f"Chosen inline result error: {e}")
 
-def create_invalid_format_response() -> dict:
+def create_invalid_format_response() -> InlineQueryResultArticle:
     """Create response for invalid format"""
-    return {
-        "type": "article",
-        "id": "invalid_format",
-        "title": f"{MONKEY_EMOJIS['see_no_evil']} Oops! Format Error",
-        "description": f"Need both message and targets!\nExample: secret message @username",
-        "thumb_url": "https://i.imgur.com/monkey-error.gif",
-        "input_message_content": {
-            "message_text": f"""{MONKEY_EMOJIS['see_no_evil']} **Monkey Format Error!**
+    return InlineQueryResultArticle(
+        id="invalid_format",
+        title=f"{MONKEY_EMOJIS['see_no_evil']} Oops! Format Error",
+        description=f"Need both message and targets!\nExample: secret message @username",
+        thumb_url="https://i.imgur.com/monkey-error.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=f"""{MONKEY_EMOJIS['see_no_evil']} **Monkey Format Error!**
 
 {MONKEY_EMOJIS['monkey']} You need both a message AND targets!
 
@@ -206,26 +205,25 @@ def create_invalid_format_response() -> dict:
 • `@whispierbot surprise! @everyone`
 
 {MONKEY_EMOJIS['banana']} Try again, monkey friend!""",
-            "parse_mode": "Markdown"
-        },
-        "reply_markup": InlineKeyboardMarkup([
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 f"{MONKEY_EMOJIS['lightning']} Try Again",
                 switch_inline_query_current_chat=""
             )]
         ])
-    }
+    )
 
-def create_no_targets_response() -> dict:
+def create_no_targets_response() -> InlineQueryResultArticle:
     """Create response when no valid targets found"""
-    return {
-        "type": "article",
-        "id": "no_targets",
-        "title": f"{MONKEY_EMOJIS['see_no_evil']} No Valid Targets",
-        "description": f"Couldn't find any valid targets!\nCheck usernames and try again.",
-        "thumb_url": "https://i.imgur.com/monkey-error.gif",
-        "input_message_content": {
-            "message_text": f"""{MONKEY_EMOJIS['see_no_evil']} **No Valid Targets Found!**
+    return InlineQueryResultArticle(
+        id="no_targets",
+        title=f"{MONKEY_EMOJIS['see_no_evil']} No Valid Targets",
+        description=f"Couldn't find any valid targets!\nCheck usernames and try again.",
+        thumb_url="https://i.imgur.com/monkey-error.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=f"""{MONKEY_EMOJIS['see_no_evil']} **No Valid Targets Found!**
 
 {MONKEY_EMOJIS['monkey']} I couldn't find any valid users to send to!
 
@@ -241,26 +239,25 @@ def create_no_targets_response() -> dict:
 • `@whispierbot announcement @all`
 
 {MONKEY_EMOJIS['banana']} Try with valid usernames!""",
-            "parse_mode": "Markdown"
-        },
-        "reply_markup": InlineKeyboardMarkup([
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 f"{MONKEY_EMOJIS['lightning']} Try Again",
                 switch_inline_query_current_chat=""
             )]
         ])
-    }
+    )
 
-def create_error_response() -> dict:
+def create_error_response() -> InlineQueryResultArticle:
     """Create response for general errors"""
-    return {
-        "type": "article",
-        "id": "error",
-        "title": f"{MONKEY_EMOJIS['see_no_evil']} Something Went Wrong",
-        "description": "An error occurred. Please try again!",
-        "thumb_url": "https://i.imgur.com/monkey-error.gif",
-        "input_message_content": {
-            "message_text": f"""{MONKEY_EMOJIS['see_no_evil']} **Monkey Error!**
+    return InlineQueryResultArticle(
+        id="error",
+        title=f"{MONKEY_EMOJIS['see_no_evil']} Something Went Wrong",
+        description="An error occurred. Please try again!",
+        thumb_url="https://i.imgur.com/monkey-error.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=f"""{MONKEY_EMOJIS['see_no_evil']} **Monkey Error!**
 
 {MONKEY_EMOJIS['monkey']} Something went wrong while processing your secret.
 
@@ -269,12 +266,12 @@ def create_error_response() -> dict:
 If the problem persists, contact support.
 
 {MONKEY_EMOJIS['banana']} Thanks for your patience!""",
-            "parse_mode": "Markdown"
-        },
-        "reply_markup": InlineKeyboardMarkup([
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 f"{MONKEY_EMOJIS['lightning']} Try Again",
                 switch_inline_query_current_chat=""
             )]
         ])
-    }
+    )

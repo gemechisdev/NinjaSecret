@@ -7,7 +7,8 @@ import re
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram import enums
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 
 # Monkey-themed emojis and styling
 MONKEY_EMOJIS = {
@@ -175,7 +176,7 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
         "input_message_content": {
             "message_text": create_whisper_posted_message(content, targets, modifiers),
-            "parse_mode": "Markdown"
+            "parse_mode": enums.ParseMode.MARKDOWN
         },
         "reply_markup": create_whisper_keyboard(whisper_id)
     }
@@ -295,20 +296,19 @@ def create_dashboard_keyboard() -> InlineKeyboardMarkup:
     
     return InlineKeyboardMarkup(buttons)
 
-def create_empty_query_response() -> Dict:
+def create_empty_query_response() -> InlineQueryResultArticle:
     """Create response for empty inline query"""
-    return {
-        "type": "article",
-        "id": "empty_query",
-        "title": f"{MONKEY_EMOJIS['monkey']} Monkey See, Monkey Do!",
-        "description": f"{MONKEY_EMOJIS['monkey']} Type your secret + who gets it\n📝 `@whispierbot banana party tonight! @bestie`",
-        "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
-        "input_message_content": {
-            "message_text": create_empty_query_help_text(),
-            "parse_mode": "Markdown"
-        },
-        "reply_markup": create_empty_query_keyboard()
-    }
+    return InlineQueryResultArticle(
+        id="empty_query",
+        title=f"{MONKEY_EMOJIS['monkey']} Monkey See, Monkey Do!",
+        description=f"{MONKEY_EMOJIS['monkey']} Type your secret + who gets it\n📝 `@whispierbot banana party tonight! @bestie`",
+        thumb_url="https://i.imgur.com/monkey-whisper.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=create_empty_query_help_text(),
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=create_empty_query_keyboard()
+    )
 
 def create_empty_query_help_text() -> str:
     """Create help text for empty query"""
