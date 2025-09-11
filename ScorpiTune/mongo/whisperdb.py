@@ -369,7 +369,7 @@ async def check_and_award_achievements(user_id: int):
 
     return new_achievements
 
-async def resolve_target(token: str, app) -> tuple:
+async def resolve_target(token: str, app, userbot=None) -> tuple:
     """Resolve a single target token to (target_id, username, display_name)"""
     username = None
     target_id = None
@@ -392,7 +392,7 @@ async def resolve_target(token: str, app) -> tuple:
             if display.strip():
                 return target_id, username, display.strip()
 
-    # Try to resolve via Telegram API
+    # Try to resolve via Telegram API (bot first)
     try:
         ref = username if username else target_id
         if ref:
@@ -411,7 +411,27 @@ async def resolve_target(token: str, app) -> tuple:
 
             display = user.first_name + (f" {user.last_name}" if user.last_name else "")
     except Exception:
-        pass
+        # Fallback to userbot if available
+        if userbot:
+            try:
+                working_client = userbot.get_working_client()
+                if working_client:
+                    user = await working_client.get_users(ref)
+                    target_id = user.id
+                    if user.username:
+                        username = user.username.lower()
+
+                    # Cache user information
+                    await upsert_user({
+                        "user_id": user.id,
+                        "username": username,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name
+                    })
+
+                    display = user.first_name + (f" {user.last_name}" if user.last_name else "")
+            except Exception:
+                pass
 
     # Fallback display if unresolved
     if not display or display == token:
