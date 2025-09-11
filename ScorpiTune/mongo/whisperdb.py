@@ -375,6 +375,7 @@ async def resolve_target(token: str, app, userbot=None) -> tuple:
     target_id = None
     display = token
 
+
     # Parse token
     if token.startswith("@"):
         username = token[1:].lower()
@@ -382,8 +383,9 @@ async def resolve_target(token: str, app, userbot=None) -> tuple:
         cached_user = await get_user_by_username(username)
         if cached_user:
             target_id = cached_user["user_id"]
-    elif token.isdigit() and 6 <= len(token) <= 15:
+    elif token.isdigit() and 4 <= len(token) <= 15:
         target_id = int(token)
+        print(f"DEBUG: Parsed user ID: {target_id}")
         # Check if we have this user ID cached
         cached_user = await get_user_by_id(target_id)
         if cached_user:
@@ -395,6 +397,7 @@ async def resolve_target(token: str, app, userbot=None) -> tuple:
     # Try to resolve via Telegram API (bot first)
     try:
         ref = username if username else target_id
+        print(f"DEBUG: Trying bot resolution with ref: {ref}")
         if ref:
             user = await app.get_users(ref)
             target_id = user.id
@@ -410,12 +413,15 @@ async def resolve_target(token: str, app, userbot=None) -> tuple:
             })
 
             display = user.first_name + (f" {user.last_name}" if user.last_name else "")
+            print(f"DEBUG: Bot resolved to: {display}")
     except Exception:
         # Fallback to userbot if available
+        print(f"DEBUG: Bot failed, trying userbot")
         if userbot:
             try:
                 working_client = userbot.get_working_client()
                 if working_client:
+                    print(f"DEBUG: Using userbot to resolve: {ref}")
                     user = await working_client.get_users(ref)
                     target_id = user.id
                     if user.username:
@@ -430,7 +436,9 @@ async def resolve_target(token: str, app, userbot=None) -> tuple:
                     })
 
                     display = user.first_name + (f" {user.last_name}" if user.last_name else "")
-            except Exception:
+                    print(f"DEBUG: Userbot resolved to: {display}")
+            except Exception as e:
+                print(f"DEBUG: Userbot failed: {e}")
                 pass
 
     # Fallback display if unresolved
@@ -442,6 +450,7 @@ async def resolve_target(token: str, app, userbot=None) -> tuple:
         else:
             display = token
 
+    print(f"DEBUG: Final return - target_id: {target_id}, username: {username}, display: {display}")
     return target_id, username, display
 
 async def upsert_user(user_data: Dict):
