@@ -16,7 +16,7 @@ from pyrogram.types import (
 )
 from strings import get_string
 
-from ScorpiTune import app
+from ScorpiTune import app, userbot
 from ScorpiTune.mongo.whisperdb import (
     store_whisper,
     resolve_target,
@@ -188,14 +188,15 @@ async def handle_inline_query(client, query: InlineQuery):
                 display_names.append("Everyone")
                 target_mentions.append("Everyone")
             else:
-                target_id, target_username, display_name = await resolve_target(token, app)
+                target_id, target_username, display_name = await resolve_target(token, app, userbot)
                 resolved_targets.append((target_id, target_username, token))
                 # Use the display name returned by resolve_target (it handles all cases properly)
                 display_names.append(display_name or token)
 
-                # Create mention for the message
+                # Create mention for the message (using Markdown format)
                 if target_id:
-                    target_mentions.append(f"[{display_name or token}](tg://user?id={target_id})")
+                    mention = f"[{display_name or token}](tg://user?id={target_id})"
+                    target_mentions.append(mention)
                 else:
                     target_mentions.append(display_name or token)
 
