@@ -194,11 +194,14 @@ async def handle_inline_query(client, query: InlineQuery):
                 display_names.append(display_name or token)
 
                 # Create mention for the message (using Markdown format)
+                print(f"DEBUG: Creating mention - target_id: {target_id}, display_name: {display_name}")
                 if target_id:
                     mention = f"[{display_name or token}](tg://user?id={target_id})"
                     target_mentions.append(mention)
+                    print(f"DEBUG: Added mention: {mention}")
                 else:
                     target_mentions.append(display_name or token)
+                    print(f"DEBUG: No mention, added display: {display_name or token}")
 
         # Create combined display name
         if len(display_names) == 1:
@@ -215,6 +218,9 @@ async def handle_inline_query(client, query: InlineQuery):
             combined_mentions = f"{target_mentions[0]} & {target_mentions[1]}"
         else:
             combined_mentions = f"{', '.join(target_mentions[:-1])} & {target_mentions[-1]}"
+
+        print(f"DEBUG: Final combined_mentions: {combined_mentions}")
+        print(f"DEBUG: Final combined_display: {combined_display}")
 
         # Generate whisper ID
         whisper_id = generate_whisper_id()
