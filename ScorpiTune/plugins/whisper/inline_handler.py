@@ -52,7 +52,7 @@ def extract_message_and_target_with_modifiers(text: str):
 def extract_message_and_target(text: str):
     """Extract message and target from query text - targets must be at the END only"""
     parts = text.split()
-    if len(parts) < 2:
+    if len(parts) < 1:
         return None, None
 
     # Only check the LAST part as target (targets must be at the end)
@@ -65,7 +65,8 @@ def extract_message_and_target(text: str):
             return None, None
         return msg, last_token
 
-    return None, None
+    # If no target found, return the full text as message and None as target
+    return text.strip(), None
 
 def is_target_token(token: str) -> bool:
     """Check if a token looks like a target (username, user_id, or mixed targets)"""
@@ -163,10 +164,12 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # Extract message, target, and modifiers (with fallback to simple parsing)
         message_content, target_token, modifiers = extract_message_and_target_with_modifiers(query_text)
+        print(f"DEBUG: query_text='{query_text}' -> message_content='{message_content}', target_token='{target_token}', modifiers={modifiers}")
 
         # If no target specified but we have message content, show recent target suggestions
         if message_content and not target_token:
             recent_targets = await get_recent_targets(query.from_user.id, 10)
+            print(f"DEBUG: Found {len(recent_targets)} recent targets for user {query.from_user.id}")
             if recent_targets:
                 # Create suggestions for recent targets
                 results = []
