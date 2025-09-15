@@ -164,12 +164,10 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # Extract message, target, and modifiers (with fallback to simple parsing)
         message_content, target_token, modifiers = extract_message_and_target_with_modifiers(query_text)
-        print(f"DEBUG: query_text='{query_text}' -> message_content='{message_content}', target_token='{target_token}', modifiers={modifiers}")
 
         # If no target specified but we have message content, show recent target suggestions
         if message_content and not target_token:
             recent_targets = await get_recent_targets(query.from_user.id, 10)
-            print(f"DEBUG: Found {len(recent_targets)} recent targets for user {query.from_user.id}")
             if recent_targets:
                 # Create suggestions for recent targets
                 results = []
@@ -493,6 +491,15 @@ If the problem persists, contact support.
         ])
     )
 
+def create_recent_target_whisper_message(target_display: str, target_id: int) -> str:
+    """Create whisper message with proper user mention"""
+    if target_id:
+        # Create proper Telegram mention
+        mention = f"[{target_display}](tg://user?id={target_id})"
+        return f"🤫 **Secret Banana** 🐒\n💌 **For:** {mention}\n🔒 **Monkey-secured & encrypted**"
+    else:
+        return f"🤫 **Secret Banana** 🐒\n💌 **For:** {target_display}\n🔒 **Monkey-secured & encrypted**"
+
 def create_recent_target_suggestion_with_id(target: Dict, message_content: str, whisper_id: str, lang: str = "en") -> InlineQueryResultArticle:
     """Create inline query result for recent target suggestion - creates actual whisper"""
     target_id = target.get("target_id")
@@ -507,7 +514,7 @@ def create_recent_target_suggestion_with_id(target: Dict, message_content: str, 
         description="Click to send whisper to this recent target",
         thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Kkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
-            message_text=f"🤫 **Secret Banana** 🐒\n💌 **For:** {target_display}\n🔒 **Monkey-secured & encrypted**",
+            message_text=create_recent_target_whisper_message(target_display, target_id),
             parse_mode=enums.ParseMode.MARKDOWN
         ),
         reply_markup=create_whisper_keyboard(whisper_id)
