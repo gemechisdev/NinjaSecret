@@ -195,7 +195,7 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         "id": whisper_id,
         "title": language["whisper_inline_title"].format(style_emoji),
         "description": "\n".join(description_parts),
-        "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
+        "thumb_url": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         "input_message_content": {
             "message_text": create_whisper_posted_message(content, targets, modifiers, lang),
             "parse_mode": enums.ParseMode.MARKDOWN
@@ -270,7 +270,7 @@ def create_whisper_keyboard(whisper_id: str) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} {MONKEY_EMOJIS['thought']} Peek Secret",
+                f"🍌 ᴘᴇᴇᴋ sᴇᴄʀᴇᴛ 💭",
                 callback_data=f"whisper_view_{whisper_id}"
             )
         ]
@@ -283,31 +283,31 @@ def create_dashboard_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['thought']} {MONKEY_EMOJIS['banana']} Send Secret",
+                f"💭 sᴇɴᴅ sᴇᴄʀᴇᴛ 🍌",
                 switch_inline_query_current_chat=""
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} Quick Learn",
+                f"🐒 ǫᴜɪᴄᴋ ʟᴇᴀʀɴ",
                 callback_data="whisper_tutorial"
             )
         ],
         [
             InlineKeyboardButton(
-                f"⚙️ {MONKEY_EMOJIS['tree']} My Jungle",
+                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ 🌳",
                 callback_data="whisper_settings"
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} Secret Stats",
+                f"🍌 sᴇᴄʀᴇᴛ sᴛᴀᴛs",
                 callback_data="whisper_stats"
             )
         ],
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['circus']} Fun Modes",
+                f"🎪 ғᴜɴ ᴍᴏᴅᴇs",
                 callback_data="whisper_styles"
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['tree']} Help Tree",
+                f"🌳 ʜᴇʟᴘ ᴛʀᴇᴇ",
                 callback_data="whisper_help"
             )
         ]
@@ -322,7 +322,7 @@ def create_empty_query_response(lang: str = "en") -> InlineQueryResultArticle:
         id="empty_query",
         title=language["whisper_empty_title"].format(MONKEY_EMOJIS['monkey']),
         description=language["whisper_empty_desc"].format(MONKEY_EMOJIS['monkey']),
-        thumb_url="https://i.imgur.com/monkey-whisper.gif",
+        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
             message_text=create_empty_query_help_text(lang),
             parse_mode=enums.ParseMode.MARKDOWN
@@ -340,11 +340,11 @@ def create_empty_query_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} {MONKEY_EMOJIS['thought']} Try Now",
+                f"⚡ ᴛʀʏ ɴᴏᴡ 💭",
                 switch_inline_query_current_chat="@whispierbot secret message @username"
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} Tutorial",
+                f"🐒 ᴛᴜᴛᴏʀɪᴀʟ",
                 callback_data="whisper_tutorial"
             )
         ]
@@ -361,19 +361,18 @@ def create_secret_revealed_text(content: str, sender_username: str, whisper_data
         targets = whisper_data.get("targets", [])
         unread_targets = [t for t in targets if not t.get("read_at")]
         if len(unread_targets) > 1:
-            burn_info = f"\n💀 Burns when {len(unread_targets)-1} more read!"
+            burn_info = f"\n💀 ʙᴜʀɴs ᴡʜᴇɴ {len(unread_targets)-1} ᴍᴏʀᴇ ʀᴇᴀᴅ!"
         elif len(unread_targets) == 1:
-            burn_info = "\n💀 Burns when 1 more reads!"
+            burn_info = "\n💀 ʙᴜʀɴs ᴡʜᴇɴ 1 ᴍᴏʀᴇ ʀᴇᴀᴅs!"
         else:
-            burn_info = "\n💀 This was the last read - message burned!"
+            burn_info = "\n💀 ᴛʜɪs ᴡᴀs ᴛʜᴇ ʟᴀsᴛ ʀᴇᴀᴅ - ᴍᴇssᴀɢᴇ ʙᴜʀɴᴇᴅ!"
 
     if whisper_data.get("settings", {}).get("expires_at"):
         time_remaining = get_time_remaining_text(whisper_data["settings"]["expires_at"])
         if time_remaining != "Expired":
-            timer_info = f"\n⏰ {time_remaining} left {MONKEY_EMOJIS['timer']}"
+            timer_info = f"\n⏰ {time_remaining} ʟᴇғᴛ {MONKEY_EMOJIS['timer']}"
 
-    # Updated to match new whisper_3 format - just show content and footer
-    return f'"{content}"{burn_info}{timer_info}\n\n🐒 Keep it between us monkeys!'
+    return f'"{content}"{burn_info}{timer_info}\n\n🐒 ᴋᴇᴇᴘ ɪᴛ ʙᴇᴛᴡᴇᴇɴ ᴜs ᴍᴏɴᴋᴇʏs!'
 
 def create_unauthorized_access_text(lang: str = "en") -> str:
     """Create text for unauthorized access attempt"""
@@ -385,7 +384,7 @@ def create_unauthorized_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} Create Secret",
+                f"🍌 ᴄʀᴇᴀᴛᴇ sᴇᴄʀᴇᴛ",
                 switch_inline_query_current_chat=""
             )
         ]
@@ -398,25 +397,25 @@ def format_user_stats(stats: Dict, lang: str = "en") -> str:
     achievements_text = ""
     if stats.get("achievements"):
         achievement_names = {
-            "secret_swinger": f"🥇 Secret Swinger (50+ secrets)",
-            "burn_master": f"💀 Burn Master (10+ vanishing messages)",
-            "time_keeper": f"⏰ Time Keeper (5+ timed drops)",
-            "social_butterfly": f"{MONKEY_EMOJIS['circus']} Social Butterfly (20+ group secrets)",
-            "whisper_rookie": f"{MONKEY_EMOJIS['banana']} Whisper Rookie (First secret!)",
-            "banana_collector": f"{MONKEY_EMOJIS['banana']} Banana Collector (25+ received)"
+            "secret_swinger": f"🥇 sᴇᴄʀᴇᴛ sᴡɪɴɢᴇʀ (50+ sᴇᴄʀᴇᴛs)",
+            "burn_master": f"💀 ʙᴜʀɴ ᴍᴀsᴛᴇʀ (10+ ᴠᴀɴɪsʜɪɴɢ ᴍᴇssᴀɢᴇs)",
+            "time_keeper": f"⏰ ᴛɪᴍᴇ ᴋᴇᴇᴘᴇʀ (5+ ᴛɪᴍᴇᴅ ᴅʀᴏᴘs)",
+            "social_butterfly": f"{MONKEY_EMOJIS['circus']} sᴏᴄɪᴀʟ ʙᴜᴛᴛᴇʀғʟʏ (20+ ɢʀᴏᴜᴘ sᴇᴄʀᴇᴛs)",
+            "whisper_rookie": f"{MONKEY_EMOJIS['banana']} ᴡʜɪsᴘᴇʀ ʀᴏᴏᴋɪᴇ (ғɪʀsᴛ sᴇᴄʀᴇᴛ!)",
+            "banana_collector": f"{MONKEY_EMOJIS['banana']} ʙᴀɴᴀɴᴀ ᴄᴏʟʟᴇᴄᴛᴏʀ (25+ ʀᴇᴄᴇɪᴠᴇᴅ)"
         }
 
         user_achievements = [achievement_names.get(ach, ach) for ach in stats["achievements"]]
-        achievements_text = f"\n🏆 **Monkey Achievements:**\n" + "\n".join(user_achievements)
+        achievements_text = f"\n🏆 **ᴍᴏɴᴋᴇʏ ᴀᴄʜɪᴇᴠᴇᴍᴇɴᴛs:**\n" + "\n".join(user_achievements)
 
     # Top targets
     favorite_targets = stats.get("favorite_targets", {})
     top_targets_text = ""
     if favorite_targets:
         sorted_targets = sorted(favorite_targets.items(), key=lambda x: x[1], reverse=True)[:3]
-        top_targets_text = f"\n🎯 **Favorite Monkey Friends:**\n"
+        top_targets_text = f"\n🎯 **ғᴀᴠᴏʀɪᴛᴇ ᴍᴏɴᴋᴇʏ ғʀɪᴇɴᴅs:**\n"
         for i, (target_id, count) in enumerate(sorted_targets, 1):
-            top_targets_text += f"{i}. @user{target_id} ({count} banana exchanges)\n"
+            top_targets_text += f"{i}. @user{target_id} ({count} ʙᴀɴᴀɴᴀ ᴇxᴄʜᴀɴɢᴇs)\n"
 
     weekly_stats = stats.get("weekly_stats", {})
 
@@ -433,17 +432,17 @@ def create_stats_keyboard(user_id: int) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} Full Stats",
+                f"🐒 ғᴜʟʟ sᴛᴀᴛs",
                 callback_data=f"whisper_full_stats_{user_id}"
             ),
             InlineKeyboardButton(
-                f"🗑 {MONKEY_EMOJIS['tree']} Clean Jungle",
+                f"🗑 ᴄʟᴇᴀɴ ᴊᴜɴɢʟᴇ 🌳",
                 callback_data="whisper_clean_history"
             )
         ],
         [
             InlineKeyboardButton(
-                f"🏠 {MONKEY_EMOJIS['banana']} Home Tree",
+                f"🏠 ʜᴏᴍᴇ ᴛʀᴇᴇ 🍌",
                 callback_data="whisper_dashboard"
             )
         ]
