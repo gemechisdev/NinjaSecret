@@ -3,6 +3,7 @@ import logging
 
 from pyrogram import filters, types, enums
 from pyrogram.types import InlineKeyboardMarkup, Message, InlineKeyboardButton
+from pyrogram.errors import MessageNotModified
 
 from ScorpiTune import app
 from ScorpiTune.utils import help_pannel
@@ -33,9 +34,15 @@ async def helper_private(
         language = await get_lang(chat_id)
         _ = get_string(language)
         keyboard = help_pannel(_, True)
-        await update.edit_message_text(
-            _["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard
-        )
+        try:
+            await update.edit_message_text(
+                _["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard
+            )
+        except MessageNotModified:
+            # Message content is the same, no need to edit
+            logger.debug("Help message content unchanged, skipping edit")
+        except Exception as e:
+            logger.error(f"Error editing help message: {str(e)}")
     else:
         try:
             await update.delete()
@@ -88,23 +95,38 @@ async def helper_cb(client, CallbackQuery, _):
     if cb in help_sections:
         try:
             await CallbackQuery.edit_message_text(help_sections[cb], reply_markup=keyboard)
+        except MessageNotModified:
+            # Message content is the same, no need to edit
+            logger.debug(f"Help section {cb} content unchanged, skipping edit")
         except Exception as e:
             # Log the error for debugging
             logger.error(f"Error displaying help section {cb}: {str(e)}")
             # Fallback to error message if help section is too long
             error_msg = f"Help section {cb} is currently unavailable. Please try again later."
-            await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+            try:
+                await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+            except MessageNotModified:
+                logger.debug("Error message content unchanged, skipping edit")
     else:
         # Handle unknown help sections
         logger.warning(f"Unknown help section requested: {cb}")
-        await CallbackQuery.edit_message_text(
-            "Help section not found.", reply_markup=keyboard
-        )
+        try:
+            await CallbackQuery.edit_message_text(
+                "Help section not found.", reply_markup=keyboard
+            )
+        except MessageNotModified:
+            logger.debug("Help section not found message unchanged, skipping edit")
 
 
 @app.on_callback_query(filters.regex("mbot_cb") & ~BANNED_USERS)
 async def helper_cb(client, CallbackQuery):
-    await CallbackQuery.edit_message_text(Helper.HELP_M, reply_markup=InlineKeyboardMarkup(BUTTONS.MBUTTON))
+    try:
+        await CallbackQuery.edit_message_text(Helper.HELP_M, reply_markup=InlineKeyboardMarkup(BUTTONS.MBUTTON))
+    except MessageNotModified:
+        # Message content is the same, no need to edit
+        logger.debug("Main help message content unchanged, skipping edit")
+    except Exception as e:
+        logger.error(f"Error displaying main help: {str(e)}")
 
 
 @app.on_callback_query(filters.regex('managebot123'))
@@ -120,16 +142,22 @@ async def on_back_button(client, CallbackQuery):
             _ = get_string(language)
 
             keyboard = help_pannel(_, True)
-            await CallbackQuery.edit_message_text(
-                _["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard
-            )
+            try:
+                await CallbackQuery.edit_message_text(
+                    _["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard
+                )
+            except MessageNotModified:
+                logger.debug("Back to help message content unchanged, skipping edit")
     except Exception as e:
         # Log the error for debugging
         logger.error(f"Error in managebot123 callback: {str(e)}")
         # Handle any errors gracefully
         keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("ʙᴀᴄᴋ", callback_data=f"mbot_cb")]])
         error_msg = "Error occurred while processing request. Please try again."
-        await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+        try:
+            await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+        except MessageNotModified:
+            logger.debug("Error message content unchanged, skipping edit")
 
 @app.on_callback_query(filters.regex('mplus'))
 async def mb_plugin_button(client, CallbackQuery):
@@ -138,28 +166,43 @@ async def mb_plugin_button(client, CallbackQuery):
     keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("ʙᴀᴄᴋ", callback_data=f"mbot_cb")]])
 
     if cb == "Okieeeeee":
-        await CallbackQuery.edit_message_text(f"`something errors`",reply_markup=keyboard,parse_mode=enums.ParseMode.MARKDOWN)
+        try:
+            await CallbackQuery.edit_message_text(f"`something errors`",reply_markup=keyboard,parse_mode=enums.ParseMode.MARKDOWN)
+        except MessageNotModified:
+            logger.debug("Error message content unchanged, skipping edit")
     else:
         try:
             # Get the help text from Helper class
             help_text = getattr(Helper, cb, None)
             if help_text:
-                await CallbackQuery.edit_message_text(help_text, reply_markup=keyboard)
+                try:
+                    await CallbackQuery.edit_message_text(help_text, reply_markup=keyboard)
+                except MessageNotModified:
+                    logger.debug(f"Help section '{cb}' content unchanged, skipping edit")
             else:
                 # Log the missing help section
                 logger.warning(f"Help section '{cb}' not found in Helper class")
                 # Handle case where help section doesn't exist
                 error_msg = f"Help section '{cb}' not found. Please try again later."
-                await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+                try:
+                    await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+                except MessageNotModified:
+                    logger.debug("Error message content unchanged, skipping edit")
         except AttributeError as e:
             # Log the specific attribute error
             logger.error(f"AttributeError in help section '{cb}': {str(e)}")
             # Handle missing attributes gracefully
             error_msg = f"Help section '{cb}' is not available. Please try another section."
-            await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+            try:
+                await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+            except MessageNotModified:
+                logger.debug("Error message content unchanged, skipping edit")
         except Exception as e:
             # Log the error for debugging
             logger.error(f"Error loading help section '{cb}': {str(e)}")
             # Handle any errors gracefully
             error_msg = f"Error loading help section '{cb}'. Please try again later."
-            await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+            try:
+                await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
+            except MessageNotModified:
+                logger.debug("Error message content unchanged, skipping edit")
