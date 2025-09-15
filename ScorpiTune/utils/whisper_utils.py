@@ -45,19 +45,15 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
     if not text.strip():
         return None, None, {}
 
-    # Remove bot username if present
     text = re.sub(r'^@\w+\s+', '', text.strip())
 
-    # Extract modifiers (!delete, !timer:3600, !vip, !cute)
     modifiers = {}
 
-    # Find timer modifier
     timer_match = re.search(r'!timer:(\d+)', text)
     if timer_match:
         modifiers['timer'] = int(timer_match.group(1))
         text = re.sub(r'!timer:\d+', '', text).strip()
 
-    # Find other modifiers
     if '!delete' in text:
         modifiers['burn_after_reading'] = True
         text = text.replace('!delete', '').strip()
@@ -70,8 +66,6 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         modifiers['style'] = 'cute'
         text = text.replace('!cute', '').strip()
 
-    # Extract targets (last @mention, series of @mentions, or user IDs)
-    # Updated pattern to handle: @username, user_id, @all, @everyone, etc.
     target_pattern = r'((?:@(?:[\w]+|all|everyone)|[\d]{6,15})(?:\s*,\s*(?:@(?:[\w]+|all|everyone)|[\d]{6,15}))*)\s*$'
     target_match = re.search(target_pattern, text)
 
@@ -79,14 +73,12 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         targets_string = target_match.group(1).strip()
         message_content = text[:target_match.start()].strip()
     else:
-        # Try alternative pattern for single target at the end
         alt_pattern = r'(@(?:[\w]+|all|everyone)|[\d]{6,15})\s*$'
         alt_match = re.search(alt_pattern, text)
         if alt_match:
             targets_string = alt_match.group(1).strip()
             message_content = text[:alt_match.start()].strip()
         else:
-            # No targets found
             return text.strip() if text.strip() else None, None, modifiers
 
     return message_content if message_content else None, targets_string, modifiers
@@ -94,35 +86,29 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
     """Format targets for display in messages"""
     if not targets:
-        return "No targets"
+        return "ɴᴏ ᴛᴀʀɢᴇᴛs"
 
-    # Check for @all
     for target in targets:
         if target.get("type") == "all":
-            return "Everyone"
+            return "ᴇᴠᴇʀʏᴏɴᴇ"
 
-    # Format individual targets
     target_names = []
     for target in targets[:max_display]:
-        display_name = target.get("display_name", target.get("value", "unknown"))
+        display_name = target.get("display_name", target.get("value", "ᴜɴᴋɴᴏᴡɴ"))
 
         if target.get("resolved_id"):
-            # Target found - use appropriate formatting
             if target.get("type") == "username":
-                # For usernames, ensure @ prefix
                 if not display_name.startswith("@"):
                     display_name = f"@{display_name}"
-            # For user IDs or first names, use as-is (no @ prefix)
             target_names.append(display_name)
         else:
-            # Target not found - always show without @ prefix regardless of type
             if not display_name.startswith("@"):
                 display_name = f"{display_name}"
-            target_names.append(f"{display_name} (not found)")
+            target_names.append(f"{display_name} (ɴᴏᴛ ғᴏᴜɴᴅ)")
 
     if len(targets) > max_display:
         remaining = len(targets) - max_display
-        target_names.append(f"and {remaining} more")
+        target_names.append(f"ᴀɴᴅ {remaining} ᴍᴏʀᴇ")
 
     return " & ".join(target_names) if len(target_names) <= 2 else ", ".join(target_names[:-1]) + f" & {target_names[-1]}"
 
@@ -140,18 +126,18 @@ def get_time_remaining_text(expires_at: datetime) -> str:
     remaining = expires_at - datetime.utcnow()
 
     if remaining.total_seconds() <= 0:
-        return "Expired"
+        return "ᴇxᴘɪʀᴇᴅ"
 
     if remaining.days > 0:
-        return f"{remaining.days}d {remaining.seconds // 3600}h"
+        return f"{remaining.days}ᴅ {remaining.seconds // 3600}ʜ"
     elif remaining.seconds >= 3600:
         hours = remaining.seconds // 3600
         minutes = (remaining.seconds % 3600) // 60
-        return f"{hours}h {minutes}m"
+        return f"{hours}ʜ {minutes}ᴍ"
     elif remaining.seconds >= 60:
         minutes = remaining.seconds // 60
         seconds = remaining.seconds % 60
-        return f"{minutes}m {seconds}s"
+        return f"{minutes}ᴍ {seconds}s"
     else:
         return f"{remaining.seconds}s"
 
@@ -159,27 +145,24 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     """Create inline query result for whisper"""
     language = get_string(lang)
 
-    # Format display
     target_display = format_targets_display(targets)
     target_count = len([t for t in targets if t.get("type") != "all"]) if not any(t.get("type") == "all" for t in targets) else "∞"
 
-    # Style based on modifiers
-    style_emoji = "🤫💭"
+    style_emoji = f"{MONKEY_EMOJIS['whisper']}{MONKEY_EMOJIS['thought']}"
     if modifiers.get('style') == 'vip':
-        style_emoji = "👑🍌"
+        style_emoji = f"{MONKEY_EMOJIS['crown']}{MONKEY_EMOJIS['banana']}"
     elif modifiers.get('style') == 'cute':
-        style_emoji = "🐒💕"
+        style_emoji = f"{MONKEY_EMOJIS['monkey']}{MONKEY_EMOJIS['heart']}"
     elif modifiers.get('burn_after_reading'):
-        style_emoji = "💀🔥"
+        style_emoji = f"💀{MONKEY_EMOJIS['fire']}"
     elif modifiers.get('timer'):
-        style_emoji = "⏰🐒"
+        style_emoji = f"{MONKEY_EMOJIS['timer']}{MONKEY_EMOJIS['monkey']}"
 
-    # Create description using language strings
     description_parts = []
     if target_count == "∞":
         description_parts.append(language["whisper_inline_desc_everyone"])
     else:
-        description_parts.append(language["whisper_inline_desc_for"].format(f"{target_display} ({target_count} monkeys)"))
+        description_parts.append(language["whisper_inline_desc_for"].format(f"{target_display} ({target_count} ᴍᴏɴᴋᴇʏs)"))
 
     if modifiers.get('burn_after_reading'):
         description_parts.append(language["whisper_inline_desc_burns"])
@@ -188,7 +171,7 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         timer_text = format_timer_display(modifiers['timer'])
         description_parts.append(language["whisper_inline_desc_expires"].format(timer_text))
 
-    description_parts.append(language["whisper_inline_desc_style"].format(modifiers.get('style', 'Classic').title()))
+    description_parts.append(language["whisper_inline_desc_style"].format(modifiers.get('style', 'ᴄʟᴀssɪᴄ').title()))
 
     return {
         "type": "article",
@@ -205,27 +188,26 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
 
 def format_timer_display(seconds: int) -> str:
     """Format timer seconds to human readable"""
-    if seconds >= 86400:  # days
+    if seconds >= 86400:
         days = seconds // 86400
-        return f"{days} day{'s' if days != 1 else ''}"
-    elif seconds >= 3600:  # hours
+        return f"{days} ᴅᴀʏ{'s' if days != 1 else ''}"
+    elif seconds >= 3600:
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         if minutes > 0:
-            return f"{hours}h {minutes}m"
-        return f"{hours} hour{'s' if hours != 1 else ''}"
-    elif seconds >= 60:  # minutes
+            return f"{hours}ʜ {minutes}ᴍ"
+        return f"{hours} ʜᴏᴜʀ{'s' if hours != 1 else ''}"
+    elif seconds >= 60:
         minutes = seconds // 60
-        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+        return f"{minutes} ᴍɪɴᴜᴛᴇ{'s' if minutes != 1 else ''}"
     else:
-        return f"{seconds} second{'s' if seconds != 1 else ''}"
+        return f"{seconds} sᴇᴄᴏɴᴅ{'s' if seconds != 1 else ''}"
 
 def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: Dict, lang: str = "en") -> str:
     """Create the message that gets posted in chat"""
     target_display = format_targets_display(targets)
     language = get_string(lang)
 
-    # Choose style header using language strings
     if modifiers.get('style') == 'vip':
         header = language["whisper_delivery_vip"]
     elif modifiers.get('style') == 'cute':
@@ -239,18 +221,15 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
 
     message_parts = [header, ""]
 
-    # Target info using language strings
     if any(t.get("type") == "all" for t in targets):
         message_parts.append(language["whisper_for_everyone"])
     else:
         message_parts.append(language["whisper_for_target"].format(target_display))
 
-    # Timer info using language strings
     if modifiers.get('timer'):
         timer_text = format_timer_display(modifiers['timer'])
         message_parts.append(language["whisper_expires"].format(timer_text))
 
-    # Burn info using language strings
     if modifiers.get('burn_after_reading'):
         if any(t.get("type") == "all" for t in targets):
             message_parts.append(language["whisper_burns_all"])
@@ -270,7 +249,7 @@ def create_whisper_keyboard(whisper_id: str) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"🍌 ᴘᴇᴇᴋ sᴇᴄʀᴇᴛ 💭",
+                f"{MONKEY_EMOJIS['banana']} ʀᴇᴀᴅ sᴇᴄʀᴇᴛ {MONKEY_EMOJIS['thought']}",
                 callback_data=f"whisper_view_{whisper_id}"
             )
         ]
@@ -283,31 +262,31 @@ def create_dashboard_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"💭 sᴇɴᴅ sᴇᴄʀᴇᴛ 🍌",
+                f"{MONKEY_EMOJIS['thought']} sᴇɴᴅ sᴇᴄʀᴇᴛ {MONKEY_EMOJIS['banana']}",
                 switch_inline_query_current_chat=""
             ),
             InlineKeyboardButton(
-                f"🐒 ǫᴜɪᴄᴋ ʟᴇᴀʀɴ",
+                f"{MONKEY_EMOJIS['monkey']} ǫᴜɪᴄᴋ ʟᴇᴀʀɴ",
                 callback_data="whisper_tutorial"
             )
         ],
         [
             InlineKeyboardButton(
-                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ 🌳",
+                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ {MONKEY_EMOJIS['tree']}",
                 callback_data="whisper_settings"
             ),
             InlineKeyboardButton(
-                f"🍌 sᴇᴄʀᴇᴛ sᴛᴀᴛs",
+                f"{MONKEY_EMOJIS['banana']} sᴇᴄʀᴇᴛ sᴛᴀᴛs",
                 callback_data="whisper_stats"
             )
         ],
         [
             InlineKeyboardButton(
-                f"🎪 ғᴜɴ ᴍᴏᴅᴇs",
+                f"{MONKEY_EMOJIS['circus']} ғᴜɴ ᴍᴏᴅᴇs",
                 callback_data="whisper_styles"
             ),
             InlineKeyboardButton(
-                f"🌳 ʜᴇʟᴘ ᴛʀᴇᴇ",
+                f"{MONKEY_EMOJIS['tree']} ʜᴇʟᴘ ᴛʀᴇᴇ",
                 callback_data="whisper_help"
             )
         ]
@@ -340,11 +319,11 @@ def create_empty_query_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"⚡ ᴛʀʏ ɴᴏᴡ 💭",
-                switch_inline_query_current_chat="@whispierbot secret message @username"
+                f"{MONKEY_EMOJIS['lightning']} ᴛʀʏ ɴᴏᴡ {MONKEY_EMOJIS['thought']}",
+                switch_inline_query_current_chat="secret message @username"
             ),
             InlineKeyboardButton(
-                f"🐒 ᴛᴜᴛᴏʀɪᴀʟ",
+                f"{MONKEY_EMOJIS['monkey']} ᴛᴜᴛᴏʀɪᴀʟ",
                 callback_data="whisper_tutorial"
             )
         ]
@@ -353,7 +332,7 @@ def create_empty_query_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 def create_secret_revealed_text(content: str, sender_username: str, whisper_data: Dict) -> str:
-    """Create text shown when secret is revealed - DEPRECATED: Use language system instead"""
+    """Create text shown when secret is revealed"""
     burn_info = ""
     timer_info = ""
 
@@ -369,10 +348,10 @@ def create_secret_revealed_text(content: str, sender_username: str, whisper_data
 
     if whisper_data.get("settings", {}).get("expires_at"):
         time_remaining = get_time_remaining_text(whisper_data["settings"]["expires_at"])
-        if time_remaining != "Expired":
-            timer_info = f"\n⏰ {time_remaining} ʟᴇғᴛ {MONKEY_EMOJIS['timer']}"
+        if time_remaining != "ᴇxᴘɪʀᴇᴅ":
+            timer_info = f"\n{MONKEY_EMOJIS['timer']} {time_remaining} ʟᴇғᴛ"
 
-    return f'"{content}"{burn_info}{timer_info}\n\n🐒 ᴋᴇᴇᴘ ɪᴛ ʙᴇᴛᴡᴇᴇɴ ᴜs ᴍᴏɴᴋᴇʏs!'
+    return f'"{content}"{burn_info}{timer_info}\n\n{MONKEY_EMOJIS["monkey"]} ᴋᴇᴇᴘ ɪᴛ ʙᴇᴛᴡᴇᴇɴ ᴜs ᴍᴏɴᴋᴇʏs!'
 
 def create_unauthorized_access_text(lang: str = "en") -> str:
     """Create text for unauthorized access attempt"""
@@ -384,7 +363,7 @@ def create_unauthorized_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"🍌 ᴄʀᴇᴀᴛᴇ sᴇᴄʀᴇᴛ",
+                f"{MONKEY_EMOJIS['banana']} ᴄʀᴇᴀᴛᴇ sᴇᴄʀᴇᴛ",
                 switch_inline_query_current_chat=""
             )
         ]
@@ -399,7 +378,7 @@ def format_user_stats(stats: Dict, lang: str = "en") -> str:
         achievement_names = {
             "secret_swinger": f"🥇 sᴇᴄʀᴇᴛ sᴡɪɴɢᴇʀ (50+ sᴇᴄʀᴇᴛs)",
             "burn_master": f"💀 ʙᴜʀɴ ᴍᴀsᴛᴇʀ (10+ ᴠᴀɴɪsʜɪɴɢ ᴍᴇssᴀɢᴇs)",
-            "time_keeper": f"⏰ ᴛɪᴍᴇ ᴋᴇᴇᴘᴇʀ (5+ ᴛɪᴍᴇᴅ ᴅʀᴏᴘs)",
+            "time_keeper": f"{MONKEY_EMOJIS['timer']} ᴛɪᴍᴇ ᴋᴇᴇᴘᴇʀ (5+ ᴛɪᴍᴇᴅ ᴅʀᴏᴘs)",
             "social_butterfly": f"{MONKEY_EMOJIS['circus']} sᴏᴄɪᴀʟ ʙᴜᴛᴛᴇʀғʟʏ (20+ ɢʀᴏᴜᴘ sᴇᴄʀᴇᴛs)",
             "whisper_rookie": f"{MONKEY_EMOJIS['banana']} ᴡʜɪsᴘᴇʀ ʀᴏᴏᴋɪᴇ (ғɪʀsᴛ sᴇᴄʀᴇᴛ!)",
             "banana_collector": f"{MONKEY_EMOJIS['banana']} ʙᴀɴᴀɴᴀ ᴄᴏʟʟᴇᴄᴛᴏʀ (25+ ʀᴇᴄᴇɪᴠᴇᴅ)"
@@ -408,7 +387,6 @@ def format_user_stats(stats: Dict, lang: str = "en") -> str:
         user_achievements = [achievement_names.get(ach, ach) for ach in stats["achievements"]]
         achievements_text = f"\n🏆 **ᴍᴏɴᴋᴇʏ ᴀᴄʜɪᴇᴠᴇᴍᴇɴᴛs:**\n" + "\n".join(user_achievements)
 
-    # Top targets
     favorite_targets = stats.get("favorite_targets", {})
     top_targets_text = ""
     if favorite_targets:
@@ -432,17 +410,17 @@ def create_stats_keyboard(user_id: int) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"🐒 ғᴜʟʟ sᴛᴀᴛs",
+                f"{MONKEY_EMOJIS['monkey']} ғᴜʟʟ sᴛᴀᴛs",
                 callback_data=f"whisper_full_stats_{user_id}"
             ),
             InlineKeyboardButton(
-                f"🗑 ᴄʟᴇᴀɴ ᴊᴜɴɢʟᴇ 🌳",
+                f"🗑 ᴄʟᴇᴀɴ ᴊᴜɴɢʟᴇ {MONKEY_EMOJIS['tree']}",
                 callback_data="whisper_clean_history"
             )
         ],
         [
             InlineKeyboardButton(
-                f"🏠 ʜᴏᴍᴇ ᴛʀᴇᴇ 🍌",
+                f"🏠 ʜᴏᴍᴇ ᴛʀᴇᴇ {MONKEY_EMOJIS['banana']}",
                 callback_data="whisper_dashboard"
             )
         ]
