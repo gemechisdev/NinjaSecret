@@ -171,7 +171,29 @@ async def handle_inline_query(client, query: InlineQuery):
                 # Create suggestions for recent targets
                 results = []
                 for target in recent_targets:
-                    suggestion = create_recent_target_suggestion(target, message_content, "en")
+                    # Create a whisper ID for this suggestion
+                    whisper_id = generate_whisper_id()
+
+                    # Pre-store whisper data for this suggestion
+                    # Create proper target token
+                    if target.get("target_username"):
+                        target_token = f"@{target['target_username']}"
+                    else:
+                        target_token = str(target.get("target_id"))
+
+                    store_data = {
+                        "whisper_id": whisper_id,
+                        "content": message_content,
+                        "sender_id": query.from_user.id,
+                        "target_username": target.get("target_username"),
+                        "target_id": target.get("target_id"),
+                        "original_target_token": target_token,
+                        "target_mentions": target.get("target_display")
+                    }
+                    await store_whisper(store_data)
+
+                    # Create the suggestion with proper whisper format
+                    suggestion = create_recent_target_suggestion_with_id(target, message_content, whisper_id, "en")
                     results.append(suggestion)
 
                 # Also add the help response as the last option
@@ -322,12 +344,23 @@ async def handle_chosen_inline_result(client, chosen_result):
         whisper_id = chosen_result.result_id
 
         # Skip if it's not a whisper
-        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
+        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'recent_targets_help']:
             return
 
         # Attach the inline_message_id to the existing whisper
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
+
+            # If this was a recent target suggestion, update the recent targets
+            from ScorpiTune.mongo.whisperdb import get_whisper
+            whisper = await get_whisper(whisper_id)
+            if whisper and whisper.get("target_id"):
+                await store_recent_target(
+                    sender_id=whisper["sender_id"],
+                    target_id=whisper["target_id"],
+                    target_username=whisper.get("target_username"),
+                    target_display=whisper.get("target_mentions", f"User {whisper['target_id']}")
+                )
 
     except Exception as e:
         print(f"Chosen inline result error: {e}")
@@ -457,38 +490,24 @@ If the problem persists, contact support.
         ])
     )
 
-def create_recent_target_suggestion(target: Dict, message_content: str = "", lang: str = "en") -> InlineQueryResultArticle:
-    """Create inline query result for recent target suggestion"""
+def create_recent_target_suggestion_with_id(target: Dict, message_content: str, whisper_id: str, lang: str = "en") -> InlineQueryResultArticle:
+    """Create inline query result for recent target suggestion - creates actual whisper"""
     target_id = target.get("target_id")
     target_username = target.get("target_username")
     target_display = target.get("target_display", f"User {target_id}")
 
-    # Create the suggestion text that will be inserted when selected
-    if target_username:
-        suggestion_text = f"@{target_username}"
-    else:
-        suggestion_text = str(target_id)
-
-    # If there's existing message content, append the target
-    if message_content.strip():
-        full_text = f"{message_content.strip()} {suggestion_text}"
-    else:
-        full_text = f"your secret message {suggestion_text}"
-
-    # Determine emoji based on target type
-    emoji = "🎯"
-    if target_username:
-        emoji = f"{MONKEY_EMOJIS['monkey']}"
+    language = get_string(lang)
 
     return InlineQueryResultArticle(
-        id=f"recent_target_{target_id}",
-        title=f"{emoji} {target_display}",
-        description=f"Recent target • Click to add {suggestion_text}",
-        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
+        id=whisper_id,
+        title=f"🤫 Secret for {target_display}",
+        description="Click to send whisper to this recent target",
+        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Kkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
-            message_text=f"@whispierbot {full_text}",
+            message_text=f"🤫 **Secret Banana** 🐒\n💌 **For:** {target_display}\n🔒 **Monkey-secured & encrypted**",
             parse_mode=enums.ParseMode.MARKDOWN
-        )
+        ),
+        reply_markup=create_whisper_keyboard(whisper_id)
     )
 
 def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = "en") -> InlineQueryResultArticle:
