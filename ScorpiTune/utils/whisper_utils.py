@@ -105,15 +105,19 @@ def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
     target_names = []
     for target in targets[:max_display]:
         display_name = target.get("display_name", target.get("value", "unknown"))
+
         if target.get("resolved_id"):
-            # Use display name (username or first name)
-            if not display_name.startswith("@"):
-                display_name = f"@{display_name}"
+            # Target found - use appropriate formatting
+            if target.get("type") == "username":
+                # For usernames, ensure @ prefix
+                if not display_name.startswith("@"):
+                    display_name = f"@{display_name}"
+            # For user IDs or first names, use as-is (no @ prefix)
             target_names.append(display_name)
         else:
-            # Target not found
+            # Target not found - always show without @ prefix regardless of type
             if not display_name.startswith("@"):
-                display_name = f"@{display_name}"
+                display_name = f"{display_name}"
             target_names.append(f"{display_name} (not found)")
 
     if len(targets) > max_display:
