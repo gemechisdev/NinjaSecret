@@ -33,20 +33,15 @@ from config import BANNED_USERS
 async def handle_whisper_view(client, callback_query: CallbackQuery, _):
     """Handle viewing a whisper secret"""
     try:
-        print(f"DEBUG: Whisper view callback triggered for user {callback_query.from_user.id}")
-
         whisper_id = callback_query.matches[0].group(1)
         user_id = callback_query.from_user.id
-        print(f"DEBUG: Extracted whisper_id: {whisper_id}, user_id: {user_id}")
 
         # Get whisper message
         whisper = await get_whisper(whisper_id)
-        print(f"DEBUG: Retrieved whisper data: {whisper is not None}")
 
         if not whisper:
-            print(f"DEBUG: No whisper found for ID: {whisper_id}")
             await callback_query.answer(
-                f"{MONKEY_EMOJIS['see_no_evil']} This secret has expired or been burned!",
+                f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_expired_burned']}",
                 show_alert=True
             )
             return
@@ -56,7 +51,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         if settings.get("expires_at"):
             if datetime.utcnow() > settings["expires_at"]:
                 await callback_query.answer(
-                    f"{MONKEY_EMOJIS['timer']} This secret has expired!",
+                    f"{MONKEY_EMOJIS['timer']} {_['whisper_timer_expired']}",
                     show_alert=True
                 )
                 return
@@ -64,7 +59,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Check if whisper was burned (burn after reading feature)
         if whisper.get("status") == "burned":
             await callback_query.answer(
-                f"{MONKEY_EMOJIS['fire']} This secret was burned after reading!",
+                f"{MONKEY_EMOJIS['fire']} {_['whisper_burned_after_read']}",
                 show_alert=True
             )
             return
@@ -184,7 +179,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                                 else:
                                     target_for_display = original_target
 
-                            burned_message = f"💀🔥 **Burn After Reading Banana**\n\n💌 **For:** {target_for_display}\n🔒 **Monkey-secured & encrypted**\n\n✅ **{target_display_name} read the whisper**"
+                            burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
 
                             await app.edit_inline_text(
                                 inline_message_id=whisper["inline_message_id"],
@@ -233,7 +228,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         import traceback
         traceback.print_exc()
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error viewing secret! Try again later.",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_viewing']}",
             show_alert=True
         )
 
@@ -263,36 +258,36 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery):
         target_display = format_targets_display(targets, max_display=10)
 
         # Create info text
-        info_text = f"{MONKEY_EMOJIS['eyes']} **Secret Target Info**\n\n"
+        info_text = f"{_['whisper_target_info']}\n\n"
 
         if any(t.get('type') == 'all' for t in targets):
-            info_text += f"{MONKEY_EMOJIS['monkey']} **For:** Everyone in this jungle!\n"
+            info_text += f"{_['whisper_for_everyone_jungle']}\n"
         else:
-            info_text += f"{MONKEY_EMOJIS['monkey']} **Targets:** {target_display}\n"
+            info_text += f"{_['whisper_targets_label'].format(target_display)}\n"
 
             # Show read status
             read_count = len([t for t in targets if t.get('read_at')])
             total_count = len(targets)
-            info_text += f"📖 **Read Status:** {read_count}/{total_count} monkeys have peeked\n"
+            info_text += f"{_['whisper_read_status'].format(read_count, total_count)}\n"
 
         # Show additional info
         settings = whisper.get('settings', {})
         if settings.get('burn_after_reading'):
-            info_text += f"💀 **Burns after all read**\n"
+            info_text += f"{_['whisper_burns_all_read']}\n"
 
         if settings.get('expires_at'):
             time_left = get_time_remaining_text(settings['expires_at'])
             if time_left != "Expired":
-                info_text += f"⏰ **Expires in:** {time_left}\n"
+                info_text += f"{_['whisper_expires_in'].format(time_left)}\n"
 
-        info_text += f"\n{MONKEY_EMOJIS['banana']} Monkey-secured delivery!"
+        info_text += f"\n{_['whisper_monkey_secured']}"
 
         await callback_query.answer(info_text, show_alert=True)
 
     except Exception as e:
         print(f"Whisper targets error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error getting target info!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_targets']}",
             show_alert=True
         )
 
@@ -319,7 +314,7 @@ async def handle_dashboard(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Dashboard error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error loading dashboard!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_dashboard']}",
             show_alert=True
         )
 
@@ -336,12 +331,12 @@ async def handle_stats(client, callback_query: CallbackQuery):
         stats_text = format_user_stats(stats, "en")
 
         # Add more detailed info
-        stats_text += f"\n\n📊 **Detailed Analytics:**"
-        stats_text += f"\n• Total secrets sent: {stats.get('secrets_sent', 0)}"
-        stats_text += f"\n• Total secrets received: {stats.get('secrets_received', 0)}"
-        stats_text += f"\n• Burn-after-reading used: {stats.get('secrets_burned', 0)}"
-        stats_text += f"\n• Timed secrets sent: {stats.get('secrets_timed', 0)}"
-        stats_text += f"\n• Total monkeys reached: {stats.get('total_targets_reached', 0)}"
+        stats_text += f"\n\n{_['whisper_detailed_analytics']}"
+        stats_text += f"\n{_['whisper_total_sent'].format(stats.get('secrets_sent', 0))}"
+        stats_text += f"\n{_['whisper_total_received'].format(stats.get('secrets_received', 0))}"
+        stats_text += f"\n{_['whisper_burn_used'].format(stats.get('secrets_burned', 0))}"
+        stats_text += f"\n{_['whisper_timed_sent'].format(stats.get('secrets_timed', 0))}"
+        stats_text += f"\n{_['whisper_monkeys_reached'].format(stats.get('total_targets_reached', 0))}"
 
         keyboard = create_stats_keyboard(user_id)
 
@@ -353,7 +348,7 @@ async def handle_stats(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Stats error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error loading stats!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_stats']}",
             show_alert=True
         )
 
@@ -363,32 +358,19 @@ async def handle_tutorial(client, callback_query: CallbackQuery):
     try:
         await callback_query.answer()
 
-        tutorial_text = f"""{MONKEY_EMOJIS['monkey']} **WhispierBot Tutorial**
+        tutorial_text = f"""{_['whisper_tutorial_title']}
 
-🎯 **How to Send Secrets:**
-Type `@whispierbot` in any chat, then:
+{_['whisper_tutorial_how']}
 
-📝 **Basic Format:**
-`@whispierbot [your message] [targets]`
+{_['whisper_tutorial_format']}
 
-🎪 **Examples:**
-• Single person: `@whispierbot secret message @alice`
-• With user ID: `@whispierbot secret message 6153949909`
-• Multiple people: `@whispierbot group news @bob,@charlie`
-• Everyone: `@whispierbot pizza time! @all`
+{_['whisper_tutorial_examples']}
 
-🔥 **Special Features:**
-• `!delete` - Burns after all read
-• `!timer:3600` - Expires in 1 hour (3600 seconds)
-• `!vip` - VIP styling with crown
-• `!cute` - Extra cute monkey styling
+{_['whisper_tutorial_features']}
 
-🎯 **Advanced Examples:**
-• `@whispierbot confidential info @boss !delete`
-• `@whispierbot party at 8pm @friends !timer:7200`
-• `@whispierbot special announcement @all !vip`
+{_['whisper_tutorial_advanced']}
 
-{MONKEY_EMOJIS['banana']} **Ready to swing into action?**"""
+{_['whisper_tutorial_ready']}"""
 
         tutorial_keyboard = InlineKeyboardMarkup([
             [
@@ -411,7 +393,7 @@ Type `@whispierbot` in any chat, then:
     except Exception as e:
         print(f"Tutorial error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error loading tutorial!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_tutorial']}",
             show_alert=True
         )
 
@@ -421,34 +403,23 @@ async def handle_styles(client, callback_query: CallbackQuery):
     try:
         await callback_query.answer()
 
-        styles_text = f"""{MONKEY_EMOJIS['circus']} **Fun Whisper Styles**
+        styles_text = f"""{_['whisper_styles_title']}
 
-🎨 **Available Themes:**
+{_['whisper_styles_themes']}
 
-🤫💭 **Classic Whisper** (default)
-Standard monkey secret delivery
+{_['whisper_styles_classic']}
 
-👑🍌 **VIP Style** (`!vip`)
-Golden banana with crown styling
-Perfect for important announcements
+{_['whisper_styles_vip']}
 
-🐒💕 **Cute Style** (`!cute`)
-Extra playful with hearts and love
-Great for friendly messages
+{_['whisper_styles_cute']}
 
-💀🔥 **Burn After Reading** (`!delete`)
-Self-destructs when all targets read
-Maximum security monkey style
+{_['whisper_styles_burn']}
 
-⏰🐒 **Timed Secrets** (`!timer:seconds`)
-Auto-expires after specified time
-Examples: `!timer:3600` (1 hour)
+{_['whisper_styles_timed']}
 
-🎪 **Mix & Match:**
-You can combine modifiers!
-`@whispierbot secret @user !vip !timer:1800`
+{_['whisper_styles_mix']}
 
-{MONKEY_EMOJIS['banana']} **Get creative with your secrets!**"""
+{_['whisper_styles_creative']}"""
 
         styles_keyboard = InlineKeyboardMarkup([
             [
@@ -473,7 +444,7 @@ You can combine modifiers!
     except Exception as e:
         print(f"Styles error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error loading styles!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_styles']}",
             show_alert=True
         )
 
@@ -483,37 +454,21 @@ async def handle_help(client, callback_query: CallbackQuery):
     try:
         await callback_query.answer()
 
-        help_text = f"""{MONKEY_EMOJIS['tree']} **Whispier Help Tree**
+        help_text = f"""{_['whisper_help_title']}
 
-🆘 **Need Help?**
+{_['whisper_help_need']}
 
-🎯 **Quick Commands:**
-• `/start` - Main dashboard
-• Type `@whispierbot` - Create secrets
+{_['whisper_help_commands']}
 
-📚 **Documentation:**
-• Inline tutorial available
-• Examples in every response
-• Error messages are helpful
+{_['whisper_help_docs']}
 
-🎪 **Features:**
-• ✅ Single & multiple targets
-• ✅ Burn after reading
-• ✅ Timed expiration
-• ✅ Fun monkey themes
-• ✅ User statistics
-• ✅ Achievement system
+{_['whisper_help_features']}
 
-🔧 **Troubleshooting:**
-• Make sure usernames exist
-• Use commas for multiple targets: `@user1,@user2`
-• Timers use seconds: `!timer:3600` = 1 hour
-• Check spelling of modifiers
+{_['whisper_help_troubleshoot']}
 
-💬 **Support:**
-Contact the bot owner if you need additional help!
+{_['whisper_help_support']}
 
-{MONKEY_EMOJIS['banana']} **Happy secret swinging!**"""
+{_['whisper_help_happy']}"""
 
         help_keyboard = InlineKeyboardMarkup([
             [
@@ -542,7 +497,7 @@ Contact the bot owner if you need additional help!
     except Exception as e:
         print(f"Help error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error loading help!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_help']}",
             show_alert=True
         )
 
@@ -552,21 +507,13 @@ async def handle_settings(client, callback_query: CallbackQuery):
     try:
         await callback_query.answer()
 
-        settings_text = f"""{MONKEY_EMOJIS['tree']} **My Jungle Settings**
+        settings_text = f"""{_['whisper_settings_title']}
 
-⚙️ **Current Settings:**
-• Language: English 🇺🇸
-• Notifications: Enabled 🔔
-• Achievement alerts: Enabled 🏆
-• Statistics tracking: Enabled 📊
+{_['whisper_settings_current']}
 
-🔮 **Coming Soon:**
-• Custom themes
-• Notification preferences
-• Privacy settings
-• Export statistics
+{_['whisper_settings_coming']}
 
-{MONKEY_EMOJIS['banana']} **Settings will be expanded in future updates!**"""
+{_['whisper_settings_expanded']}"""
 
         settings_keyboard = InlineKeyboardMarkup([
             [
@@ -585,6 +532,6 @@ async def handle_settings(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Settings error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} Error loading settings!",
+            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_settings']}",
             show_alert=True
         )
