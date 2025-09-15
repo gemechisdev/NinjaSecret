@@ -1,3 +1,7 @@
+"""
+WhispierBot Inline Query Handler
+Handles inline whisper message creation with monkey-themed responses
+"""
 
 import asyncio
 from datetime import datetime, timedelta
@@ -5,6 +9,17 @@ from typing import Dict, List
 from pyrogram import filters, enums
 from pyrogram.types import (
     InlineQuery,
+    InlineQueryResultArticle,
+    InputTextMessageContent,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+from strings import get_string
+
+from ScorpiTune import app, userbot
+from ScorpiTune.mongo.whisperdb import (
+    store_whisper,
+    resolve_target,
     update_user_stats,
     check_and_award_achievements,
     attach_inline_message_id,
@@ -14,6 +29,26 @@ from pyrogram.types import (
 )
 from ScorpiTune.utils.whisper_utils import (
     create_whisper_inline_result,
+    create_empty_query_response,
+    generate_whisper_id,
+    create_whisper_keyboard,
+    parse_whisper_command,
+    MONKEY_EMOJIS
+)
+
+def extract_message_and_target_with_modifiers(text: str):
+    """Enhanced extraction that supports special features while maintaining compatibility"""
+    # First try the advanced parser for special features
+    message_content, targets_string, modifiers = parse_whisper_command(text)
+
+    # If advanced parser found everything, return it
+    if message_content and targets_string:
+        return message_content, targets_string, modifiers
+
+    # Fallback to simple parsing (existing logic) for compatibility
+    message_content, targets_string = extract_message_and_target(text)
+    return message_content, targets_string, {}
+
 def extract_message_and_target(text: str):
     """Extract message and target from query text - targets must be at the END only"""
     parts = text.split()
@@ -21,6 +56,12 @@ def extract_message_and_target(text: str):
         return None, None
 
     # Only check the LAST part as target (targets must be at the end)
+    last_token = parts[-1]
+
+    # Check if the last token looks like a target token
+    if is_target_token(last_token):
+        msg = " ".join(parts[:-1]).strip()
+        if not msg:
             return None, None
         return msg, last_token
 
@@ -29,6 +70,44 @@ def extract_message_and_target(text: str):
 
 def is_target_token(token: str) -> bool:
     """Check if a token looks like a target (username, user_id, or mixed targets)"""
+    if not token:
+        return False
+
+    # Single @username, @all, or @everyone
+    if token.startswith("@") and len(token) > 1:
+        return True
+
+    # Single user_id (pure digits) - Telegram user IDs are typically 8-10 digits
+    if token.isdigit() and 4 <= len(token) <= 15:
+        return True
+
+    # Mixed targets separated by commas (e.g., "2342,@bona", "@alice,123456789")
+    if "," in token:
+        parts = [part.strip() for part in token.split(",")]
+        if len(parts) >= 2:
+            # All parts must be valid individual targets
+            return all(is_single_target_valid(part) for part in parts if part)
+
+    return False
+
+def is_single_target_valid(part: str) -> bool:
+    """Check if a single target part is valid"""
+    if not part:
+        return False
+
+    # @username, @all, or @everyone
+    if part.startswith("@") and len(part) > 1:
+        return True
+
+    # Pure digit user_id - Telegram user IDs are typically 8-10 digits
+    if part.isdigit() and 4 <= len(part) <= 15:
+        return True
+
+    return False
+
+def create_enhanced_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
+    """Create enhanced inline query result that supports special features"""
+    if modifiers:
         # Use advanced result with special features
         # Create proper target dictionaries for the advanced formatter
         targets_dict = []
@@ -40,6 +119,50 @@ def is_target_token(token: str) -> bool:
                 else:
                     # Use mention format if we have target_id, otherwise use display
                     if target_id and target_mentions:
+                        # Extract the mention for this specific target from combined mentions
+                        display_name = target_mentions
+                    else:
+                        display_name = target_display
+                    targets_dict.append({"display_name": display_name, "type": "user"})
+
+        return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
+    else:
+        # Use simple result for compatibility
+        return create_simple_whisper_inline_result(whisper_id, content, target_display, target_mentions, lang)
+
+def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
+    """Create simplified inline query result for whisper"""
+    language = get_string(lang)
+
+    # Use mentions if provided, otherwise fall back to display
+    target_for_message = target_mentions if target_mentions else target_display
+
+    return {
+        "id": whisper_id,
+        "title": language["whisper_simple_title"].format(target_display),
+        "description": language["whisper_simple_desc"],
+        "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
+        "input_message_content": {
+            "message_text": language["whisper_simple_message"].format(target_for_message),
+            "parse_mode": "MARKDOWN"
+        },
+        "reply_markup": create_whisper_keyboard(whisper_id)
+    }
+
+from config import BANNED_USERS
+
+@app.on_inline_query(~BANNED_USERS)
+async def handle_inline_query(client, query: InlineQuery):
+    """Handle inline queries for whisper messages"""
+    try:
+        query_text = query.query.strip()
+
+        # Empty query - show help
+        if not query_text:
+            results = [create_empty_query_response("en")]
+            await query.answer(results, cache_time=1, is_personal=True)
+            return
+
         # Extract message, target, and modifiers (with fallback to simple parsing)
         message_content, target_token, modifiers = extract_message_and_target_with_modifiers(query_text)
 
@@ -99,6 +222,13 @@ def is_target_token(token: str) -> bool:
             await query.answer(results, cache_time=1, is_personal=True)
             return
 
+        # Parse multiple targets
+        target_tokens = [token.strip() for token in target_token.split(",")]
+        resolved_targets = []
+        display_names = []
+        target_mentions = []  # For creating mentions in the message
+
+        for token in target_tokens:
             # Handle special @all/@everyone cases
             if token.lower() in ["@all", "@everyone"]:
                 resolved_targets.append((None, None, token))
@@ -109,6 +239,7 @@ def is_target_token(token: str) -> bool:
             else:
                 target_id, target_username, display_name = await resolve_target(token, app, userbot)
                 resolved_targets.append((target_id, target_username, token))
+                # Use the display name returned by resolve_target (it handles all cases properly)
                 display_names.append(display_name or token)
 
                 # Create mention for the message (using Markdown format)
@@ -120,12 +251,42 @@ def is_target_token(token: str) -> bool:
 
         # Create combined display name
         if len(display_names) == 1:
+            combined_display = display_names[0]
+        elif len(display_names) == 2:
+            combined_display = f"{display_names[0]} & {display_names[1]}"
+        else:
+            combined_display = f"{', '.join(display_names[:-1])} & {display_names[-1]}"
+
+        # Create combined mention string for the message
+        if len(target_mentions) == 1:
+            combined_mentions = target_mentions[0]
+        elif len(target_mentions) == 2:
+            combined_mentions = f"{target_mentions[0]} & {target_mentions[1]}"
         else:
             combined_mentions = f"{', '.join(target_mentions[:-1])} & {target_mentions[-1]}"
 
 
         # Generate whisper ID
         whisper_id = generate_whisper_id()
+
+        # For simplified storage, use the first target (maintaining compatibility)
+        primary_target = resolved_targets[0] if resolved_targets else (None, None, target_token)
+
+        # Pre-store whisper (so callbacks work immediately)
+        store_data = {
+            "whisper_id": whisper_id,
+            "content": message_content,
+            "sender_id": query.from_user.id,
+            "target_username": primary_target[1],
+            "target_id": primary_target[0],
+            "original_target_token": target_token,  # Store the full target string for multiple targets
+            "all_targets": resolved_targets,  # Store all targets for future use
+            "target_mentions": combined_mentions  # Store formatted mentions for the message
+        }
+
+        # Add modifiers if present (special features)
+        if modifiers:
+            store_data["modifiers"] = modifiers
 
         await store_whisper(store_data)
 
@@ -149,6 +310,26 @@ def is_target_token(token: str) -> bool:
         # Create inline result (enhanced with special features support)
         result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
 
+        # Convert to Pyrogram format
+        pyrogram_result = InlineQueryResultArticle(
+            id=result["id"],
+            title=result["title"],
+            description=result["description"],
+            thumb_url=result.get("thumb_url"),
+            input_message_content=InputTextMessageContent(
+                message_text=result["input_message_content"]["message_text"],
+                parse_mode=enums.ParseMode.MARKDOWN
+            ),
+            reply_markup=result.get("reply_markup")
+        )
+
+        # Store whisper data temporarily for when the message is actually sent
+        # We'll use the chosen inline result handler for this
+
+        await query.answer([pyrogram_result], cache_time=1, is_personal=True)
+
+        # No need to store temp data - whisper is already in database
+
     except Exception as e:
         # Log error and return error response
         print(f"Inline query error: {e}")
@@ -156,6 +337,9 @@ def is_target_token(token: str) -> bool:
         await query.answer(results, cache_time=1, is_personal=True)
 
 @app.on_chosen_inline_result()
+async def handle_chosen_inline_result(client, chosen_result):
+    """Handle when user sends an inline result"""
+    try:
         whisper_id = chosen_result.result_id
 
         # Skip if it's not a whisper
@@ -325,3 +509,4 @@ def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = 
                 switch_inline_query_current_chat=""
             )]
         ])
+    )
