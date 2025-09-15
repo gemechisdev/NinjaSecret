@@ -477,3 +477,57 @@ async def get_user_by_id(user_id: int) -> Optional[Dict]:
     users_db = mongodb.users
 
     return await users_db.find_one({"user_id": user_id})
+
+# Recent Targets Functions
+async def store_recent_target(sender_id: int, target_id: int, target_username: str = None, target_display: str = None):
+    """Store a recent target for a user (up to 10 most recent)"""
+    from ScorpiTune.core.mongo import mongodb
+    recent_targets_db = mongodb.recent_targets
+
+    # Create target data
+    target_data = {
+        "target_id": target_id,
+        "target_username": target_username,
+        "target_display": target_display or f"User {target_id}",
+        "last_used": datetime.utcnow()
+    }
+
+    # Get current recent targets for user
+    user_targets = await recent_targets_db.find_one({"user_id": sender_id})
+
+    if not user_targets:
+        # Create new record
+        await recent_targets_db.insert_one({
+            "user_id": sender_id,
+            "targets": [target_data]
+        })
+    else:
+        targets = user_targets.get("targets", [])
+
+        # Remove existing target if present (to update position)
+        targets = [t for t in targets if t.get("target_id") != target_id]
+
+        # Add new target at the beginning (most recent)
+        targets.insert(0, target_data)
+
+        # Keep only the 10 most recent
+        targets = targets[:10]
+
+        # Update the record
+        await recent_targets_db.update_one(
+            {"user_id": sender_id},
+            {"$set": {"targets": targets}}
+        )
+
+async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
+    """Get recent targets for a user"""
+    from ScorpiTune.core.mongo import mongodb
+    recent_targets_db = mongodb.recent_targets
+
+    user_targets = await recent_targets_db.find_one({"user_id": user_id})
+
+    if not user_targets:
+        return []
+
+    targets = user_targets.get("targets", [])
+    return targets[:limit]
