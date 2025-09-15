@@ -23,7 +23,9 @@ from ScorpiTune.mongo.whisperdb import (
     update_user_stats,
     check_and_award_achievements,
     attach_inline_message_id,
-    upsert_user
+    upsert_user,
+    store_recent_target,
+    get_recent_targets
 )
 from ScorpiTune.utils.whisper_utils import (
     create_whisper_inline_result,
@@ -162,6 +164,27 @@ async def handle_inline_query(client, query: InlineQuery):
         # Extract message, target, and modifiers (with fallback to simple parsing)
         message_content, target_token, modifiers = extract_message_and_target_with_modifiers(query_text)
 
+        # If no target specified but we have message content, show recent target suggestions
+        if message_content and not target_token:
+            recent_targets = await get_recent_targets(query.from_user.id, 10)
+            if recent_targets:
+                # Create suggestions for recent targets
+                results = []
+                for target in recent_targets:
+                    suggestion = create_recent_target_suggestion(target, message_content, "en")
+                    results.append(suggestion)
+
+                # Also add the help response as the last option
+                results.append(create_invalid_format_response())
+
+                await query.answer(results, cache_time=1, is_personal=True)
+                return
+            else:
+                # No recent targets, show normal invalid format response
+                results = [create_invalid_format_response()]
+                await query.answer(results, cache_time=1, is_personal=True)
+                return
+
         # Invalid format - show help with example
         if not message_content or not target_token:
             results = [create_invalid_format_response()]
@@ -245,6 +268,23 @@ async def handle_inline_query(client, query: InlineQuery):
             store_data["modifiers"] = modifiers
 
         await store_whisper(store_data)
+
+        # Store recent targets for the sender (excluding @all/@everyone)
+        for target_id, target_username, original_token in resolved_targets:
+            if target_id and original_token.lower() not in ["@all", "@everyone"]:
+                # Get display name from resolved target
+                display_name = None
+                for i, (tid, tusername, ttoken) in enumerate(resolved_targets):
+                    if tid == target_id:
+                        display_name = display_names[i]
+                        break
+
+                await store_recent_target(
+                    sender_id=query.from_user.id,
+                    target_id=target_id,
+                    target_username=target_username,
+                    target_display=display_name
+                )
 
         # Create inline result (enhanced with special features support)
         result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
@@ -412,6 +452,85 @@ If the problem persists, contact support.
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 f"{MONKEY_EMOJIS['lightning']} Try Again",
+                switch_inline_query_current_chat=""
+            )]
+        ])
+    )
+
+def create_recent_target_suggestion(target: Dict, message_content: str = "", lang: str = "en") -> InlineQueryResultArticle:
+    """Create inline query result for recent target suggestion"""
+    target_id = target.get("target_id")
+    target_username = target.get("target_username")
+    target_display = target.get("target_display", f"User {target_id}")
+
+    # Create the suggestion text that will be inserted when selected
+    if target_username:
+        suggestion_text = f"@{target_username}"
+    else:
+        suggestion_text = str(target_id)
+
+    # If there's existing message content, append the target
+    if message_content.strip():
+        full_text = f"{message_content.strip()} {suggestion_text}"
+    else:
+        full_text = f"your secret message {suggestion_text}"
+
+    # Determine emoji based on target type
+    emoji = "🎯"
+    if target_username:
+        emoji = f"{MONKEY_EMOJIS['monkey']}"
+
+    return InlineQueryResultArticle(
+        id=f"recent_target_{target_id}",
+        title=f"{emoji} {target_display}",
+        description=f"Recent target • Click to add {suggestion_text}",
+        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=f"@whispierbot {full_text}",
+            parse_mode=enums.ParseMode.MARKDOWN
+        )
+    )
+
+def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = "en") -> InlineQueryResultArticle:
+    """Create help response showing recent targets"""
+    language = get_string(lang)
+
+    targets_list = []
+    for i, target in enumerate(recent_targets[:5], 1):
+        target_display = target.get("target_display", f"User {target.get('target_id')}")
+        if target.get("target_username"):
+            targets_list.append(f"{i}. {target_display} (@{target['target_username']})")
+        else:
+            targets_list.append(f"{i}. {target_display} (ID: {target.get('target_id')})")
+
+    targets_text = "\n".join(targets_list) if targets_list else "No recent targets yet"
+
+    return InlineQueryResultArticle(
+        id="recent_targets_help",
+        title=f"{MONKEY_EMOJIS['monkey']} Recent Targets Available!",
+        description=f"You have {len(recent_targets)} recent targets. Type your message to see suggestions!",
+        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=f"""{MONKEY_EMOJIS['banana']} **Your Recent Whisper Targets**
+
+{MONKEY_EMOJIS['monkey']} **Recent monkeys you've whispered to:**
+
+{targets_text}
+
+💡 **How to use:**
+• Type your message: `@whispierbot your secret message`
+• Recent targets will appear as suggestions
+• Click any suggestion to auto-complete
+
+{MONKEY_EMOJIS['lightning']} **Or type full command:**
+`@whispierbot your message @username`
+
+{MONKEY_EMOJIS['tree']} Ready to swing into action!""",
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                f"{MONKEY_EMOJIS['lightning']} Start Typing",
                 switch_inline_query_current_chat=""
             )]
         ])
