@@ -5,7 +5,7 @@ Handles inline whisper message creation with monkey-themed responses
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict
+from typing import Dict, List
 from pyrogram import filters, enums
 from pyrogram.types import (
     InlineQuery,
