@@ -273,7 +273,7 @@ whisper_targets_label: "🐒 **ᴛᴀʀɢᴇᴛs:** {0}"
 whisper_read_status: "📖 **ʀᴇᴀᴅ sᴛᴀᴛᴜs:** {0}/{1} ᴍᴏɴᴋᴇʏs ʜᴀᴠᴇ ᴘᴇᴇᴋᴇᴅ"
 whisper_burns_all_read: "💀 **ʙᴜʀɴs ᴀғᴛᴇʀ ᴀʟʟ ʀᴇᴀᴅ**"
 whisper_expires_in: "⏰ **ᴇxᴘɪʀᴇs ɪɴ:** {0}"
-whisper_monkey_secured: "🍌 ᴍᴏɴᴋᴇʏ-sᴇᴄᴜʀᴇᴅ ᴅᴇʟɪᴠᴇʀʏ!"
+whisper_monkey_secured: ""
 
 whisper_detailed_analytics: "📊 **ᴅᴇᴛᴀɪʟᴇᴅ ᴀɴᴀʟʏᴛɪᴄs:**"
 whisper_total_sent: "• ᴛᴏᴛᴀʟ sᴇᴄʀᴇᴛs sᴇɴᴛ: {0}"
@@ -314,4 +314,35 @@ whisper_settings_current: "⚙️ **ᴄᴜʀʀᴇɴᴛ sᴇᴛᴛɪɴɢs:**\n•
 whisper_settings_coming: "🔮 **ᴄᴏᴍɪɴɢ sᴏᴏɴ:**\n• ᴄᴜsᴛᴏᴍ ᴛʜᴇᴍᴇs\n• ɴᴏᴛɪғɪᴄᴀᴛɪᴏɴ ᴘʀᴇғᴇʀᴇɴᴄᴇs\n• ᴘʀɪᴠᴀᴄʏ sᴇᴛᴛɪɴɢs\n• ᴇxᴘᴏʀᴛ sᴛᴀᴛɪsᴛɪᴄs"
 whisper_settings_expanded: "🍌 **sᴇᴛᴛɪɴɢs ᴡɪʟʟ ʙᴇ ᴇxᴘᴀɴᴅᴇᴅ ɪɴ ғᴜᴛᴜʀᴇ ᴜᴘᴅᴀᴛᴇs!**"
 
-whisper_burn_message: "💀🔥 **ʙᴜʀɴ ᴀғᴛᴇʀ ʀᴇᴀᴅɪɴɢ ʙᴀɴᴀɴᴀ**\n\n💌 **ғᴏʀ:** {0}\n🔒 **ᴍᴏɴᴋᴇʏ-sᴇᴄᴜʀᴇᴅ & ᴇɴᴄʀʏᴘᴛᴇᴅ**\n\n✅ **{1} ʀᴇᴀᴅ ᴛʜᴇ ᴡʜɪsᴘᴇʀ**"
+whisper_burn_message: "💀🔥 **ʙᴜʀɴ ᴀғᴛᴇʀ ʀᴇᴀᴅɪɴɢ ʙᴀɴᴀɴᴀ**\n\n💌 **ғᴏʀ:** {0}\n✅ **{1} ʀᴇᴀᴅ ᴛʜᴇ ᴡʜɪsᴘᴇʀ**"
+
+# Inline Handler Messages
+whisper_invalid_format_title: "🙈 ᴏᴏᴘs! ғᴏʀᴍᴀᴛ ᴇʀʀᴏʀ"
+whisper_invalid_format_desc: "ɴᴇᴇᴅ ʙᴏᴛʜ ᴍᴇssᴀɢᴇ ᴀɴᴅ ᴛᴀʀɢᴇᴛs!\nᴇxᴀᴍᴘʟᴇ: sᴇᴄʀᴇᴛ ᴍᴇssᴀɢᴇ @username"
+whisper_invalid_format_message: "🙈 **ᴍᴏɴᴋᴇʏ ғᴏʀᴍᴀᴛ ᴇʀʀᴏʀ!**\n\n🐒 ʏᴏᴜ ɴᴇᴇᴅ ʙᴏᴛʜ ᴀ ᴍᴇssᴀɢᴇ ᴀɴᴅ ᴛᴀʀɢᴇᴛs!\n\n✅ **ᴄᴏʀʀᴇᴄᴛ ғᴏʀᴍᴀᴛ:**\n`@whispierbot ʏᴏᴜʀ sᴇᴄʀᴇᴛ ᴍᴇssᴀɢᴇ @username`\n`@whispierbot ʏᴏᴜʀ sᴇᴄʀᴇᴛ ᴍᴇssᴀɢᴇ 123456789`\n\n📝 **ᴇxᴀᴍᴘʟᴇs:**\n• `@whispierbot ᴘɪᴢᴢᴀ ᴘᴀʀᴛʏ ᴛᴏɴɪɢʜᴛ @alice`\n• `@whispierbot ᴍᴇᴇᴛɪɴɢ ᴀᴛ 3ᴘᴍ @bob,@charlie`\n• `@whispierbot ᴄᴏɴғɪᴅᴇɴᴛɪᴀʟ ɪɴғᴏ @boss !delete`\n• `@whispierbot ᴘᴀʀᴛʏ ᴀᴛ 8ᴘᴍ @friends !timer:3600`\n• `@whispierbot ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ @all !vip`\n\n🍌 ᴛʀʏ ᴀɢᴀɪɴ, ᴍᴏɴᴋᴇʏ ғʀɪᴇɴᴅ!"
+whisper_try_again: "⚡ ᴛʀʏ ᴀɢᴀɪɴ"
+
+whisper_no_targets_title: "🙈 ɴᴏ ᴠᴀʟɪᴅ ᴛᴀʀɢᴇᴛs"
+whisper_no_targets_desc: "ᴄᴏᴜʟᴅɴ'ᴛ ғɪɴᴅ ᴀɴʏ ᴠᴀʟɪᴅ ᴛᴀʀɢᴇᴛs!\nᴄʜᴇᴄᴋ ᴜsᴇʀɴᴀᴍᴇs ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ."
+whisper_no_targets_message: "🙈 **ɴᴏ ᴠᴀʟɪᴅ ᴛᴀʀɢᴇᴛs ғᴏᴜɴᴅ!**\n\n🐒 ɪ ᴄᴏᴜʟᴅɴ'ᴛ ғɪɴᴅ ᴀɴʏ ᴠᴀʟɪᴅ ᴜsᴇʀs ᴛᴏ sᴇɴᴅ ᴛᴏ!\n\n💡 **ᴛɪᴘs:**\n• ᴍᴀᴋᴇ sᴜʀᴇ ᴜsᴇʀɴᴀᴍᴇs ᴇxɪsᴛ: `@alice`\n• ᴜsᴇ ᴄᴏᴍᴍᴀs ғᴏʀ ᴍᴜʟᴛɪᴘʟᴇ: `@bob,@charlie`\n• ᴜsᴇ `@all` ᴏʀ `@everyone` ғᴏʀ ᴇᴠᴇʀʏᴏɴᴇ\n• ʀᴇᴍᴏᴠᴇ ᴛʜᴇ @ sʏᴍʙᴏʟ ɪs ᴏᴘᴛɪᴏɴᴀʟ\n\n📝 **ᴇxᴀᴍᴘʟᴇs:**\n• `@whispierbot sᴇᴄʀᴇᴛ @validusername`\n• `@whispierbot ɴᴇᴡs @user1,@user2`\n• `@whispierbot ᴀɴɴᴏᴜɴᴄᴇᴍᴇɴᴛ @all`\n\n🍌 ᴛʀʏ ᴡɪᴛʜ ᴠᴀʟɪᴅ ᴜsᴇʀɴᴀᴍᴇs!"
+
+whisper_message_too_long_title: "🙈 ᴍᴇssᴀɢᴇ ᴛᴏᴏ ʟᴏɴɢ!"
+whisper_message_too_long_desc: "ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ɪs {0} ᴄʜᴀʀᴀᴄᴛᴇʀs, ʙᴜᴛ ᴍᴀx ɪs {1}. ᴘʟᴇᴀsᴇ sʜᴏʀᴛᴇɴ ɪᴛ!"
+whisper_message_too_long_message: "🙈 **ᴍᴇssᴀɢᴇ ᴛᴏᴏ ʟᴏɴɢ, ᴍᴏɴᴋᴇʏ!**\n\n🐒 ʏᴏᴜʀ sᴇᴄʀᴇᴛ ᴍᴇssᴀɢᴇ ɪs **{0} ᴄʜᴀʀᴀᴄᴛᴇʀs** ʟᴏɴɢ, ʙᴜᴛ ᴛʜᴇ ᴍᴀxɪᴍᴜᴍ ᴀʟʟᴏᴡᴇᴅ ɪs **{1} ᴄʜᴀʀᴀᴄᴛᴇʀs**.\n\n📏 **ᴘʟᴇᴀsᴇ ʀᴇᴅᴜᴄᴇ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ʙʏ {2} ᴄʜᴀʀᴀᴄᴛᴇʀs.**\n\n💡 **ᴛɪᴘs ғᴏʀ sʜᴏʀᴛᴇʀ sᴇᴄʀᴇᴛs:**\n• ᴜsᴇ ᴀʙʙʀᴇᴠɪᴀᴛɪᴏɴs ᴡʜᴇʀᴇ ᴘᴏssɪʙʟᴇ\n• ʀᴇᴍᴏᴠᴇ ᴜɴɴᴇᴄᴇssᴀʀʏ ᴡᴏʀᴅs\n• sᴘʟɪᴛ ɪɴᴛᴏ ᴍᴜʟᴛɪᴘʟᴇ ᴡʜɪsᴘᴇʀs ɪғ ɴᴇᴇᴅᴇᴅ\n\n🍌 ᴛʀʏ ᴀɢᴀɪɴ ᴡɪᴛʜ ᴀ sʜᴏʀᴛᴇʀ ᴍᴇssᴀɢᴇ!"
+whisper_try_shorter: "⚡ ᴛʀʏ sʜᴏʀᴛᴇʀ ᴍᴇssᴀɢᴇ"
+
+whisper_something_wrong_title: "🙈 sᴏᴍᴇᴛʜɪɴɢ ᴡᴇɴᴛ ᴡʀᴏɴɢ"
+whisper_something_wrong_desc: "ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ!"
+whisper_something_wrong_message: "🙈 **ᴍᴏɴᴋᴇʏ ᴇʀʀᴏʀ!**\n\n🐒 sᴏᴍᴇᴛʜɪɴɢ ᴡᴇɴᴛ ᴡʀᴏɴɢ ᴡʜɪʟᴇ ᴘʀᴏᴄᴇssɪɴɢ ʏᴏᴜʀ sᴇᴄʀᴇᴛ.\n\n🔄 **ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ!**\n\nɪғ ᴛʜᴇ ᴘʀᴏʙʟᴇᴍ ᴘᴇʀsɪsᴛs, ᴄᴏɴᴛᴀᴄᴛ sᴜᴘᴘᴏʀᴛ.\n\n🍌 ᴛʜᴀɴᴋs ғᴏʀ ʏᴏᴜʀ ᴘᴀᴛɪᴇɴᴄᴇ!"
+
+# Recent Targets Messages
+whisper_recent_secret_for: "🤫 sᴇᴄʀᴇᴛ ғᴏʀ {0}"
+whisper_recent_click_desc: "ᴄʟɪᴄᴋ ᴛᴏ sᴇɴᴅ ᴡʜɪsᴘᴇʀ ᴛᴏ ᴛʜɪs ʀᴇᴄᴇɴᴛ ᴛᴀʀɢᴇᴛ"
+whisper_recent_secret_message: "🤫 **sᴇᴄʀᴇᴛ ʙᴀɴᴀɴᴀ** 🐒\n💌 **ғᴏʀ:** {0}"
+whisper_recent_targets_title: "🐒 ʀᴇᴄᴇɴᴛ ᴛᴀʀɢᴇᴛs ᴀᴠᴀɪʟᴀʙʟᴇ!"
+whisper_recent_targets_desc: "ʏᴏᴜ ʜᴀᴠᴇ {0} ʀᴇᴄᴇɴᴛ ᴛᴀʀɢᴇᴛs. ᴛʏᴘᴇ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ ᴛᴏ sᴇᴇ sᴜɢɢᴇsᴛɪᴏɴs!"
+whisper_recent_targets_message: "🍌 **ʏᴏᴜʀ ʀᴇᴄᴇɴᴛ ᴡʜɪsᴘᴇʀ ᴛᴀʀɢᴇᴛs**\n\n🐒 **ʀᴇᴄᴇɴᴛ ᴍᴏɴᴋᴇʏs ʏᴏᴜ'ᴠᴇ ᴡʜɪsᴘᴇʀᴇᴅ ᴛᴏ:**\n\n{0}\n\n💡 **ʜᴏᴡ ᴛᴏ ᴜsᴇ:**\n• ᴛʏᴘᴇ ʏᴏᴜʀ ᴍᴇssᴀɢᴇ: `@whispierbot ʏᴏᴜʀ sᴇᴄʀᴇᴛ ᴍᴇssᴀɢᴇ`\n• ʀᴇᴄᴇɴᴛ ᴛᴀʀɢᴇᴛs ᴡɪʟʟ ᴀᴘᴘᴇᴀʀ ᴀs sᴜɢɢᴇsᴛɪᴏɴs\n• ᴄʟɪᴄᴋ ᴀɴʏ sᴜɢɢᴇsᴛɪᴏɴ ᴛᴏ ᴀᴜᴛᴏ-ᴄᴏᴍᴘʟᴇᴛᴇ\n\n⚡ **ᴏʀ ᴛʏᴘᴇ ғᴜʟʟ ᴄᴏᴍᴍᴀɴᴅ:**\n`@whispierbot ʏᴏᴜʀ ᴍᴇssᴀɢᴇ @username`\n\n🌳 ʀᴇᴀᴅʏ ᴛᴏ sᴡɪɴɢ ɪɴᴛᴏ ᴀᴄᴛɪᴏɴ!"
+whisper_start_typing: "⚡ sᴛᴀʀᴛ ᴛʏᴘɪɴɢ"
+whisper_no_recent_targets: "ɴᴏ ʀᴇᴄᴇɴᴛ ᴛᴀʀɢᴇᴛs ʏᴇᴛ"
+whisper_user_fallback: "ᴜsᴇʀ {0}"
+whisper_everyone: "ᴇᴠᴇʀʏᴏɴᴇ"
