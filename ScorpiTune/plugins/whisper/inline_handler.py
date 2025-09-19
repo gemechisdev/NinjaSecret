@@ -173,6 +173,21 @@ async def handle_inline_query(client, query: InlineQuery):
                 # Create suggestions for recent targets
                 results = []
                 for target in recent_targets:
+                    # Refresh target information to get updated name
+                    target_id = target.get("target_id")
+                    target_username = target.get("target_username")
+
+                    # Try to resolve current user information using userbot first
+                    if target_id:
+                        try:
+                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
+                            if resolved_display and resolved_display != f"User {target_id}":
+                                # Update target with fresh information
+                                target["target_display"] = resolved_display
+                                target["target_username"] = resolved_username
+                        except Exception as e:
+                            pass  # Use cached information if resolution fails
+
                     # Create a whisper ID for this suggestion
                     whisper_id = generate_whisper_id()
 
@@ -183,6 +198,18 @@ async def handle_inline_query(client, query: InlineQuery):
                     else:
                         target_token = str(target.get("target_id"))
 
+                    # Create proper mention for the message
+                    target_display = target.get("target_display")
+                    if not target_display:
+                        language = get_string("en")
+                        target_display = language['whisper_user_fallback'].format(target_id)
+
+                    # Create mention with tg://user?id= format
+                    if target_id:
+                        target_mention = f"[{target_display}](tg://user?id={target_id})"
+                    else:
+                        target_mention = target_display
+
                     store_data = {
                         "whisper_id": whisper_id,
                         "content": message_content,
@@ -190,7 +217,7 @@ async def handle_inline_query(client, query: InlineQuery):
                         "target_username": target.get("target_username"),
                         "target_id": target.get("target_id"),
                         "original_target_token": target_token,
-                        "target_mentions": target.get("target_display")
+                        "target_mentions": target_mention
                     }
                     await store_whisper(store_data)
 
@@ -350,15 +377,28 @@ async def handle_chosen_inline_result(client, chosen_result):
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
 
-            # If this was a recent target suggestion, update the recent targets
+            # If this was a recent target suggestion, update the recent targets with fresh info
             from ScorpiTune.mongo.whisperdb import get_whisper
             whisper = await get_whisper(whisper_id)
             if whisper and whisper.get("target_id"):
+                # Try to get fresh user information using userbot first
+                target_display = whisper.get("target_mentions", get_string("en")['whisper_user_fallback'].format(whisper['target_id']))
+                target_username = whisper.get("target_username")
+
+                # Attempt to refresh user info
+                try:
+                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(whisper["target_id"]), app, userbot)
+                    if resolved_display and resolved_display != f"User {whisper['target_id']}":
+                        target_display = resolved_display
+                        target_username = resolved_username
+                except Exception as e:
+                    pass
+
                 await store_recent_target(
                     sender_id=whisper["sender_id"],
                     target_id=whisper["target_id"],
-                    target_username=whisper.get("target_username"),
-                    target_display=whisper.get("target_mentions", get_string("en")['whisper_user_fallback'].format(whisper['target_id']))
+                    target_username=target_username,
+                    target_display=target_display
                 )
 
     except Exception as e:
