@@ -373,27 +373,32 @@ async def handle_chosen_inline_result(client, chosen_result):
                 
                 # Store recent target for each actual target (excluding @all/@everyone)
                 for target_id, target_username, original_token in all_targets:
-                    if target_id and original_token.lower() not in ["@all", "@everyone"]:
-                        # Try to get fresh user information
-                        target_display = None
-                        try:
-                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
-                            if resolved_display and resolved_display != f"User {target_id}":
-                                target_display = resolved_display
-                                target_username = resolved_username
-                        except Exception as e:
-                            pass
-                        
-                        # Fallback to cached display name if resolution failed
-                        if not target_display:
-                            target_display = get_string("en")['whisper_user_fallback'].format(target_id)
-                        
-                        await store_recent_target(
-                            sender_id=whisper["sender_id"],
-                            target_id=target_id,
-                            target_username=target_username,
-                            target_display=target_display
-                        )
+                    # Skip if no target_id or if it's @all/@everyone
+                    if not target_id:
+                        continue
+                    if original_token and original_token.lower() in ["@all", "@everyone"]:
+                        continue
+                    
+                    # Try to get fresh user information
+                    target_display = None
+                    try:
+                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
+                        if resolved_display and resolved_display != f"User {target_id}":
+                            target_display = resolved_display
+                            target_username = resolved_username
+                    except Exception as e:
+                        pass
+                    
+                    # Fallback to cached display name if resolution failed
+                    if not target_display:
+                        target_display = get_string("en")['whisper_user_fallback'].format(target_id)
+                    
+                    await store_recent_target(
+                        sender_id=whisper["sender_id"],
+                        target_id=target_id,
+                        target_username=target_username,
+                        target_display=target_display
+                    )
 
     except Exception as e:
         print(f"Chosen inline result error: {e}")
