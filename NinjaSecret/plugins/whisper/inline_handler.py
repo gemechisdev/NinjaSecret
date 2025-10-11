@@ -379,6 +379,11 @@ async def handle_chosen_inline_result(client, chosen_result):
                     if original_token and original_token.lower() in ["@all", "@everyone"]:
                         continue
                     
+                    # Ensure target_id is an integer for consistent comparison
+                    target_id = int(target_id) if target_id else None
+                    if not target_id:
+                        continue
+                    
                     # Try to get fresh user information
                     target_display = None
                     try:
