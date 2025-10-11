@@ -38,7 +38,7 @@ def generate_whisper_id() -> str:
 def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict[str, any]]:
     """
     Parse whisper command from inline query
-    Format: @whispierbot [message] [targets] [modifiers]
+    Format: @ninjasecretbot [message] [targets] [modifiers]
 
     Returns: (message_content, targets_string, modifiers)
     """
