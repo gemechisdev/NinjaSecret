@@ -1,6 +1,6 @@
 # Ninja Secret🥷 - Clean Bot Foundation
 
-This is a cleaned version of the ScorpiTune music bot, optimized to serve as a foundation for Ninja Secret (secret messaging functionality).
+This is a cleaned version of the NinjaSecret music bot, optimized to serve as a foundation for Ninja Secret (secret messaging functionality).
 
 ## What's Included
 
@@ -31,7 +31,7 @@ This is a cleaned version of the ScorpiTune music bot, optimized to serve as a f
 ## Directory Structure
 
 ```
-ScorpiTune/
+NinjaSecret/
 ├── core/           # Core bot functionality
 ├── plugins/        # Feature plugins
 │   ├── admins/     # Admin-only commands
@@ -66,7 +66,7 @@ ScorpiTune/
 
 4. **Run the bot**
    ```bash
-   python -m ScorpiTune
+   python -m NinjaSecret
    ```
 
 ## Configuration
@@ -97,4 +97,4 @@ The bot is now ready for implementing secret message functionality with:
 
 ## Support
 
-For issues and support, refer to the original ScorpiTune documentation or create issues in this repository.
+For issues and support, refer to the original NinjaSecret documentation or create issues in this repository.

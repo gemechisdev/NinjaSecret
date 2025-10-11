@@ -34,9 +34,9 @@
 ## 🔧 Fixed Import Issues
 
 ### Updated Files
-- `ScorpiTune/plugins/sudo/restart.py` - Removed pastebin import
-- `ScorpiTune/utils/__init__.py` - Removed pastebin and channelplay imports
-- `ScorpiTune/utils/inline/__init__.py` - Removed music-specific inline imports
+- `NinjaSecret/plugins/sudo/restart.py` - Removed pastebin import
+- `NinjaSecret/utils/__init__.py` - Removed pastebin and channelplay imports
+- `NinjaSecret/utils/inline/__init__.py` - Removed music-specific inline imports
 - `strings/langs/en.yml` - Updated with essential strings only
 - `requirements.txt` - Removed unused dependencies
 
@@ -46,7 +46,7 @@
 ## 📁 Current Clean Structure
 
 ```
-ScorpiTune/
+NinjaSecret/
 ├── core/           # Core bot functionality
 ├── plugins/        # Essential plugins only
 │   ├── admins/     # 2 admin tools (auth, chat_control)
