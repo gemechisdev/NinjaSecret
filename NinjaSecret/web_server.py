@@ -109,13 +109,19 @@ class HealthServer:
             self.runner = web_runner.AppRunner(self.app)
             await self.runner.setup()
             
-            self.site = web_runner.TCPSite(self.runner, self.host, self.port)
+            self.site = web_runner.TCPSite(self.runner, self.host, self.port, reuse_address=True)
             await self.site.start()
             
             LOGGER(__name__).info(f"Health server started on http://{self.host}:{self.port}")
             LOGGER(__name__).info(f"Health endpoint: http://{self.host}:{self.port}/health")
             LOGGER(__name__).info(f"Ping endpoint: http://{self.host}:{self.port}/ping")
             
+        except OSError as e:
+            if e.errno == 98:  # Address already in use
+                LOGGER(__name__).warning(f"Port {self.port} already in use (likely main.py wrapper is handling health checks). Skipping internal health server.")
+            else:
+                LOGGER(__name__).error(f"Failed to start health server: {e}")
+                raise
         except Exception as e:
             LOGGER(__name__).error(f"Failed to start health server: {e}")
             raise
@@ -139,8 +145,10 @@ async def start_health_server(host='0.0.0.0', port=None):
     global health_server
     
     # Get port from environment or use default
+    # Use HEALTH_PORT if available, otherwise fallback to PORT + 1 to avoid conflict with main.py wrapper
     if port is None:
-        port = int(os.getenv('PORT', 8000))
+        main_port = int(os.getenv('PORT', 8000))
+        port = int(os.getenv('HEALTH_PORT', main_port + 1))
     
     health_server = HealthServer(host, port)
     await health_server.start()
