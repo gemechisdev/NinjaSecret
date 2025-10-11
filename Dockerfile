@@ -16,4 +16,4 @@ RUN python3 -m pip install --upgrade pip setuptools && \
 
 USER appuser
 
-CMD python3 -m NinjaSecret
+CMD python3 main.py
