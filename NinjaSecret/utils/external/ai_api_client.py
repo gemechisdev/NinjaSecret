@@ -58,12 +58,12 @@ class AIAPIClient:
             session.headers.update({
                 "Authorization": f"Bearer {self.config.token}",
                 "Content-Type": "application/json",
-                "User-Agent": "ScorpiTune-Bot/1.0"
+                "User-Agent": "NinjaSecret-Bot/1.0"
             })
         else:
             session.headers.update({
                 "Content-Type": "application/json",
-                "User-Agent": "ScorpiTune-Bot/1.0"
+                "User-Agent": "NinjaSecret-Bot/1.0"
             })
         return session
 
