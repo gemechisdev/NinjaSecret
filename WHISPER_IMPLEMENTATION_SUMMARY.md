@@ -32,7 +32,7 @@ All features from the Ninja Secret🥷 documentation have been successfully impl
 
 ### **New Whisper Plugin Files**
 ```
-ScorpiTune/plugins/whisper/
+NinjaSecret/plugins/whisper/
 ├── __init__.py                 # Package initialization
 ├── inline_handler.py           # Inline query processing
 ├── callbacks.py                # Callback handlers for buttons
@@ -42,20 +42,20 @@ ScorpiTune/plugins/whisper/
 
 ### **Database Models**
 ```
-ScorpiTune/mongo/
+NinjaSecret/mongo/
 └── whisperdb.py                # Complete whisper database operations
 ```
 
 ### **Utility Functions**
 ```
-ScorpiTune/utils/
+NinjaSecret/utils/
 └── whisper_utils.py            # Whisper formatting and processing utilities
 ```
 
 ### **Modified Core Files**
-- `ScorpiTune/utils/inline/start.py` - Added whisper dashboard button
+- `NinjaSecret/utils/inline/start.py` - Added whisper dashboard button
 - `strings/langs/en.yml` - Added ninja-themed strings
-- `ScorpiTune/utils/inlinequery.py` - Updated with whisper tutorials
+- `NinjaSecret/utils/inlinequery.py` - Updated with whisper tutorials
 - `requirements.txt` - Updated Pillow version for compatibility
 
 ---
@@ -220,7 +220,7 @@ cp sample.env .env
 # Edit .env with your configuration
 
 # 3. Run the bot
-python -m ScorpiTune
+python -m NinjaSecret
 ```
 
 ### **Key Configuration**
