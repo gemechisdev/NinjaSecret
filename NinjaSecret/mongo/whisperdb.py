@@ -22,6 +22,7 @@ async def store_whisper(data: Dict) -> str:
         "target_username": data.get("target_username"),
         "target_id": data.get("target_id"),
         "original_target_token": data.get("original_target_token"),
+        "all_targets": data.get("all_targets"),  # Store all targets for recent targets history
         "target_mentions": data.get("target_mentions"),  # Store formatted mentions
         "created_at": datetime.utcnow(),
         "read_at": None,
