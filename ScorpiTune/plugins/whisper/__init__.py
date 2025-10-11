@@ -1,1 +1,1 @@
-# WhispierBot Whisper Plugin Package
+# Ninja Secret🥷 Secret Plugin Package

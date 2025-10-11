@@ -1,6 +1,6 @@
 """
-WhispierBot Start Command Integration
-Adds whisper-themed welcome experience to the start command
+Ninja Secret🥷 Start Command Integration
+Adds ninja-themed welcome experience to the start command
 """
 
 from pyrogram import filters
@@ -11,7 +11,7 @@ from ScorpiTune.mongo.whisperdb import get_user_whisper_stats
 from ScorpiTune.utils.whisper_utils import (
     create_dashboard_keyboard,
     format_user_stats,
-    MONKEY_EMOJIS
+    NINJA_EMOJIS
 )
 from config import BANNED_USERS
 
@@ -21,26 +21,26 @@ async def whisper_start(client, message: Message):
     """Handle /whisper command for direct whisper dashboard access"""
     try:
         user_id = message.from_user.id
-        username = message.from_user.first_name or "Monkey Friend"
+        username = message.from_user.first_name or "Ninja Friend"
 
         # Get user stats
         stats = await get_user_whisper_stats(user_id)
 
         # Create welcome message
-        welcome_text = f"""{MONKEY_EMOJIS['monkey']} *Monkey swings into chat*
+        welcome_text = f"""{NINJA_EMOJIS['ninja']} *Ninja appears in the shadows*
 
-🎉 **Hey there, {username}! I'm Whispier!**
+🎉 **Hey there, {username}! I'm Ninja Secret!**
 
-🤫 I'm your personal secret-delivery monkey!
-Drop private messages in any chat without the drama.
+🤫 I'm your personal secret-delivery ninja!
+Drop private messages in any chat without anyone knowing.
 
 ✨ **What I do:**
 🎯 Send secrets to specific people only
 💀 Messages that vanish after reading
 ⏰ Timed secrets that self-destruct
-🎪 Multi-target whispers made easy
+🌙 Stealth multi-target secrets made easy
 
-Ready to swing into action? {MONKEY_EMOJIS['tree']}"""
+Ready to go stealth? {NINJA_EMOJIS['scroll']}"""
 
         # Show stats if user has used the bot before
         if stats.get('secrets_sent', 0) > 0 or stats.get('secrets_received', 0) > 0:
@@ -61,7 +61,7 @@ Ready to swing into action? {MONKEY_EMOJIS['tree']}"""
     except Exception as e:
         print(f"Whisper start error: {e}")
         await message.reply_text(
-            f"{MONKEY_EMOJIS['see_no_evil']} Something went wrong! Please try again later."
+            f"{NINJA_EMOJIS['see_no_evil']} Something went wrong! Please try again later."
         )
 
 def create_whisper_start_keyboard() -> InlineKeyboardMarkup:
@@ -69,31 +69,31 @@ def create_whisper_start_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} {MONKEY_EMOJIS['thought']} Send Secret",
+                f"{NINJA_EMOJIS['shuriken']} {NINJA_EMOJIS['thought']} Send Secret",
                 switch_inline_query_current_chat=""
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} Quick Learn",
+                f"{NINJA_EMOJIS['ninja']} Quick Learn",
                 callback_data="whisper_tutorial"
             )
         ],
         [
             InlineKeyboardButton(
-                f"⚙️ {MONKEY_EMOJIS['tree']} My Jungle",
+                f"⚙️ {NINJA_EMOJIS['scroll']} My Dojo",
                 callback_data="whisper_settings"
             ),
             InlineKeyboardButton(
-                f"📊 {MONKEY_EMOJIS['banana']} Secret Stats",
+                f"📊 {NINJA_EMOJIS['shuriken']} Secret Stats",
                 callback_data="whisper_stats"
             )
         ],
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['circus']} {MONKEY_EMOJIS['sparkles']} Fun Modes",
+                f"{NINJA_EMOJIS['stealth']} {NINJA_EMOJIS['sparkles']} Stealth Modes",
                 callback_data="whisper_styles"
             ),
             InlineKeyboardButton(
-                f"💬 {MONKEY_EMOJIS['tree']} Help Tree",
+                f"💬 {NINJA_EMOJIS['scroll']} Help Scroll",
                 callback_data="whisper_help"
             )
         ]
@@ -103,6 +103,6 @@ def create_whisper_start_keyboard() -> InlineKeyboardMarkup:
 def get_whisper_integration_button() -> InlineKeyboardButton:
     """Get button to add to existing start command"""
     return InlineKeyboardButton(
-        f"{MONKEY_EMOJIS['monkey']} {MONKEY_EMOJIS['whisper']} Whisper Mode",
+        f"{NINJA_EMOJIS['ninja']} {NINJA_EMOJIS['whisper']} Ninja Mode",
         callback_data="whisper_dashboard"
     )

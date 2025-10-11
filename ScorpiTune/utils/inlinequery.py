@@ -1,48 +1,48 @@
 from pyrogram.types import InlineQueryResultArticle, InputTextMessageContent
 
-# Whisper-related inline query results (legacy fallback)
-# Main whisper functionality is handled by the dedicated whisper plugin
+# Ninja-related inline query results (legacy fallback)
+# Main secret functionality is handled by the dedicated whisper plugin
 
 answer = []
 
 answer.extend(
     [
         InlineQueryResultArticle(
-            title="🐒 WhispierBot Tutorial",
-            description="Learn how to use WhispierBot for secret messaging",
-            thumb_url="https://i.imgur.com/monkey-whisper.gif",
+            title="🥷 Ninja Secret Tutorial",
+            description="Learn how to use Ninja Secret for secret messaging",
+            thumb_url="https://i.imgur.com/ninja-whisper.gif",
             input_message_content=InputTextMessageContent(
-                "🐒 **WhispierBot Tutorial**\n\n"
+                "🥷 **Ninja Secret Tutorial**\n\n"
                 "🎯 **How to Send Secrets:**\n"
-                "Type `@whispierbot` in any chat, then:\n\n"
+                "Type `@ninjasecretbot` in any chat, then:\n\n"
                 "📝 **Basic Format:**\n"
-                "`@whispierbot [your message] [targets]`\n\n"
-                "🎪 **Examples:**\n"
-                "• Single person: `@whispierbot secret message @alice`\n"
-                "• Multiple people: `@whispierbot group news @bob,@charlie`\n"
-                "• Everyone: `@whispierbot pizza time! @all`\n\n"
+                "`@ninjasecretbot [your message] [targets]`\n\n"
+                "🌙 **Examples:**\n"
+                "• Single person: `@ninjasecretbot secret message @alice`\n"
+                "• Multiple people: `@ninjasecretbot group news @bob,@charlie`\n"
+                "• Everyone: `@ninjasecretbot pizza time! @all`\n\n"
                 "🔥 **Special Features:**\n"
                 "• `!delete` - Burns after all read\n"
                 "• `!timer:3600` - Expires in 1 hour\n"
                 "• `!vip` - VIP styling with crown\n"
-                "• `!cute` - Extra cute monkey styling\n\n"
-                "🍌 **Ready to swing into action?**"
+                "• `!cute` - Extra stealthy ninja styling\n\n"
+                "⭐ **Ready to strike in stealth?**"
             ),
         ),
         InlineQueryResultArticle(
             title="🤫 Create Secret Message",
-            description="Start creating a whisper message",
-            thumb_url="https://i.imgur.com/monkey-whisper.gif",
+            description="Start creating a secret message",
+            thumb_url="https://i.imgur.com/ninja-whisper.gif",
             input_message_content=InputTextMessageContent(
                 "🤫 **Ready to Send a Secret?**\n\n"
-                "🐒 Use the format: `@whispierbot [message] [targets]`\n\n"
+                "🥷 Use the format: `@ninjasecretbot [message] [targets]`\n\n"
                 "📝 **Example:**\n"
-                "`@whispierbot pizza party tonight! @alice,@bob`\n\n"
+                "`@ninjasecretbot pizza party tonight! @alice,@bob`\n\n"
                 "💡 **Pro Tips:**\n"
                 "• Use `@all` to message everyone\n"
                 "• Add `!delete` to burn after reading\n"
                 "• Add `!timer:3600` to expire in 1 hour\n\n"
-                "🍌 **Start typing your secret above!**"
+                "⭐ **Start typing your secret above!**"
             ),
         ),
     ]

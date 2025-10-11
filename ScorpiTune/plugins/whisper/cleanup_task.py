@@ -1,5 +1,5 @@
 """
-WhispierBot Cleanup Task
+Ninja Secret🥷 Cleanup Task
 Handles periodic cleanup of expired whispers and maintenance tasks
 """
 
