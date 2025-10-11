@@ -317,23 +317,6 @@ async def handle_inline_query(client, query: InlineQuery):
 
         await store_whisper(store_data)
 
-        # Store recent targets for the sender (excluding @all/@everyone)
-        for target_id, target_username, original_token in resolved_targets:
-            if target_id and original_token.lower() not in ["@all", "@everyone"]:
-                # Get display name from resolved target
-                display_name = None
-                for i, (tid, tusername, ttoken) in enumerate(resolved_targets):
-                    if tid == target_id:
-                        display_name = display_names[i]
-                        break
-
-                await store_recent_target(
-                    sender_id=query.from_user.id,
-                    target_id=target_id,
-                    target_username=target_username,
-                    target_display=display_name
-                )
-
         # Create inline result (enhanced with special features support)
         result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
 
@@ -380,26 +363,37 @@ async def handle_chosen_inline_result(client, chosen_result):
             # If this was a recent target suggestion, update the recent targets with fresh info
             from NinjaSecret.mongo.whisperdb import get_whisper
             whisper = await get_whisper(whisper_id)
-            if whisper and whisper.get("target_id"):
-                # Try to get fresh user information using userbot first
-                target_display = whisper.get("target_mentions", get_string("en")['whisper_user_fallback'].format(whisper['target_id']))
-                target_username = whisper.get("target_username")
-
-                # Attempt to refresh user info
-                try:
-                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(whisper["target_id"]), app, userbot)
-                    if resolved_display and resolved_display != f"User {whisper['target_id']}":
-                        target_display = resolved_display
-                        target_username = resolved_username
-                except Exception as e:
-                    pass
-
-                await store_recent_target(
-                    sender_id=whisper["sender_id"],
-                    target_id=whisper["target_id"],
-                    target_username=target_username,
-                    target_display=target_display
-                )
+            if whisper:
+                # Get all targets from the whisper
+                all_targets = whisper.get("all_targets", [])
+                
+                # If all_targets is not available, fallback to single target
+                if not all_targets and whisper.get("target_id"):
+                    all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+                
+                # Store recent target for each actual target (excluding @all/@everyone)
+                for target_id, target_username, original_token in all_targets:
+                    if target_id and original_token.lower() not in ["@all", "@everyone"]:
+                        # Try to get fresh user information
+                        target_display = None
+                        try:
+                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
+                            if resolved_display and resolved_display != f"User {target_id}":
+                                target_display = resolved_display
+                                target_username = resolved_username
+                        except Exception as e:
+                            pass
+                        
+                        # Fallback to cached display name if resolution failed
+                        if not target_display:
+                            target_display = get_string("en")['whisper_user_fallback'].format(target_id)
+                        
+                        await store_recent_target(
+                            sender_id=whisper["sender_id"],
+                            target_id=target_id,
+                            target_username=target_username,
+                            target_display=target_display
+                        )
 
     except Exception as e:
         print(f"Chosen inline result error: {e}")
