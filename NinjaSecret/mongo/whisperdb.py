@@ -542,6 +542,11 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
 
+    # Ensure target_id is an integer for consistent comparison
+    target_id = int(target_id) if target_id else None
+    if not target_id:
+        return  # Skip if no valid target_id
+
     # Try to get the most up-to-date user information
     if target_id and not target_display:
         try:
