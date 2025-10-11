@@ -1,5 +1,5 @@
 """
-WhispierBot Callback Handlers
+Ninja Secret🥷 Callback Handlers
 Handles secret viewing, stats, dashboard, and other callback interactions
 """
 
@@ -24,7 +24,7 @@ from ScorpiTune.utils.whisper_utils import (
     create_dashboard_keyboard,
     format_targets_display,
     get_time_remaining_text,
-    MONKEY_EMOJIS
+    NINJA_EMOJIS
 )
 from config import BANNED_USERS
 
@@ -41,7 +41,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
 
         if not whisper:
             await callback_query.answer(
-                f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_expired_burned']}",
+                f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_expired_burned']}",
                 show_alert=True
             )
             return
@@ -51,7 +51,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         if settings.get("expires_at"):
             if datetime.utcnow() > settings["expires_at"]:
                 await callback_query.answer(
-                    f"{MONKEY_EMOJIS['timer']} {_['whisper_timer_expired']}",
+                    f"{NINJA_EMOJIS['timer']} {_['whisper_timer_expired']}",
                     show_alert=True
                 )
                 return
@@ -59,7 +59,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Check if whisper was burned (burn after reading feature)
         if whisper.get("status") == "burned":
             await callback_query.answer(
-                f"{MONKEY_EMOJIS['fire']} {_['whisper_burned_after_read']}",
+                f"{NINJA_EMOJIS['fire']} {_['whisper_burned_after_read']}",
                 show_alert=True
             )
             return
@@ -228,7 +228,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         import traceback
         traceback.print_exc()
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_viewing']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_viewing']}",
             show_alert=True
         )
 
@@ -248,7 +248,7 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery):
 
         if not whisper:
             await callback_query.answer(
-                f"{MONKEY_EMOJIS['see_no_evil']} This secret has expired or been burned!",
+                f"{NINJA_EMOJIS['see_no_evil']} This secret has expired or been burned!",
                 show_alert=True
             )
             return
@@ -287,7 +287,7 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Whisper targets error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_targets']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_targets']}",
             show_alert=True
         )
 
@@ -314,7 +314,7 @@ async def handle_dashboard(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Dashboard error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_dashboard']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_dashboard']}",
             show_alert=True
         )
 
@@ -348,7 +348,7 @@ async def handle_stats(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Stats error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_stats']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_stats']}",
             show_alert=True
         )
 
@@ -375,11 +375,11 @@ async def handle_tutorial(client, callback_query: CallbackQuery):
         tutorial_keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    f"{MONKEY_EMOJIS['lightning']} {MONKEY_EMOJIS['thought']} Try Now",
+                    f"{NINJA_EMOJIS['lightning']} {NINJA_EMOJIS['thought']} Try Now",
                     switch_inline_query_current_chat=""
                 ),
                 InlineKeyboardButton(
-                    f"🏠 {MONKEY_EMOJIS['banana']} Dashboard",
+                    f"🏠 {NINJA_EMOJIS['shuriken']} Dashboard",
                     callback_data="whisper_dashboard"
                 )
             ]
@@ -393,7 +393,7 @@ async def handle_tutorial(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Tutorial error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_tutorial']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_tutorial']}",
             show_alert=True
         )
 
@@ -424,13 +424,13 @@ async def handle_styles(client, callback_query: CallbackQuery):
         styles_keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    f"{MONKEY_EMOJIS['lightning']} {MONKEY_EMOJIS['thought']} Try Styles",
-                    switch_inline_query_current_chat="@whispierbot test message @me !vip"
+                    f"{NINJA_EMOJIS['lightning']} {NINJA_EMOJIS['thought']} Try Styles",
+                    switch_inline_query_current_chat="@ninjasecretbot test message @me !vip"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    f"🏠 {MONKEY_EMOJIS['banana']} Dashboard",
+                    f"🏠 {NINJA_EMOJIS['shuriken']} Dashboard",
                     callback_data="whisper_dashboard"
                 )
             ]
@@ -444,7 +444,7 @@ async def handle_styles(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Styles error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_styles']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_styles']}",
             show_alert=True
         )
 
@@ -473,17 +473,17 @@ async def handle_help(client, callback_query: CallbackQuery):
         help_keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    f"{MONKEY_EMOJIS['monkey']} Tutorial",
+                    f"{NINJA_EMOJIS['ninja']} Tutorial",
                     callback_data="whisper_tutorial"
                 ),
                 InlineKeyboardButton(
-                    f"{MONKEY_EMOJIS['circus']} Styles Guide",
+                    f"{NINJA_EMOJIS['stealth']} Styles Guide",
                     callback_data="whisper_styles"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    f"🏠 {MONKEY_EMOJIS['banana']} Dashboard",
+                    f"🏠 {NINJA_EMOJIS['shuriken']} Dashboard",
                     callback_data="whisper_dashboard"
                 )
             ]
@@ -497,7 +497,7 @@ async def handle_help(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Help error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_help']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_help']}",
             show_alert=True
         )
 
@@ -518,7 +518,7 @@ async def handle_settings(client, callback_query: CallbackQuery):
         settings_keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    f"🏠 {MONKEY_EMOJIS['banana']} Dashboard",
+                    f"🏠 {NINJA_EMOJIS['shuriken']} Dashboard",
                     callback_data="whisper_dashboard"
                 )
             ]
@@ -532,6 +532,6 @@ async def handle_settings(client, callback_query: CallbackQuery):
     except Exception as e:
         print(f"Settings error: {e}")
         await callback_query.answer(
-            f"{MONKEY_EMOJIS['see_no_evil']} {_['whisper_error_settings']}",
+            f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_settings']}",
             show_alert=True
         )

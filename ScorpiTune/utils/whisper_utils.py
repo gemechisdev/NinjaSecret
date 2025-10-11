@@ -1,6 +1,6 @@
 """
-WhispierBot Utility Functions
-Handles whisper message processing, target resolution, and formatting
+Ninja Secret🥷 Utility Functions
+Handles secret message processing, target resolution, and formatting
 """
 
 import re
@@ -11,18 +11,18 @@ from pyrogram import enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 from strings import get_string
 
-# Monkey-themed emojis and styling
-MONKEY_EMOJIS = {
-    "monkey": "🐒",
-    "banana": "🍌",
-    "tree": "🌳",
+# Ninja-themed emojis and styling
+NINJA_EMOJIS = {
+    "ninja": "🥷",
+    "shuriken": "⭐",
+    "scroll": "📜",
     "thought": "💭",
     "whisper": "🤫",
     "fire": "🔥",
     "timer": "⏰",
     "crown": "👑",
     "heart": "💕",
-    "circus": "🎪",
+    "stealth": "🌙",
     "see_no_evil": "🙈",
     "hear_no_evil": "🙉",
     "speak_no_evil": "🙊",
@@ -148,15 +148,15 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     target_display = format_targets_display(targets)
     target_count = len([t for t in targets if t.get("type") != "all"]) if not any(t.get("type") == "all" for t in targets) else "∞"
 
-    style_emoji = f"{MONKEY_EMOJIS['whisper']}{MONKEY_EMOJIS['thought']}"
+    style_emoji = f"{NINJA_EMOJIS['whisper']}{NINJA_EMOJIS['thought']}"
     if modifiers.get('style') == 'vip':
-        style_emoji = f"{MONKEY_EMOJIS['crown']}{MONKEY_EMOJIS['banana']}"
+        style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
     elif modifiers.get('style') == 'cute':
-        style_emoji = f"{MONKEY_EMOJIS['monkey']}{MONKEY_EMOJIS['heart']}"
+        style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
     elif modifiers.get('burn_after_reading'):
-        style_emoji = f"💀{MONKEY_EMOJIS['fire']}"
+        style_emoji = f"💀{NINJA_EMOJIS['fire']}"
     elif modifiers.get('timer'):
-        style_emoji = f"{MONKEY_EMOJIS['timer']}{MONKEY_EMOJIS['monkey']}"
+        style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
 
     description_parts = []
     if target_count == "∞":
@@ -249,7 +249,7 @@ def create_whisper_keyboard(whisper_id: str) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} ʀᴇᴀᴅ sᴇᴄʀᴇᴛ {MONKEY_EMOJIS['thought']}",
+                f"{NINJA_EMOJIS['shuriken']} ʀᴇᴀᴅ sᴇᴄʀᴇᴛ {NINJA_EMOJIS['thought']}",
                 callback_data=f"whisper_view_{whisper_id}"
             )
         ]
@@ -262,31 +262,31 @@ def create_dashboard_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['thought']} sᴇɴᴅ sᴇᴄʀᴇᴛ {MONKEY_EMOJIS['banana']}",
+                f"{NINJA_EMOJIS['thought']} sᴇɴᴅ sᴇᴄʀᴇᴛ {NINJA_EMOJIS['shuriken']}",
                 switch_inline_query_current_chat=""
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} ǫᴜɪᴄᴋ ʟᴇᴀʀɴ",
+                f"{NINJA_EMOJIS['ninja']} ǫᴜɪᴄᴋ ʟᴇᴀʀɴ",
                 callback_data="whisper_tutorial"
             )
         ],
         [
             InlineKeyboardButton(
-                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ {MONKEY_EMOJIS['tree']}",
+                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ {NINJA_EMOJIS['scroll']}",
                 callback_data="whisper_settings"
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} sᴇᴄʀᴇᴛ sᴛᴀᴛs",
+                f"{NINJA_EMOJIS['shuriken']} sᴇᴄʀᴇᴛ sᴛᴀᴛs",
                 callback_data="whisper_stats"
             )
         ],
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['circus']} ғᴜɴ ᴍᴏᴅᴇs",
+                f"{NINJA_EMOJIS['stealth']} ғᴜɴ ᴍᴏᴅᴇs",
                 callback_data="whisper_styles"
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['tree']} ʜᴇʟᴘ ᴛʀᴇᴇ",
+                f"{NINJA_EMOJIS['scroll']} ʜᴇʟᴘ ᴛʀᴇᴇ",
                 callback_data="whisper_help"
             )
         ]
@@ -299,8 +299,8 @@ def create_empty_query_response(lang: str = "en") -> InlineQueryResultArticle:
     language = get_string(lang)
     return InlineQueryResultArticle(
         id="empty_query",
-        title=language["whisper_empty_title"].format(MONKEY_EMOJIS['monkey']),
-        description=language["whisper_empty_desc"].format(MONKEY_EMOJIS['monkey']),
+        title=language["whisper_empty_title"].format(NINJA_EMOJIS['ninja']),
+        description=language["whisper_empty_desc"].format(NINJA_EMOJIS['ninja']),
         thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
             message_text=create_empty_query_help_text(lang),
@@ -319,11 +319,11 @@ def create_empty_query_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} ᴛʀʏ ɴᴏᴡ {MONKEY_EMOJIS['thought']}",
+                f"{NINJA_EMOJIS['lightning']} ᴛʀʏ ɴᴏᴡ {NINJA_EMOJIS['thought']}",
                 switch_inline_query_current_chat="secret message @username"
             ),
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} ᴛᴜᴛᴏʀɪᴀʟ",
+                f"{NINJA_EMOJIS['ninja']} ᴛᴜᴛᴏʀɪᴀʟ",
                 callback_data="whisper_tutorial"
             )
         ]
@@ -349,9 +349,9 @@ def create_secret_revealed_text(content: str, sender_username: str, whisper_data
     if whisper_data.get("settings", {}).get("expires_at"):
         time_remaining = get_time_remaining_text(whisper_data["settings"]["expires_at"])
         if time_remaining != "ᴇxᴘɪʀᴇᴅ":
-            timer_info = f"\n{MONKEY_EMOJIS['timer']} {time_remaining} ʟᴇғᴛ"
+            timer_info = f"\n{NINJA_EMOJIS['timer']} {time_remaining} ʟᴇғᴛ"
 
-    return f'"{content}"{burn_info}{timer_info}\n\n{MONKEY_EMOJIS["monkey"]} ᴋᴇᴇᴘ ɪᴛ ʙᴇᴛᴡᴇᴇɴ ᴜs ᴍᴏɴᴋᴇʏs!'
+    return f'"{content}"{burn_info}{timer_info}\n\n{NINJA_EMOJIS["monkey"]} ᴋᴇᴇᴘ ɪᴛ ʙᴇᴛᴡᴇᴇɴ ᴜs ᴍᴏɴᴋᴇʏs!'
 
 def create_unauthorized_access_text(lang: str = "en") -> str:
     """Create text for unauthorized access attempt"""
@@ -363,7 +363,7 @@ def create_unauthorized_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['banana']} ᴄʀᴇᴀᴛᴇ sᴇᴄʀᴇᴛ",
+                f"{NINJA_EMOJIS['shuriken']} ᴄʀᴇᴀᴛᴇ sᴇᴄʀᴇᴛ",
                 switch_inline_query_current_chat=""
             )
         ]
@@ -378,10 +378,10 @@ def format_user_stats(stats: Dict, lang: str = "en") -> str:
         achievement_names = {
             "secret_swinger": f"🥇 sᴇᴄʀᴇᴛ sᴡɪɴɢᴇʀ (50+ sᴇᴄʀᴇᴛs)",
             "burn_master": f"💀 ʙᴜʀɴ ᴍᴀsᴛᴇʀ (10+ ᴠᴀɴɪsʜɪɴɢ ᴍᴇssᴀɢᴇs)",
-            "time_keeper": f"{MONKEY_EMOJIS['timer']} ᴛɪᴍᴇ ᴋᴇᴇᴘᴇʀ (5+ ᴛɪᴍᴇᴅ ᴅʀᴏᴘs)",
-            "social_butterfly": f"{MONKEY_EMOJIS['circus']} sᴏᴄɪᴀʟ ʙᴜᴛᴛᴇʀғʟʏ (20+ ɢʀᴏᴜᴘ sᴇᴄʀᴇᴛs)",
-            "whisper_rookie": f"{MONKEY_EMOJIS['banana']} ᴡʜɪsᴘᴇʀ ʀᴏᴏᴋɪᴇ (ғɪʀsᴛ sᴇᴄʀᴇᴛ!)",
-            "banana_collector": f"{MONKEY_EMOJIS['banana']} ʙᴀɴᴀɴᴀ ᴄᴏʟʟᴇᴄᴛᴏʀ (25+ ʀᴇᴄᴇɪᴠᴇᴅ)"
+            "time_keeper": f"{NINJA_EMOJIS['timer']} ᴛɪᴍᴇ ᴋᴇᴇᴘᴇʀ (5+ ᴛɪᴍᴇᴅ ᴅʀᴏᴘs)",
+            "social_butterfly": f"{NINJA_EMOJIS['stealth']} sᴏᴄɪᴀʟ ʙᴜᴛᴛᴇʀғʟʏ (20+ ɢʀᴏᴜᴘ sᴇᴄʀᴇᴛs)",
+            "whisper_rookie": f"{NINJA_EMOJIS['shuriken']} ᴡʜɪsᴘᴇʀ ʀᴏᴏᴋɪᴇ (ғɪʀsᴛ sᴇᴄʀᴇᴛ!)",
+            "banana_collector": f"{NINJA_EMOJIS['shuriken']} ʙᴀɴᴀɴᴀ ᴄᴏʟʟᴇᴄᴛᴏʀ (25+ ʀᴇᴄᴇɪᴠᴇᴅ)"
         }
 
         user_achievements = [achievement_names.get(ach, ach) for ach in stats["achievements"]]
@@ -410,17 +410,17 @@ def create_stats_keyboard(user_id: int) -> InlineKeyboardMarkup:
     buttons = [
         [
             InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['monkey']} ғᴜʟʟ sᴛᴀᴛs",
+                f"{NINJA_EMOJIS['ninja']} ғᴜʟʟ sᴛᴀᴛs",
                 callback_data=f"whisper_full_stats_{user_id}"
             ),
             InlineKeyboardButton(
-                f"🗑 ᴄʟᴇᴀɴ ᴊᴜɴɢʟᴇ {MONKEY_EMOJIS['tree']}",
+                f"🗑 ᴄʟᴇᴀɴ ᴊᴜɴɢʟᴇ {NINJA_EMOJIS['scroll']}",
                 callback_data="whisper_clean_history"
             )
         ],
         [
             InlineKeyboardButton(
-                f"🏠 ʜᴏᴍᴇ ᴛʀᴇᴇ {MONKEY_EMOJIS['banana']}",
+                f"🏠 ʜᴏᴍᴇ ᴛʀᴇᴇ {NINJA_EMOJIS['shuriken']}",
                 callback_data="whisper_dashboard"
             )
         ]

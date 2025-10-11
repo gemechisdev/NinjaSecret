@@ -1,6 +1,6 @@
 """
-WhispierBot Inline Query Handler
-Handles inline whisper message creation with monkey-themed responses
+Ninja Secret🥷 Inline Query Handler
+Handles inline secret message creation with ninja-themed responses
 """
 
 import asyncio
@@ -33,7 +33,7 @@ from ScorpiTune.utils.whisper_utils import (
     generate_whisper_id,
     create_whisper_keyboard,
     parse_whisper_command,
-    MONKEY_EMOJIS
+    NINJA_EMOJIS
 )
 
 def extract_message_and_target_with_modifiers(text: str):
@@ -409,7 +409,7 @@ def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle
     language = get_string(lang)
     return InlineQueryResultArticle(
         id="invalid_format",
-        title=f"{MONKEY_EMOJIS['see_no_evil']} {language['whisper_invalid_format_title']}",
+        title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_invalid_format_title']}",
         description=language['whisper_invalid_format_desc'],
         thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
@@ -418,7 +418,7 @@ def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle
         ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} {language['whisper_try_again']}",
+                f"{NINJA_EMOJIS['lightning']} {language['whisper_try_again']}",
                 switch_inline_query_current_chat=""
             )]
         ])
@@ -429,7 +429,7 @@ def create_no_targets_response(lang: str = "en") -> InlineQueryResultArticle:
     language = get_string(lang)
     return InlineQueryResultArticle(
         id="no_targets",
-        title=f"{MONKEY_EMOJIS['see_no_evil']} {language['whisper_no_targets_title']}",
+        title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_no_targets_title']}",
         description=language['whisper_no_targets_desc'],
         thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
@@ -438,7 +438,7 @@ def create_no_targets_response(lang: str = "en") -> InlineQueryResultArticle:
         ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} {language['whisper_try_again']}",
+                f"{NINJA_EMOJIS['lightning']} {language['whisper_try_again']}",
                 switch_inline_query_current_chat=""
             )]
         ])
@@ -449,7 +449,7 @@ def create_message_too_long_response(current_length: int, max_length: int, lang:
     language = get_string(lang)
     return InlineQueryResultArticle(
         id="message_too_long",
-        title=f"{MONKEY_EMOJIS['see_no_evil']} {language['whisper_message_too_long_title']}",
+        title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_message_too_long_title']}",
         description=language['whisper_message_too_long_desc'].format(current_length, max_length),
         thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
@@ -458,7 +458,7 @@ def create_message_too_long_response(current_length: int, max_length: int, lang:
         ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} {language['whisper_try_shorter']}",
+                f"{NINJA_EMOJIS['lightning']} {language['whisper_try_shorter']}",
                 switch_inline_query_current_chat=""
             )]
         ])
@@ -469,7 +469,7 @@ def create_error_response(lang: str = "en") -> InlineQueryResultArticle:
     language = get_string(lang)
     return InlineQueryResultArticle(
         id="error",
-        title=f"{MONKEY_EMOJIS['see_no_evil']} {language['whisper_something_wrong_title']}",
+        title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_something_wrong_title']}",
         description=language['whisper_something_wrong_desc'],
         thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
@@ -478,7 +478,7 @@ def create_error_response(lang: str = "en") -> InlineQueryResultArticle:
         ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} {language['whisper_try_again']}",
+                f"{NINJA_EMOJIS['lightning']} {language['whisper_try_again']}",
                 switch_inline_query_current_chat=""
             )]
         ])
@@ -536,7 +536,7 @@ def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = 
 
     return InlineQueryResultArticle(
         id="recent_targets_help",
-        title=f"{MONKEY_EMOJIS['monkey']} {language['whisper_recent_targets_title']}",
+        title=f"{NINJA_EMOJIS['ninja']} {language['whisper_recent_targets_title']}",
         description=language['whisper_recent_targets_desc'].format(len(recent_targets)),
         thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
@@ -545,7 +545,7 @@ def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = 
         ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
-                f"{MONKEY_EMOJIS['lightning']} {language['whisper_start_typing']}",
+                f"{NINJA_EMOJIS['lightning']} {language['whisper_start_typing']}",
                 switch_inline_query_current_chat=""
             )]
         ])
