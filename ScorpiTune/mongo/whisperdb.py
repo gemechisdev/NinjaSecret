@@ -1,5 +1,5 @@
 """
-WhispierBot Database Models
+Ninja Secret🥷 Database Models
 Handles secret message storage, targeting, timers, and burn-after-reading functionality
 """
 
