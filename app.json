@@ -1,13 +1,13 @@
 {
-    "name": "⛦ 🦋 𝐒𝐜𝐨𝐫𝐩𝐢𝐓𝐮𝐧𝐞 ✘ 𝐌𝐮𝐬𝐢𝐜 🦋 ⛦",
-    "description": "A Telegram Music Player Bot, written in Python with Pyrogram and Py-Tgcalls.",
+    "name": "⛦ 🥷 𝐍𝐢𝐧𝐣𝐚𝐒𝐞𝐜𝐫𝐞𝐭 ✘ 𝐁𝐨𝐭 🥷 ⛦",
+    "description": "A Telegram Secret Message Bot, written in Python with Pyrogram.",
     "logo": "https://te.legra.ph/file/62fa7c81c56c1ae31c844.jpg",
     "keywords": [
     "python3",
     "telegram",
     "bot",
-    "ScorpiTune",
-    "MusicBot",
+    "NinjaSecret",
+    "SecretBot",
     "telegram-bot",
     "pyrogram"
     ],
@@ -38,7 +38,7 @@
         "required": true
       },
       "STRING_SESSION": {
-        "description": "A Pyrogram v2 String Session from @ScorpiTuneSTRINGSESSION_BOT on Telegram.",
+        "description": "A Pyrogram v2 String Session. Generate one using string session generator bots on Telegram.",
         "value": "",
         "required": true
       },
