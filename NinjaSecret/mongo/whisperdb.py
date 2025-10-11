@@ -427,7 +427,7 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
                     "last_name": user.last_name
                 })
                 
-                display = user.first_name + (f" {user.last_name}" if user.last_name else "")
+                display = (user.first_name or "") + (f" {user.last_name}" if user.last_name else "")
                 if display.strip():
                     return target_id, username, display.strip()
             except Exception:
@@ -455,12 +455,14 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
                 "last_name": user.last_name
             })
 
-            display = user.first_name + (f" {user.last_name}" if user.last_name else "")
+            display = (user.first_name or "") + (f" {user.last_name}" if user.last_name else "")
             # Return early if bot succeeds and we have a proper display name
             if display.strip():
                 return target_id, username, display.strip()
-        except Exception:
+        except Exception as e:
             # Fallback to userbot if bot failed and userbot is available
+            # Log the error for debugging user resolution issues
+            print(f"Bot get_users failed for {ref}: {e}")
             if userbot:
                 try:
                     working_client = userbot.get_working_client()
@@ -478,11 +480,12 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
                             "last_name": user.last_name
                         })
 
-                        display = user.first_name + (f" {user.last_name}" if user.last_name else "")
+                        display = (user.first_name or "") + (f" {user.last_name}" if user.last_name else "")
                         if display.strip():
                             return target_id, username, display.strip()
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Log the error for debugging user resolution issues
+                    print(f"Userbot get_users failed for {ref}: {e}")
 
     # Fallback display if unresolved
     if not display or display == token:
