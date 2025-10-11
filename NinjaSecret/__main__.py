@@ -216,7 +216,7 @@ async def init():
             "Assistant client variables not defined, exiting...")
         exit()
 
-    LOGGER(__name__).info("Starting ScorpiTune initialization...")
+    LOGGER(__name__).info("Starting NinjaSecret initialization...")
 
     await sudo()
     try:
@@ -235,8 +235,8 @@ async def init():
 
     LOGGER(__name__).info("Importing modules...")
     for all_module in ALL_MODULES:
-        importlib.import_module("ScorpiTune.plugins" + all_module)
-    LOGGER("ScorpiTune.plugins").info("Successfully Imported Modules...")
+        importlib.import_module("NinjaSecret.plugins" + all_module)
+    LOGGER("NinjaSecret.plugins").info("Successfully Imported Modules...")
 
     LOGGER(__name__).info("Starting userbot with retry mechanism...")
     # Use retry mechanism for userbot start
@@ -254,17 +254,17 @@ async def init():
         LOGGER(__name__).error(f"Failed to start health server: {e}")
         # Don't exit on health server failure, bot can still work
 
-    LOGGER("ScorpiTune").info(
+    LOGGER("NinjaSecret").info(
         "Bot started successfully! Ready for whisper functionality."
     )
     await idle()
     
     # Cleanup
-    LOGGER("ScorpiTune").info("Stopping Bot...")
+    LOGGER("NinjaSecret").info("Stopping Bot...")
     await stop_health_server()
     await app.stop()
     await userbot.stop()
-    LOGGER("ScorpiTune").info("Bot stopped successfully")
+    LOGGER("NinjaSecret").info("Bot stopped successfully")
 
 
 if __name__ == "__main__":
