@@ -1,6 +1,6 @@
-# WhispierBot - Clean Bot Foundation
+# Ninja Secret🥷 - Clean Bot Foundation
 
-This is a cleaned version of the ScorpiTune music bot, optimized to serve as a foundation for the WhispierBot (whisper messaging functionality).
+This is a cleaned version of the NinjaSecret music bot, optimized to serve as a foundation for Ninja Secret (secret messaging functionality).
 
 ## What's Included
 
@@ -31,7 +31,7 @@ This is a cleaned version of the ScorpiTune music bot, optimized to serve as a f
 ## Directory Structure
 
 ```
-ScorpiTune/
+NinjaSecret/
 ├── core/           # Core bot functionality
 ├── plugins/        # Feature plugins
 │   ├── admins/     # Admin-only commands
@@ -50,7 +50,7 @@ ScorpiTune/
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd WhispierBot
+   cd NinjaSecret
    ```
 
 2. **Install dependencies**
@@ -66,7 +66,7 @@ ScorpiTune/
 
 4. **Run the bot**
    ```bash
-   python -m ScorpiTune
+   python -m NinjaSecret
    ```
 
 ## Configuration
@@ -79,22 +79,22 @@ Key environment variables to set:
 - `OWNER_ID`: Your Telegram user ID
 - `LOGGER_ID`: Log group/channel ID
 
-## Ready for Whisper Implementation
+## Ready for Secret Message Implementation
 
-The bot is now ready for implementing whisper functionality with:
+The bot is now ready for implementing secret message functionality with:
 - Clean codebase without music-related bloat
 - Established plugin architecture for easy feature addition
 - Working userbot system for message handling
-- Database integration for storing whisper data
+- Database integration for storing secret data
 - Proper error handling and logging
 
 ## Next Steps
 
-1. Implement whisper message functionality in `plugins/whisper/`
-2. Add whisper-specific database models in `mongo/`
-3. Create whisper-related utilities in `utils/`
-4. Update strings for whisper-specific messages
+1. Implement secret message functionality in `plugins/whisper/`
+2. Add secret-specific database models in `mongo/`
+3. Create secret-related utilities in `utils/`
+4. Update strings for secret-specific messages
 
 ## Support
 
-For issues and support, refer to the original ScorpiTune documentation or create issues in this repository.
+For issues and support, refer to the original NinjaSecret documentation or create issues in this repository.

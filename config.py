@@ -21,7 +21,7 @@ BOT_TOKEN = getenv(
 # Get your mongo url from cloud.mongodb.com
 MONGO_DB_URI = getenv(
     "MONGO_DB_URI", "mongodb+srv://venopyx:venopyx@cluster0.o4ijmrr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-BOT_NAME = getenv("BOT_NAME", "WhispierBot")
+BOT_NAME = getenv("BOT_NAME", "Ninja Secret🥷")
 PRIVATE_BOT_MODE = getenv("PRIVATE_BOT_MODE")
 
 # Auto-promotion settings

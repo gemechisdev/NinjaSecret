@@ -1,1 +1,0 @@
-# WhispierBot Whisper Plugin Package
