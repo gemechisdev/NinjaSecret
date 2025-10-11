@@ -217,6 +217,7 @@ async def handle_inline_query(client, query: InlineQuery):
                         "target_username": target.get("target_username"),
                         "target_id": target.get("target_id"),
                         "original_target_token": target_token,
+                        "all_targets": [(target.get("target_id"), target.get("target_username"), target_token)],
                         "target_mentions": target_mention
                     }
                     await store_whisper(store_data)
