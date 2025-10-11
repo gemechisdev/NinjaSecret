@@ -2,6 +2,7 @@ telethon==1.33.1
 aiofiles
 aiohttp==3.9.3
 dnspython==2.3.0
+fastapi
 heroku3
 motor
 pillow>=10.0.0
@@ -15,4 +16,5 @@ tgcrypto
 httpx==0.25.2
 requests
 unidecode
+uvicorn
 https://github.com/KurimuzonAkuma/pyrogram/archive/v2.1.23.zip
