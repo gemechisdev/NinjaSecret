@@ -23,7 +23,7 @@ assistantids = []
 class Userbot(Client):
     def __init__(self):
         self.one = Client(
-            name="ScorpiTune1",
+            name="NinjaSecret1",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING1),
@@ -32,7 +32,7 @@ class Userbot(Client):
         )
 
         self.two = Client(
-            name="ScorpiTune2",
+            name="NinjaSecret2",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING2),
@@ -40,7 +40,7 @@ class Userbot(Client):
             ipv6=False,
         )
         self.three = Client(
-            name="ScorpiTune3",
+            name="NinjaSecret3",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING3),
@@ -48,7 +48,7 @@ class Userbot(Client):
             ipv6=False,
         )
         self.four = Client(
-            name="ScorpiTune4",
+            name="NinjaSecret4",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING4),
@@ -56,7 +56,7 @@ class Userbot(Client):
             ipv6=False,
         )
         self.five = Client(
-            name="ScorpiTune5",
+            name="NinjaSecret5",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING5),

@@ -54,7 +54,7 @@ class HealthServer:
                         "percent": round((disk_info.used / disk_info.total) * 100, 2)
                     }
                 },
-                "service": "ScorpiTune Telegram Bot",
+                "service": "NinjaSecret Telegram Bot",
                 "version": "1.0.0"
             }
             
@@ -66,7 +66,7 @@ class HealthServer:
                 "status": "unhealthy",
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "error": str(e),
-                "service": "ScorpiTune Telegram Bot"
+                "service": "NinjaSecret Telegram Bot"
             }
             return web.json_response(error_data, status=500)
     
@@ -77,7 +77,7 @@ class HealthServer:
                 "message": "pong",
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "uptime_seconds": int(time.time() - self.start_time),
-                "service": "ScorpiTune Telegram Bot"
+                "service": "NinjaSecret Telegram Bot"
             }
             return web.json_response(ping_data, status=200)
             
@@ -92,7 +92,7 @@ class HealthServer:
     async def root(self, request):
         """Root endpoint with basic info"""
         root_data = {
-            "service": "ScorpiTune Telegram Bot",
+            "service": "NinjaSecret Telegram Bot",
             "status": "running",
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "endpoints": {

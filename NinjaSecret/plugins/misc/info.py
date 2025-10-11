@@ -71,8 +71,8 @@ async def get_userinfo_img(
 
 # --------------------------------------------------------------------------------- #
 
-bg_path = "ScorpiTune/assets/userinfo.png"
-font_path = "ScorpiTune/assets/hiroko.ttf"
+bg_path = "NinjaSecret/assets/userinfo.png"
+font_path = "NinjaSecret/assets/hiroko.ttf"
 
 # --------------------------------------------------------------------------------- #
 
