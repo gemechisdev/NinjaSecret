@@ -1,6 +1,6 @@
 telethon==1.33.1
 aiofiles
-aiohttp==3.9.3
+aiohttp==3.13.1
 dnspython==2.3.0
 fastapi
 heroku3
