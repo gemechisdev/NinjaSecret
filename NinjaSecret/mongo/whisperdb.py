@@ -518,17 +518,41 @@ async def get_user_by_id(user_id: int) -> Optional[Dict]:
     return await users_db.find_one({"user_id": user_id})
 
 # Recent Targets Functions
-async def store_recent_target(sender_id: int, target_id: int, target_username: str = None, target_display: str = None):
-    """Store a recent target for a user (up to 10 most recent)"""
+async def store_recent_target(sender_id: int, target_id: int = None, target_username: str = None, target_display: str = None, original_token: str = None):
+    """Store a recent target for a user (up to 10 most recent)
+    
+    Args:
+        sender_id: User ID of the sender
+        target_id: Resolved target user ID (can be None)
+        target_username: Target's username (can be None)
+        target_display: Target's display name (can be None)
+        original_token: Original token used (@username or user_id) - stored for future resolution
+    """
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
 
-    # Ensure target_id is an integer for consistent comparison
-    target_id = int(target_id) if target_id else None
-    if not target_id:
-        return  # Skip if no valid target_id
+    # Ensure target_id is an integer for consistent comparison if provided
+    if target_id:
+        target_id = int(target_id)
+    
+    # We need at least target_id OR original_token to store
+    if not target_id and not original_token:
+        return  # Skip if we have nothing to store
+    
+    # If we only have original_token (unresolved), extract username or ID from it
+    if not target_id and original_token:
+        # If original_token is a username, extract it
+        if original_token.startswith("@"):
+            if not target_username:
+                target_username = original_token[1:]  # Remove @ prefix
+        # If original_token is a numeric ID, try to use it
+        elif original_token.isdigit():
+            try:
+                target_id = int(original_token)
+            except (ValueError, TypeError):
+                pass
 
-    # Try to get the most up-to-date user information
+    # Try to get the most up-to-date user information if we have target_id
     if target_id and not target_display:
         try:
             cached_user = await get_user_by_id(target_id)
@@ -541,16 +565,21 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
         except Exception:
             pass
 
-    # Create target data
+    # Create target data - store original_token for future resolution
     target_data = {
         "target_id": target_id,
         "target_username": target_username,
         "target_display": target_display or None,  # Allow None - will be resolved later
+        "original_token": original_token,  # Store for future resolution
         "last_used": datetime.utcnow()
     }
 
     # Get current recent targets for user
     user_targets = await recent_targets_db.find_one({"user_id": sender_id})
+
+    # Create a unique key for deduplication
+    # Use target_id if available, otherwise use original_token
+    unique_key = target_id if target_id else original_token
 
     if not user_targets:
         # Create new record
@@ -562,7 +591,14 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
         targets = user_targets.get("targets", [])
 
         # Remove existing target if present (to update position)
-        targets = [t for t in targets if t.get("target_id") != target_id]
+        # Match by target_id if both have it, otherwise by original_token
+        targets = [
+            t for t in targets 
+            if not (
+                (target_id and t.get("target_id") == target_id) or
+                (not target_id and t.get("original_token") == original_token)
+            )
+        ]
 
         # Add new target at the beginning (most recent)
         targets.insert(0, target_data)
