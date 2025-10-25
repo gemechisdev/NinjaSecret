@@ -201,8 +201,8 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Create proper mention for the message
                     target_display = target.get("target_display")
                     if not target_display:
-                        # Use zero-width space placeholder - Telegram will show real name in chat
-                        target_display = "\u200b"
+                        # Use user ID as placeholder for mention text
+                        target_display = str(target_id)
 
                     # Create mention with tg://user?id= format
                     if target_id:
@@ -268,21 +268,19 @@ async def handle_inline_query(client, query: InlineQuery):
                 target_id, target_username, display_name = await resolve_target(token, app)
                 resolved_targets.append((target_id, target_username, token))
                 
-                # When display_name is None but we have target_id, use a placeholder
-                # Telegram will resolve this to the actual name when displayed in chat
+                # When display_name is None but we have target_id, use user ID as placeholder
                 if display_name:
                     display_names.append(display_name)
                 elif target_id:
-                    # Use a hidden character placeholder - Telegram's mention will show real name
-                    display_names.append("\u200b")  # Zero-width space as placeholder
+                    # Use user ID as placeholder for display
+                    display_names.append(str(target_id))
                 else:
                     display_names.append(token)
 
                 # Create mention for the message (using Markdown format)
                 if target_id:
-                    # Use zero-width space as placeholder if no display name
-                    # Telegram will replace this with the user's actual name
-                    placeholder = display_name if display_name else "\u200b"
+                    # Use user ID as placeholder if no display name - more informative than zero-width space
+                    placeholder = display_name if display_name else str(target_id)
                     mention = f"[{placeholder}](tg://user?id={target_id})"
                     target_mentions.append(mention)
                 else:
@@ -517,14 +515,14 @@ def create_recent_target_suggestion_with_id(target: Dict, message_content: str, 
     target_username = target.get("target_username")
     target_display = target.get("target_display")
     if not target_display:
-        # Use zero-width space placeholder - Telegram will show real name in chat
-        target_display = "\u200b"
+        # Use user ID for display
+        target_display = str(target_id)
 
     language = get_string(lang)
 
     return InlineQueryResultArticle(
         id=whisper_id,
-        title=language['whisper_recent_secret_for'].format(target_display if target_display != "\u200b" else f"ID {target_id}"),
+        title=language['whisper_recent_secret_for'].format(target_display),
         description=language['whisper_recent_click_desc'],
         thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
