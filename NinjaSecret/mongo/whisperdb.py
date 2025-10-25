@@ -531,6 +531,9 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
 
+    # Ensure sender_id is an integer for consistent MongoDB queries
+    sender_id = int(sender_id)
+    
     # Ensure target_id is an integer for consistent comparison if provided
     if target_id:
         target_id = int(target_id)
@@ -630,6 +633,9 @@ async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
     """Get recent targets for a user"""
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
+
+    # Ensure user_id is an integer for consistent MongoDB queries
+    user_id = int(user_id)
 
     user_targets = await recent_targets_db.find_one({"user_id": user_id})
 
