@@ -58,9 +58,6 @@ SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/moonlight_familyplus")
 # Port for the main wrapper service (uvicorn)
 PORT = int(getenv("PORT", 8000))
 
-# Set this to True if you want the assistant to automatically leave chats after an interval
-AUTO_LEAVING_ASSISTANT = bool(getenv("AUTO_LEAVING_ASSISTANT", False))
-
 # Auto Gcast/Broadcast Handler (True = broadcast on , False = broadcast off During Hosting, Dont Do anything here.)
 AUTO_GCAST = os.getenv("AUTO_GCAST")
 
@@ -92,20 +89,10 @@ MIN_INTERVAL_BETWEEN_REQUESTS = float(os.getenv("MIN_INTERVAL_BETWEEN_REQUESTS",
 
 # Bot startup retry configuration for flood wait errors
 BOT_STARTUP_MAX_RETRIES = int(os.getenv("BOT_STARTUP_MAX_RETRIES", 5))
-USERBOT_STARTUP_MAX_RETRIES = int(os.getenv("USERBOT_STARTUP_MAX_RETRIES", 3))
-HOTTY_STARTUP_MAX_RETRIES = int(os.getenv("HOTTY_STARTUP_MAX_RETRIES", 3))
 FLOOD_WAIT_SAFETY_BUFFER = int(os.getenv("FLOOD_WAIT_SAFETY_BUFFER", 30))  # Extra seconds to wait beyond required time
 
 # File size limits (in bytes)
 TG_FILESIZE_LIMIT = int(getenv("TG_FILESIZE_LIMIT", 104857600))  # 100MB default
-
-
-# Get your pyrogram v2 session from @BRANDEDSTRINGSESSION_BOT on Telegram
-STRING1 = getenv("STRING_SESSION",  "BAF0ctQAB-xFD6ZIKRfll6f9xE1lB16VW5wEeDceDwSkpAVASzxnqQn0BLjiEq2qZxNI__RS9JDl3qeo5UDEinMTbWH2rmpkacdD274mA-72Y3-G3Gx24hB5XtwfaLSukLmNU3aUHOQkXpPDCilEajuMnjt4FI3tQQLRgPl_P2p70A3iW0l3UVJQnz4zItIuZxY_0Tx3E4wiE6XmDMA3AL2uVAuyE5Mfmd8MQMhx-tcXjJaYp2k_Vk7C3QYbM2g647Yl14pcueynYZsgv2zDWzCe-NNmxUrvj82vhVxZonFtOGqLBhHBr8GWOIPJCYhzVYzdTWB_YhR54VLXkdAj9tJV97GynQAAAAHLeZrqAA")
-STRING2 = getenv("STRING_SESSION2", None)
-STRING3 = getenv("STRING_SESSION3", None)
-STRING4 = getenv("STRING_SESSION4", None)
-STRING5 = getenv("STRING_SESSION5", None)
 
 
 BANNED_USERS = filters.user()
