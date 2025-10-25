@@ -577,10 +577,6 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
     # Get current recent targets for user
     user_targets = await recent_targets_db.find_one({"user_id": sender_id})
 
-    # Create a unique key for deduplication
-    # Use target_id if available, otherwise use original_token
-    unique_key = target_id if target_id else original_token
-
     if not user_targets:
         # Create new record
         await recent_targets_db.insert_one({
@@ -600,7 +596,7 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
             if not (
                 # Match by target_id if both new and existing have it
                 (target_id and t.get("target_id") and t.get("target_id") == target_id) or
-                # Match by original_token if both have it and target_ids don't match
+                # Match by original_token if both have it
                 (original_token and t.get("original_token") and t.get("original_token") == original_token)
             )
         ]
