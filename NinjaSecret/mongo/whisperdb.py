@@ -6,6 +6,10 @@ Handles secret message storage, targeting, timers, and burn-after-reading functi
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Union
 from NinjaSecret.core.mongo import mongodb
+from NinjaSecret.logging import LOGGER
+
+# Get logger for this module
+logger = LOGGER(__name__)
 
 # Collections
 whisperdb = mongodb.whispers
@@ -533,24 +537,25 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
 
     # Validate and ensure sender_id is an integer for consistent MongoDB queries
     if sender_id is None:
-        print("ERROR: sender_id cannot be None")
+        logger.error("sender_id cannot be None")
         return
     try:
         sender_id = int(sender_id)
     except (ValueError, TypeError) as e:
-        print(f"ERROR: Invalid sender_id value '{sender_id}': {e}")
+        logger.error(f"Invalid sender_id value '{sender_id}': {e}")
         return
     
     # Ensure target_id is an integer for consistent comparison if provided
     if target_id:
         try:
             target_id = int(target_id)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to convert target_id '{target_id}' to int: {e}")
             target_id = None
     
     # We need at least target_id OR original_token to store
     if not target_id and not original_token:
-        print(f"Warning: Skipping store_recent_target for user {sender_id} - both target_id and original_token are None")
+        logger.warning(f"Skipping store_recent_target for user {sender_id} - both target_id and original_token are None")
         return  # Skip if we have nothing to store
     
     # If we only have original_token (unresolved), extract username or ID from it
@@ -598,9 +603,9 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
             "targets": [target_data]
         })
         if result.inserted_id:
-            print(f"✓ Created new recent targets record for user {sender_id} with target {target_id or original_token}")
+            logger.info(f"✓ Created new recent targets record for user {sender_id} with target {target_id or original_token}")
         else:
-            print(f"✗ Failed to create recent targets record for user {sender_id}")
+            logger.error(f"✗ Failed to create recent targets record for user {sender_id}")
     else:
         targets = user_targets.get("targets", [])
 
@@ -633,11 +638,11 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
             {"$set": {"targets": targets}}
         )
         if result.modified_count > 0:
-            print(f"✓ Updated recent targets for user {sender_id}: removed {removed_count} duplicate(s), now have {len(targets)} target(s), target: {target_id or original_token}")
+            logger.info(f"✓ Updated recent targets for user {sender_id}: removed {removed_count} duplicate(s), now have {len(targets)} target(s), target: {target_id or original_token}")
         elif result.matched_count > 0:
-            print(f"⚠ Matched but not modified recent targets for user {sender_id} (data unchanged?): target {target_id or original_token}")
+            logger.warning(f"⚠ Matched but not modified recent targets for user {sender_id} (data unchanged?): target {target_id or original_token}")
         else:
-            print(f"✗ Failed to update recent targets for user {sender_id} - no document matched")
+            logger.error(f"✗ Failed to update recent targets for user {sender_id} - no document matched")
 
 async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
     """Get recent targets for a user"""
@@ -646,12 +651,12 @@ async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
 
     # Validate and ensure user_id is an integer for consistent MongoDB queries
     if user_id is None:
-        print("ERROR: user_id cannot be None in get_recent_targets")
+        logger.error("user_id cannot be None in get_recent_targets")
         return []
     try:
         user_id = int(user_id)
     except (ValueError, TypeError) as e:
-        print(f"ERROR: Invalid user_id value '{user_id}' in get_recent_targets: {e}")
+        logger.error(f"Invalid user_id value '{user_id}' in get_recent_targets: {e}")
         return []
 
     user_targets = await recent_targets_db.find_one({"user_id": user_id})

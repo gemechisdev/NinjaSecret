@@ -17,6 +17,7 @@ from pyrogram.types import (
 from strings import get_string
 
 from NinjaSecret import app
+from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import (
     store_whisper,
     resolve_target,
@@ -35,6 +36,9 @@ from NinjaSecret.utils.whisper_utils import (
     parse_whisper_command,
     NINJA_EMOJIS
 )
+
+# Get logger for this module
+logger = LOGGER(__name__)
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -400,7 +404,7 @@ async def handle_chosen_inline_result(client, chosen_result):
         from NinjaSecret.mongo.whisperdb import get_whisper
         whisper = await get_whisper(whisper_id)
         if not whisper:
-            print(f"Warning: Whisper not found for ID {whisper_id}")
+            logger.warning(f"Whisper not found for ID {whisper_id}")
             return
             
         # Get all targets from the whisper
@@ -411,7 +415,7 @@ async def handle_chosen_inline_result(client, chosen_result):
             all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
         
         if not all_targets:
-            print(f"Warning: No targets found in whisper {whisper_id} for user {whisper.get('sender_id')}")
+            logger.warning(f"No targets found in whisper {whisper_id} for user {whisper.get('sender_id')}")
             return
         
         # Store recent target for each actual target (excluding @all/@everyone)
@@ -437,7 +441,7 @@ async def handle_chosen_inline_result(client, chosen_result):
                         target_display = resolved_display
                         target_username = resolved_username
                 except Exception as e:
-                    print(f"Warning: Failed to resolve target {target_id}: {e}")
+                    logger.warning(f"Failed to resolve target {target_id}: {e}")
             
             # Store the target with original_token for future resolution
             # This allows storing unresolved targets (username-only) for later resolution
@@ -451,15 +455,15 @@ async def handle_chosen_inline_result(client, chosen_result):
                 )
                 targets_stored += 1
             except Exception as e:
-                print(f"ERROR: Failed to store recent target for user {whisper['sender_id']}: target_id={target_id}, original_token={original_token}, error={e}")
+                logger.error(f"Failed to store recent target for user {whisper['sender_id']}: target_id={target_id}, original_token={original_token}, error={e}")
                 import traceback
                 traceback.print_exc()
         
         if targets_stored > 0:
-            print(f"Successfully stored {targets_stored} recent target(s) for user {whisper.get('sender_id')}")
+            logger.info(f"Successfully stored {targets_stored} recent target(s) for user {whisper.get('sender_id')}")
 
     except Exception as e:
-        print(f"ERROR in handle_chosen_inline_result: {e}")
+        logger.error(f"Error in handle_chosen_inline_result: {e}")
         import traceback
         traceback.print_exc()
 
