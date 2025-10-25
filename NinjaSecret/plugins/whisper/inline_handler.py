@@ -17,6 +17,7 @@ from pyrogram.types import (
 from strings import get_string
 
 from NinjaSecret import app
+from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import (
     store_whisper,
     resolve_target,
@@ -35,6 +36,9 @@ from NinjaSecret.utils.whisper_utils import (
     parse_whisper_command,
     NINJA_EMOJIS
 )
+
+# Get logger for this module
+logger = LOGGER(__name__)
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -399,40 +403,49 @@ async def handle_chosen_inline_result(client, chosen_result):
         # Store recent targets regardless of inline_message_id availability
         from NinjaSecret.mongo.whisperdb import get_whisper
         whisper = await get_whisper(whisper_id)
-        if whisper:
-            # Get all targets from the whisper
-            all_targets = whisper.get("all_targets", [])
+        if not whisper:
+            logger.warning(f"Whisper not found for ID {whisper_id}")
+            return
             
-            # If all_targets is not available, fallback to single target
-            if not all_targets and whisper.get("target_id"):
-                all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+        # Get all targets from the whisper
+        all_targets = whisper.get("all_targets", [])
+        
+        # If all_targets is not available, fallback to single target
+        if not all_targets and whisper.get("target_id"):
+            all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+        
+        if not all_targets:
+            logger.warning(f"No targets found in whisper {whisper_id} for user {whisper.get('sender_id')}")
+            return
+        
+        # Store recent target for each actual target (excluding @all/@everyone)
+        targets_stored = 0
+        for target_id, target_username, original_token in all_targets:
+            # Skip only @all/@everyone special targets
+            if original_token and original_token.lower() in ["@all", "@everyone"]:
+                continue
             
-            # Store recent target for each actual target (excluding @all/@everyone)
-            for target_id, target_username, original_token in all_targets:
-                # Skip only @all/@everyone special targets
-                if original_token and original_token.lower() in ["@all", "@everyone"]:
-                    continue
-                
-                # Ensure target_id is an integer for consistent comparison (if provided)
-                if target_id:
-                    try:
-                        target_id = int(target_id)
-                    except (ValueError, TypeError):
-                        target_id = None
-                
-                # Try to get fresh user information if target_id is available
-                target_display = None
-                if target_id:
-                    try:
-                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
-                        if resolved_display:
-                            target_display = resolved_display
-                            target_username = resolved_username
-                    except Exception as e:
-                        pass
-                
-                # Store the target with original_token for future resolution
-                # This allows storing unresolved targets (username-only) for later resolution
+            # Ensure target_id is an integer for consistent comparison (if provided)
+            if target_id:
+                try:
+                    target_id = int(target_id)
+                except (ValueError, TypeError):
+                    target_id = None
+            
+            # Try to get fresh user information if target_id is available
+            target_display = None
+            if target_id:
+                try:
+                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
+                    if resolved_display:
+                        target_display = resolved_display
+                        target_username = resolved_username
+                except Exception as e:
+                    logger.warning(f"Failed to resolve target {target_id}: {e}")
+            
+            # Store the target with original_token for future resolution
+            # This allows storing unresolved targets (username-only) for later resolution
+            try:
                 await store_recent_target(
                     sender_id=whisper["sender_id"],
                     target_id=target_id,
@@ -440,9 +453,15 @@ async def handle_chosen_inline_result(client, chosen_result):
                     target_display=target_display,
                     original_token=original_token
                 )
+                targets_stored += 1
+            except Exception:
+                logger.exception(f"Failed to store recent target for user {whisper['sender_id']}: target_id={target_id}, original_token={original_token}")
+        
+        if targets_stored > 0:
+            logger.info(f"Successfully stored {targets_stored} recent target(s) for user {whisper.get('sender_id')}")
 
-    except Exception as e:
-        print(f"Chosen inline result error: {e}")
+    except Exception:
+        logger.exception("Error in handle_chosen_inline_result")
 
 def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle:
     """Create response for invalid format"""
