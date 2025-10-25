@@ -454,18 +454,14 @@ async def handle_chosen_inline_result(client, chosen_result):
                     original_token=original_token
                 )
                 targets_stored += 1
-            except Exception as e:
-                logger.error(f"Failed to store recent target for user {whisper['sender_id']}: target_id={target_id}, original_token={original_token}, error={e}")
-                import traceback
-                traceback.print_exc()
+            except Exception:
+                logger.exception(f"Failed to store recent target for user {whisper['sender_id']}: target_id={target_id}, original_token={original_token}")
         
         if targets_stored > 0:
             logger.info(f"Successfully stored {targets_stored} recent target(s) for user {whisper.get('sender_id')}")
 
-    except Exception as e:
-        logger.error(f"Error in handle_chosen_inline_result: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Error in handle_chosen_inline_result")
 
 def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle:
     """Create response for invalid format"""
