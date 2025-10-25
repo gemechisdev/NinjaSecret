@@ -476,11 +476,15 @@ async def resolve_target(token: str, app, chat_id=None) -> tuple:
                     if first_name:
                         display = first_name + (f" {last_name}" if last_name else "")
                     else:
-                        display = f"User {target_id}"
+                        # Return None for display - let the mention format handle it
+                        # Telegram will show the real name when displayed in chat
+                        display = None
                 else:
-                    display = f"User {target_id}"
+                    # Return None for display - let the mention format handle it
+                    display = None
             except Exception:
-                display = f"User {target_id}"
+                # Return None for display - let the mention format handle it
+                display = None
         elif username:
             display = f"@{username}"
         else:
@@ -541,7 +545,7 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
     target_data = {
         "target_id": target_id,
         "target_username": target_username,
-        "target_display": target_display or f"User {target_id}",
+        "target_display": target_display or None,  # Allow None - will be resolved later
         "last_used": datetime.utcnow()
     }
 

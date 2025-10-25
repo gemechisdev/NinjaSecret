@@ -201,8 +201,8 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Create proper mention for the message
                     target_display = target.get("target_display")
                     if not target_display:
-                        language = get_string("en")
-                        target_display = language['whisper_user_fallback'].format(target_id)
+                        # Use zero-width space placeholder - Telegram will show real name in chat
+                        target_display = "\u200b"
 
                     # Create mention with tg://user?id= format
                     if target_id:
@@ -267,12 +267,23 @@ async def handle_inline_query(client, query: InlineQuery):
             else:
                 target_id, target_username, display_name = await resolve_target(token, app)
                 resolved_targets.append((target_id, target_username, token))
-                # Use the display name returned by resolve_target (it handles all cases properly)
-                display_names.append(display_name or token)
+                
+                # When display_name is None but we have target_id, use a placeholder
+                # Telegram will resolve this to the actual name when displayed in chat
+                if display_name:
+                    display_names.append(display_name)
+                elif target_id:
+                    # Use a hidden character placeholder - Telegram's mention will show real name
+                    display_names.append("\u200b")  # Zero-width space as placeholder
+                else:
+                    display_names.append(token)
 
                 # Create mention for the message (using Markdown format)
                 if target_id:
-                    mention = f"[{display_name or token}](tg://user?id={target_id})"
+                    # Use zero-width space as placeholder if no display name
+                    # Telegram will replace this with the user's actual name
+                    placeholder = display_name if display_name else "\u200b"
+                    mention = f"[{placeholder}](tg://user?id={target_id})"
                     target_mentions.append(mention)
                 else:
                     target_mentions.append(display_name or token)
@@ -389,15 +400,16 @@ async def handle_chosen_inline_result(client, chosen_result):
                     target_display = None
                     try:
                         resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
-                        if resolved_display and resolved_display != f"User {target_id}":
+                        if resolved_display:
                             target_display = resolved_display
                             target_username = resolved_username
                     except Exception as e:
                         pass
                     
-                    # Fallback to cached display name if resolution failed
+                    # If no display name, just use a placeholder
+                    # Telegram mentions will show the real name
                     if not target_display:
-                        target_display = get_string("en")['whisper_user_fallback'].format(target_id)
+                        target_display = None
                     
                     await store_recent_target(
                         sender_id=whisper["sender_id"],
@@ -505,16 +517,16 @@ def create_recent_target_suggestion_with_id(target: Dict, message_content: str, 
     target_username = target.get("target_username")
     target_display = target.get("target_display")
     if not target_display:
-        language = get_string(lang)
-        target_display = language['whisper_user_fallback'].format(target_id)
+        # Use zero-width space placeholder - Telegram will show real name in chat
+        target_display = "\u200b"
 
     language = get_string(lang)
 
     return InlineQueryResultArticle(
         id=whisper_id,
-        title=language['whisper_recent_secret_for'].format(target_display),
+        title=language['whisper_recent_secret_for'].format(target_display if target_display != "\u200b" else f"ID {target_id}"),
         description=language['whisper_recent_click_desc'],
-        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Kkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
+        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
             message_text=create_recent_target_whisper_message(target_display, target_id, lang),
             parse_mode=enums.ParseMode.MARKDOWN
@@ -529,13 +541,15 @@ def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = 
     targets_list = []
     for i, target in enumerate(recent_targets[:5], 1):
         target_display = target.get("target_display")
+        target_id = target.get('target_id')
         if not target_display:
-            target_display = language['whisper_user_fallback'].format(target.get('target_id'))
+            # Use ID as fallback for display purposes only
+            target_display = f"ID {target_id}"
 
         if target.get("target_username"):
             targets_list.append(f"{i}. {target_display} (@{target['target_username']})")
         else:
-            targets_list.append(f"{i}. {target_display} (ID: {target.get('target_id')})")
+            targets_list.append(f"{i}. {target_display}")
 
     targets_text = "\n".join(targets_list) if targets_list else language['whisper_no_recent_targets']
 
