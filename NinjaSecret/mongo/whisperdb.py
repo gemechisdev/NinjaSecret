@@ -580,11 +580,14 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
 
     if not user_targets:
         # Create new record
-        await recent_targets_db.insert_one({
+        result = await recent_targets_db.insert_one({
             "user_id": sender_id,
             "targets": [target_data]
         })
-        print(f"Created new recent targets record for user {sender_id} with target {target_id or original_token}")
+        if result.inserted_id:
+            print(f"✓ Created new recent targets record for user {sender_id} with target {target_id or original_token}")
+        else:
+            print(f"✗ Failed to create recent targets record for user {sender_id}")
     else:
         targets = user_targets.get("targets", [])
 
@@ -616,7 +619,12 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
             {"user_id": sender_id},
             {"$set": {"targets": targets}}
         )
-        print(f"Updated recent targets for user {sender_id}: removed {removed_count} duplicate(s), now have {len(targets)} target(s), target: {target_id or original_token}")
+        if result.modified_count > 0:
+            print(f"✓ Updated recent targets for user {sender_id}: removed {removed_count} duplicate(s), now have {len(targets)} target(s), target: {target_id or original_token}")
+        elif result.matched_count > 0:
+            print(f"⚠ Matched but not modified recent targets for user {sender_id} (data unchanged?): target {target_id or original_token}")
+        else:
+            print(f"✗ Failed to update recent targets for user {sender_id} - no document matched")
 
 async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
     """Get recent targets for a user"""
