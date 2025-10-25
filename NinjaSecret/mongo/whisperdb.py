@@ -591,12 +591,17 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
         targets = user_targets.get("targets", [])
 
         # Remove existing target if present (to update position)
-        # Match by target_id if both have it, otherwise by original_token
+        # Match by target_id OR original_token to handle all scenarios:
+        # - Same target sent again (exact match)
+        # - Previously unresolved target now resolved (original_token match)
+        # - Different representation of same user (target_id match)
         targets = [
             t for t in targets 
             if not (
-                (target_id and t.get("target_id") == target_id) or
-                (not target_id and t.get("original_token") == original_token)
+                # Match by target_id if both new and existing have it
+                (target_id and t.get("target_id") and t.get("target_id") == target_id) or
+                # Match by original_token if both have it and target_ids don't match
+                (original_token and t.get("original_token") and t.get("original_token") == original_token)
             )
         ]
 
