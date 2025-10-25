@@ -370,15 +370,17 @@ async def check_and_award_achievements(user_id: int):
 
     return new_achievements
 
-async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
+async def resolve_target(token: str, app, chat_id=None) -> tuple:
     """
     Resolve a single target token to (target_id, username, display_name)
     
     Args:
         token: Target identifier (@username or user_id)
         app: Bot client
-        userbot: Userbot client (optional, used as fallback)
         chat_id: Chat ID where the query was made (optional, for optimization)
+    
+    Returns:
+        tuple: (target_id, username, display_name)
     """
     username = None
     target_id = None
@@ -404,14 +406,13 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
             if display.strip():
                 return target_id, username, display.strip()
 
-    # OPTIMIZATION: Try to resolve from chat members first if chat_id is provided
+    # PRIORITY: Try to resolve from chat members first if chat_id is provided
+    # This gets first name, last name, and username from user ID if they're a chat member
     if chat_id and (username or target_id):
         try:
-            # Try to get chat members and find the user
-            # This is much faster than using userbot for each user
             ref = username if username else target_id
             
-            # Try to get the specific member directly
+            # Try to get the specific member directly using get_chat_member
             try:
                 member = await app.get_chat_member(chat_id, ref)
                 user = member.user
@@ -438,10 +439,9 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
             # Chat members fetch failed, continue to other methods
             pass
 
-    # Try to resolve via Telegram API (bot first, then userbot as fallback)
+    # Fallback: Try to resolve via bot's get_users API
     ref = username if username else target_id
     if ref:
-        # Try bot first
         try:
             user = await app.get_users(ref)
             target_id = user.id
@@ -461,32 +461,8 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
             if display.strip():
                 return target_id, username, display.strip()
         except Exception as e:
-            # Fallback to userbot if bot failed and userbot is available
             # Log the error for debugging user resolution issues
             print(f"Bot get_users failed for {ref}: {e}")
-            if userbot:
-                try:
-                    working_client = userbot.get_working_client()
-                    if working_client:
-                        user = await working_client.get_users(ref)
-                        target_id = user.id
-                        if user.username:
-                            username = user.username.lower()
-
-                        # Cache user information
-                        await upsert_user({
-                            "user_id": user.id,
-                            "username": username,
-                            "first_name": user.first_name,
-                            "last_name": user.last_name
-                        })
-
-                        display = (user.first_name or "") + (f" {user.last_name}" if user.last_name else "")
-                        if display.strip():
-                            return target_id, username, display.strip()
-                except Exception as e:
-                    # Log the error for debugging user resolution issues
-                    print(f"Userbot get_users failed for {ref}: {e}")
 
     # Fallback display if unresolved
     if not display or display == token:

@@ -110,9 +110,6 @@ async def braodcast_message(client, message, _):
             await message.reply_text(_["broad_4"].format(susr))
         except:
             pass
-
-    # Assistant broadcast functionality has been removed
-    # as userbot/assistant support is no longer available
     
     IS_BROADCASTING = False
 
