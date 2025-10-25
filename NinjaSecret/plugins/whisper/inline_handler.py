@@ -176,8 +176,9 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Refresh target information to get updated name
                     target_id = target.get("target_id")
                     target_username = target.get("target_username")
+                    original_token = target.get("original_token")
 
-                    # Try to resolve current user information
+                    # Try to resolve if we have target_id
                     if target_id:
                         try:
                             resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
@@ -187,22 +188,47 @@ async def handle_inline_query(client, query: InlineQuery):
                                 target["target_username"] = resolved_username
                         except Exception as e:
                             pass  # Use cached information if resolution fails
+                    # Try to resolve if we only have username or original_token (unresolved target)
+                    elif original_token:
+                        try:
+                            resolved_target_id, resolved_username, resolved_display = await resolve_target(original_token, app)
+                            if resolved_target_id:
+                                # Successfully resolved! Update the target info
+                                target["target_id"] = resolved_target_id
+                                target_id = resolved_target_id
+                            if resolved_username:
+                                target["target_username"] = resolved_username
+                                target_username = resolved_username
+                            if resolved_display:
+                                target["target_display"] = resolved_display
+                        except Exception as e:
+                            pass  # Use what we have
 
                     # Create a whisper ID for this suggestion
                     whisper_id = generate_whisper_id()
 
                     # Pre-store whisper data for this suggestion
-                    # Create proper target token
-                    if target.get("target_username"):
+                    # Create proper target token - prefer original_token, fallback to username or ID
+                    if original_token:
+                        target_token = original_token
+                    elif target.get("target_username"):
                         target_token = f"@{target['target_username']}"
+                    elif target_id:
+                        target_token = str(target_id)
                     else:
-                        target_token = str(target.get("target_id"))
+                        # Skip if we have no way to identify the target
+                        continue
 
                     # Create proper mention for the message
                     target_display = target.get("target_display")
                     if not target_display:
-                        # Use user ID as placeholder for mention text
-                        target_display = str(target_id)
+                        # Use username or user ID as placeholder for mention text
+                        if target_username:
+                            target_display = f"@{target_username}"
+                        elif target_id:
+                            target_display = str(target_id)
+                        else:
+                            target_display = original_token or "Unknown"
 
                     # Create mention with tg://user?id= format
                     if target_id:
@@ -383,37 +409,36 @@ async def handle_chosen_inline_result(client, chosen_result):
             
             # Store recent target for each actual target (excluding @all/@everyone)
             for target_id, target_username, original_token in all_targets:
-                # Skip if no target_id or if it's @all/@everyone
-                if not target_id:
-                    continue
+                # Skip only @all/@everyone special targets
                 if original_token and original_token.lower() in ["@all", "@everyone"]:
                     continue
                 
-                # Ensure target_id is an integer for consistent comparison
-                target_id = int(target_id) if target_id else None
-                if not target_id:
-                    continue
+                # Ensure target_id is an integer for consistent comparison (if provided)
+                if target_id:
+                    try:
+                        target_id = int(target_id)
+                    except (ValueError, TypeError):
+                        target_id = None
                 
-                # Try to get fresh user information
+                # Try to get fresh user information if target_id is available
                 target_display = None
-                try:
-                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
-                    if resolved_display:
-                        target_display = resolved_display
-                        target_username = resolved_username
-                except Exception as e:
-                    pass
+                if target_id:
+                    try:
+                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
+                        if resolved_display:
+                            target_display = resolved_display
+                            target_username = resolved_username
+                    except Exception as e:
+                        pass
                 
-                # If no display name, just use a placeholder
-                # Telegram mentions will show the real name
-                if not target_display:
-                    target_display = None
-                
+                # Store the target with original_token for future resolution
+                # This allows storing unresolved targets (username-only) for later resolution
                 await store_recent_target(
                     sender_id=whisper["sender_id"],
                     target_id=target_id,
                     target_username=target_username,
-                    target_display=target_display
+                    target_display=target_display,
+                    original_token=original_token
                 )
 
     except Exception as e:
