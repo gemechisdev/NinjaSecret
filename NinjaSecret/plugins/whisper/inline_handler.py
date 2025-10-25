@@ -366,55 +366,55 @@ async def handle_chosen_inline_result(client, chosen_result):
         if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'recent_targets_help']:
             return
 
-        # Attach the inline_message_id to the existing whisper
+        # Attach the inline_message_id to the existing whisper (only if available)
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
 
-            # If this was a recent target suggestion, update the recent targets with fresh info
-            from NinjaSecret.mongo.whisperdb import get_whisper
-            whisper = await get_whisper(whisper_id)
-            if whisper:
-                # Get all targets from the whisper
-                all_targets = whisper.get("all_targets", [])
+        # Store recent targets regardless of inline_message_id availability
+        from NinjaSecret.mongo.whisperdb import get_whisper
+        whisper = await get_whisper(whisper_id)
+        if whisper:
+            # Get all targets from the whisper
+            all_targets = whisper.get("all_targets", [])
+            
+            # If all_targets is not available, fallback to single target
+            if not all_targets and whisper.get("target_id"):
+                all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+            
+            # Store recent target for each actual target (excluding @all/@everyone)
+            for target_id, target_username, original_token in all_targets:
+                # Skip if no target_id or if it's @all/@everyone
+                if not target_id:
+                    continue
+                if original_token and original_token.lower() in ["@all", "@everyone"]:
+                    continue
                 
-                # If all_targets is not available, fallback to single target
-                if not all_targets and whisper.get("target_id"):
-                    all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+                # Ensure target_id is an integer for consistent comparison
+                target_id = int(target_id) if target_id else None
+                if not target_id:
+                    continue
                 
-                # Store recent target for each actual target (excluding @all/@everyone)
-                for target_id, target_username, original_token in all_targets:
-                    # Skip if no target_id or if it's @all/@everyone
-                    if not target_id:
-                        continue
-                    if original_token and original_token.lower() in ["@all", "@everyone"]:
-                        continue
-                    
-                    # Ensure target_id is an integer for consistent comparison
-                    target_id = int(target_id) if target_id else None
-                    if not target_id:
-                        continue
-                    
-                    # Try to get fresh user information
+                # Try to get fresh user information
+                target_display = None
+                try:
+                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
+                    if resolved_display:
+                        target_display = resolved_display
+                        target_username = resolved_username
+                except Exception as e:
+                    pass
+                
+                # If no display name, just use a placeholder
+                # Telegram mentions will show the real name
+                if not target_display:
                     target_display = None
-                    try:
-                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
-                        if resolved_display:
-                            target_display = resolved_display
-                            target_username = resolved_username
-                    except Exception as e:
-                        pass
-                    
-                    # If no display name, just use a placeholder
-                    # Telegram mentions will show the real name
-                    if not target_display:
-                        target_display = None
-                    
-                    await store_recent_target(
-                        sender_id=whisper["sender_id"],
-                        target_id=target_id,
-                        target_username=target_username,
-                        target_display=target_display
-                    )
+                
+                await store_recent_target(
+                    sender_id=whisper["sender_id"],
+                    target_id=target_id,
+                    target_username=target_username,
+                    target_display=target_display
+                )
 
     except Exception as e:
         print(f"Chosen inline result error: {e}")
