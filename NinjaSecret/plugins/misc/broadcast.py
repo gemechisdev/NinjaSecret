@@ -9,7 +9,6 @@ from NinjaSecret.misc import SUDOERS
 from NinjaSecret.utils.database import (
     get_active_chats,
     get_authuser_names,
-    get_client,
     get_served_chats,
     get_served_users,
 )

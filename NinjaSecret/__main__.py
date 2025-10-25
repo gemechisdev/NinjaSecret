@@ -7,7 +7,7 @@ from sys import argv
 from pyrogram import idle
 
 import config
-from NinjaSecret import LOGGER, app, userbot
+from NinjaSecret import LOGGER, app
 from NinjaSecret.misc import sudo
 from NinjaSecret.plugins import ALL_MODULES
 from NinjaSecret.utils.database import get_banned_users, get_gbanned
@@ -177,45 +177,12 @@ async def start_bot_with_retry(max_retries=None, base_delay=1):
     return False
 
 
-async def start_userbot_with_retry(max_retries=None, base_delay=1):
-    """Start the userbot with retry mechanism for flood wait errors"""
-    if max_retries is None:
-        max_retries = config.USERBOT_STARTUP_MAX_RETRIES
-    for attempt in range(max_retries):
-        try:
-            await userbot.start()
-            LOGGER(__name__).info("Userbot started successfully!")
-            return True
-        except Exception as e:
-            error_msg = str(e)
-            if "FLOOD_WAIT" in error_msg or "420" in error_msg:
-                should_continue = await handle_flood_wait_error(e, attempt, max_retries, "Userbot")
-                if should_continue:
-                    continue
-                else:
-                    raise e
-            else:
-                # Non-flood wait error, re-raise immediately
-                LOGGER(__name__).error(f"Non-flood wait error during userbot start: {e}")
-                raise e
 
-    return False
 
 
 
 
 async def init():
-    if (
-        not config.STRING1
-        and not config.STRING2
-        and not config.STRING3
-        and not config.STRING4
-        and not config.STRING5
-    ):
-        LOGGER(__name__).error(
-            "Assistant client variables not defined, exiting...")
-        exit()
-
     LOGGER(__name__).info("Starting NinjaSecret initialization...")
 
     await sudo()
@@ -238,10 +205,6 @@ async def init():
         importlib.import_module("NinjaSecret.plugins" + all_module)
     LOGGER("NinjaSecret.plugins").info("Successfully Imported Modules...")
 
-    LOGGER(__name__).info("Starting userbot with retry mechanism...")
-    # Use retry mechanism for userbot start
-    await start_userbot_with_retry()
-
     # Start memory cleanup task
     asyncio.create_task(memory_cleanup_task())
     LOGGER(__name__).info("Memory cleanup task started")
@@ -263,7 +226,6 @@ async def init():
     LOGGER("NinjaSecret").info("Stopping Bot...")
     await stop_health_server()
     await app.stop()
-    await userbot.stop()
     LOGGER("NinjaSecret").info("Bot stopped successfully")
 
 
