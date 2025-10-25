@@ -6,7 +6,6 @@ This is a cleaned version of the NinjaSecret music bot, optimized to serve as a 
 
 ### Core Architecture
 - ✅ **Bot Core**: Clean Pyrogram-based bot structure
-- ✅ **Userbot Support**: Multi-session userbot management
 - ✅ **Database Integration**: MongoDB with comprehensive examples
 - ✅ **Plugin System**: Modular plugin architecture
 - ✅ **Configuration Management**: Environment-based configuration
@@ -75,7 +74,6 @@ Key environment variables to set:
 - `API_ID` & `API_HASH`: Get from my.telegram.org
 - `BOT_TOKEN`: Get from @BotFather
 - `MONGO_DB_URI`: MongoDB connection string
-- `STRING_SESSION`: Pyrogram user session (get from session generator)
 - `OWNER_ID`: Your Telegram user ID
 - `LOGGER_ID`: Log group/channel ID
 
@@ -84,7 +82,7 @@ Key environment variables to set:
 The bot is now ready for implementing secret message functionality with:
 - Clean codebase without music-related bloat
 - Established plugin architecture for easy feature addition
-- Working userbot system for message handling
+- Direct bot API calls using get_chat_members for user data retrieval
 - Database integration for storing secret data
 - Proper error handling and logging
 
