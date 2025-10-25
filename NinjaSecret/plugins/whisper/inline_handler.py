@@ -181,7 +181,7 @@ async def handle_inline_query(client, query: InlineQuery):
                     if target_id:
                         try:
                             resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
-                            if resolved_display and resolved_display != f"User {target_id}":
+                            if resolved_display:
                                 # Update target with fresh information
                                 target["target_display"] = resolved_display
                                 target["target_username"] = resolved_username
