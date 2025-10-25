@@ -531,12 +531,22 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
 
-    # Ensure sender_id is an integer for consistent MongoDB queries
-    sender_id = int(sender_id)
+    # Validate and ensure sender_id is an integer for consistent MongoDB queries
+    if sender_id is None:
+        print("ERROR: sender_id cannot be None")
+        return
+    try:
+        sender_id = int(sender_id)
+    except (ValueError, TypeError) as e:
+        print(f"ERROR: Invalid sender_id value '{sender_id}': {e}")
+        return
     
     # Ensure target_id is an integer for consistent comparison if provided
     if target_id:
-        target_id = int(target_id)
+        try:
+            target_id = int(target_id)
+        except (ValueError, TypeError):
+            target_id = None
     
     # We need at least target_id OR original_token to store
     if not target_id and not original_token:
@@ -634,8 +644,15 @@ async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
 
-    # Ensure user_id is an integer for consistent MongoDB queries
-    user_id = int(user_id)
+    # Validate and ensure user_id is an integer for consistent MongoDB queries
+    if user_id is None:
+        print("ERROR: user_id cannot be None in get_recent_targets")
+        return []
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError) as e:
+        print(f"ERROR: Invalid user_id value '{user_id}' in get_recent_targets: {e}")
+        return []
 
     user_targets = await recent_targets_db.find_one({"user_id": user_id})
 
