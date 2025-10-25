@@ -110,21 +110,95 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             )
             return
 
-        # Late-link target if needed (when target clicks but wasn't resolved before)
+        # Always update user info when they interact (names can change over time)
+        # This ensures we always have the most up-to-date user information
+        from NinjaSecret.core.mongo import mongodb
+        
+        # Update the clicking user's information in our database
+        await upsert_user({
+            "user_id": user_id,
+            "username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
+            "first_name": callback_query.from_user.first_name,
+            "last_name": callback_query.from_user.last_name
+        })
+        
+        # If target clicked and wasn't resolved before, link them now
         if is_target and not target_id:
-            if callback_query.from_user.username:
-                await upsert_user({
-                    "user_id": user_id,
-                    "username": callback_query.from_user.username.lower(),
-                    "first_name": callback_query.from_user.first_name,
-                    "last_name": callback_query.from_user.last_name
-                })
-            # Update the whisper with the resolved target_id
-            from NinjaSecret.core.mongo import mongodb
+            # Update the whisper with the resolved target_id and fresh display name
+            display_name = callback_query.from_user.first_name
+            if callback_query.from_user.last_name:
+                display_name += f" {callback_query.from_user.last_name}"
+            
+            # Update target mention with actual name now
+            target_mention = f"[{display_name}](tg://user?id={user_id})"
+            
             await mongodb.whispers.update_one(
                 {"whisper_id": whisper_id},
-                {"$set": {"target_id": user_id}}
+                {"$set": {
+                    "target_id": user_id,
+                    "target_username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
+                    "target_mentions": target_mention
+                }}
             )
+            
+            # Try to update the inline message to show the resolved name
+            if whisper.get("inline_message_id"):
+                try:
+                    from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
+                    from strings import get_string
+                    language = get_string("en")
+                    
+                    # Create the updated message text
+                    message_text = language['whisper_simple_message'].format(target_mention)
+                    
+                    await app.edit_inline_text(
+                        inline_message_id=whisper["inline_message_id"],
+                        text=message_text,
+                        parse_mode=enums.ParseMode.MARKDOWN,
+                        reply_markup=create_whisper_keyboard(whisper_id)
+                    )
+                except Exception as e:
+                    # If we can't edit the message, that's okay - the DB is updated
+                    print(f"Could not update inline message with resolved name: {e}")
+                    pass
+            
+        elif is_target and target_id:
+            # Target was already resolved, but update their display name if it changed
+            display_name = callback_query.from_user.first_name
+            if callback_query.from_user.last_name:
+                display_name += f" {callback_query.from_user.last_name}"
+            
+            # Update target mention with fresh name
+            target_mention = f"[{display_name}](tg://user?id={user_id})"
+            
+            await mongodb.whispers.update_one(
+                {"whisper_id": whisper_id},
+                {"$set": {
+                    "target_username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
+                    "target_mentions": target_mention
+                }}
+            )
+            
+            # Try to update the inline message to show the updated name
+            if whisper.get("inline_message_id"):
+                try:
+                    from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
+                    from strings import get_string
+                    language = get_string("en")
+                    
+                    # Create the updated message text
+                    message_text = language['whisper_simple_message'].format(target_mention)
+                    
+                    await app.edit_inline_text(
+                        inline_message_id=whisper["inline_message_id"],
+                        text=message_text,
+                        parse_mode=enums.ParseMode.MARKDOWN,
+                        reply_markup=create_whisper_keyboard(whisper_id)
+                    )
+                except Exception as e:
+                    # If we can't edit the message, that's okay - the DB is updated
+                    print(f"Could not update inline message with updated name: {e}")
+                    pass
 
         # Mark as read only if target is viewing (sender viewing doesn't count as "read")
         # Exception: if sender IS the target (self-whisper), then it counts as read
