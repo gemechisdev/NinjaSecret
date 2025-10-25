@@ -537,6 +537,7 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
     
     # We need at least target_id OR original_token to store
     if not target_id and not original_token:
+        print(f"Warning: Skipping store_recent_target for user {sender_id} - both target_id and original_token are None")
         return  # Skip if we have nothing to store
     
     # If we only have original_token (unresolved), extract username or ID from it
@@ -583,6 +584,7 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
             "user_id": sender_id,
             "targets": [target_data]
         })
+        print(f"Created new recent targets record for user {sender_id} with target {target_id or original_token}")
     else:
         targets = user_targets.get("targets", [])
 
@@ -591,6 +593,7 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
         # - Same target sent again (exact match)
         # - Previously unresolved target now resolved (original_token match)
         # - Different representation of same user (target_id match)
+        original_count = len(targets)
         targets = [
             t for t in targets 
             if not (
@@ -600,6 +603,7 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
                 (original_token and t.get("original_token") and t.get("original_token") == original_token)
             )
         ]
+        removed_count = original_count - len(targets)
 
         # Add new target at the beginning (most recent)
         targets.insert(0, target_data)
@@ -608,10 +612,11 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
         targets = targets[:10]
 
         # Update the record
-        await recent_targets_db.update_one(
+        result = await recent_targets_db.update_one(
             {"user_id": sender_id},
             {"$set": {"targets": targets}}
         )
+        print(f"Updated recent targets for user {sender_id}: removed {removed_count} duplicate(s), now have {len(targets)} target(s), target: {target_id or original_token}")
 
 async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
     """Get recent targets for a user"""
