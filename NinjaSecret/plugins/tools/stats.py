@@ -10,7 +10,6 @@ from pyrogram.types import InputMediaPhoto, Message
 
 import config
 from NinjaSecret import app
-from NinjaSecret.core.userbot import assistants
 from NinjaSecret.misc import SUDOERS, mongodb
 from NinjaSecret.plugins import ALL_MODULES
 from NinjaSecret.utils.database import get_served_chats, get_served_users, get_sudoers, get_queries

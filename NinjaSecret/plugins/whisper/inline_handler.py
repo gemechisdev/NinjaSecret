@@ -16,7 +16,7 @@ from pyrogram.types import (
 )
 from strings import get_string
 
-from NinjaSecret import app, userbot
+from NinjaSecret import app
 from NinjaSecret.mongo.whisperdb import (
     store_whisper,
     resolve_target,
@@ -177,10 +177,10 @@ async def handle_inline_query(client, query: InlineQuery):
                     target_id = target.get("target_id")
                     target_username = target.get("target_username")
 
-                    # Try to resolve current user information using userbot first
+                    # Try to resolve current user information
                     if target_id:
                         try:
-                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
+                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
                             if resolved_display and resolved_display != f"User {target_id}":
                                 # Update target with fresh information
                                 target["target_display"] = resolved_display
@@ -265,7 +265,7 @@ async def handle_inline_query(client, query: InlineQuery):
                 display_names.append(everyone_text)
                 target_mentions.append(everyone_text)
             else:
-                target_id, target_username, display_name = await resolve_target(token, app, userbot)
+                target_id, target_username, display_name = await resolve_target(token, app)
                 resolved_targets.append((target_id, target_username, token))
                 # Use the display name returned by resolve_target (it handles all cases properly)
                 display_names.append(display_name or token)
@@ -388,7 +388,7 @@ async def handle_chosen_inline_result(client, chosen_result):
                     # Try to get fresh user information
                     target_display = None
                     try:
-                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
+                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
                         if resolved_display and resolved_display != f"User {target_id}":
                             target_display = resolved_display
                             target_username = resolved_username
