@@ -55,58 +55,65 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                     try:
                         print(f"Late storage: Whisper {whisper_id} found in cache, storing now")
                         
-                        # Store the whisper now
-                        await store_whisper_func(whisper_data)
-                        print(f"Late storage: Successfully stored whisper {whisper_id}")
-                        
-                        # Also store recent targets (since chosen_inline_result wasn't called to do it)
-                        all_targets = whisper_data.get("all_targets", [])
-                        if not all_targets and whisper_data.get("target_id"):
-                            all_targets = [(whisper_data["target_id"], whisper_data.get("target_username"), whisper_data.get("original_target_token"))]
-                        
-                        # Store recent target for each target (excluding @all/@everyone)
-                        for target_id, target_username, original_token in all_targets:
-                            # Skip special targets
-                            if original_token and original_token.lower() in ["@all", "@everyone"]:
-                                continue
+                        # Double-check it's not already in DB (race condition protection)
+                        existing = await get_whisper(whisper_id)
+                        if not existing:
+                            # Store the whisper now
+                            await store_whisper_func(whisper_data)
+                            print(f"Late storage: Successfully stored whisper {whisper_id}")
                             
-                            # Ensure target_id is integer if provided
-                            if target_id:
+                            # Also store recent targets (since chosen_inline_result wasn't called to do it)
+                            all_targets = whisper_data.get("all_targets", [])
+                            if not all_targets and whisper_data.get("target_id"):
+                                all_targets = [(whisper_data["target_id"], whisper_data.get("target_username"), whisper_data.get("original_target_token"))]
+                            
+                            # Store recent target for each target (excluding @all/@everyone)
+                            for target_id, target_username, original_token in all_targets:
+                                # Skip special targets
+                                if original_token and original_token.lower() in ["@all", "@everyone"]:
+                                    continue
+                                
+                                # Ensure target_id is integer if provided
+                                if target_id:
+                                    try:
+                                        target_id = int(target_id)
+                                    except (ValueError, TypeError):
+                                        target_id = None
+                                
+                                # Try to get fresh user information
+                                target_display = None
+                                if target_id:
+                                    try:
+                                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), client)
+                                        if resolved_display:
+                                            target_display = resolved_display
+                                            target_username = resolved_username
+                                    except Exception:
+                                        pass
+                                
+                                # Store the recent target
                                 try:
-                                    target_id = int(target_id)
-                                except (ValueError, TypeError):
-                                    target_id = None
-                            
-                            # Try to get fresh user information
-                            target_display = None
-                            if target_id:
-                                try:
-                                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), client)
-                                    if resolved_display:
-                                        target_display = resolved_display
-                                        target_username = resolved_username
-                                except Exception:
-                                    pass
-                            
-                            # Store the recent target
-                            try:
-                                await store_recent_target(
-                                    sender_id=whisper_data["sender_id"],
-                                    target_id=target_id,
-                                    target_username=target_username,
-                                    target_display=target_display,
-                                    original_token=original_token
-                                )
-                                print(f"Late storage: Stored recent target for user {whisper_data['sender_id']}")
-                            except Exception as e:
-                                print(f"Late storage: Failed to store recent target: {e}")
+                                    await store_recent_target(
+                                        sender_id=whisper_data["sender_id"],
+                                        target_id=target_id,
+                                        target_username=target_username,
+                                        target_display=target_display,
+                                        original_token=original_token
+                                    )
+                                    print(f"Late storage: Stored recent target for user {whisper_data['sender_id']}")
+                                except Exception as e:
+                                    print(f"Late storage: Failed to store recent target: {e}")
+                        else:
+                            print(f"Late storage: Whisper {whisper_id} already in database, skipping storage")
+                            whisper = existing
                         
                         # Remove from cache
                         del pending_whispers_cache[whisper_id]
                         print(f"Late storage: Removed whisper {whisper_id} from cache")
                         
-                        # Now retrieve it from database
-                        whisper = await get_whisper(whisper_id)
+                        # Retrieve from database if we just stored it
+                        if not whisper:
+                            whisper = await get_whisper(whisper_id)
                     except Exception as e:
                         print(f"Error during late whisper storage: {e}")
                         import traceback
