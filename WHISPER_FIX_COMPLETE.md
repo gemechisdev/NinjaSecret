@@ -55,28 +55,33 @@ User clicks "Read" → check cache → store late → store recent targets
 
 ### Flow Diagram
 ```
-Inline Query → Cache Whisper
-                    ↓
-            User Sends Message
-                    ↓
-        ┌───────────┴───────────┐
-        ↓                       ↓
-  chosen_inline_result   chosen_inline_result
-    FIRES (Path 1)         DOESN'T FIRE
-        ↓                       ↓
-  Store in DB            Stays in Cache
-  Store Targets                ↓
-  Remove Cache           User Clicks "Read"
-        ↓                       ↓
-  User Reads              Check DB → Not Found
-                                ↓
-                          Check Cache → Found!
-                                ↓
-                          Store in DB (Path 2)
-                          Store Targets
-                          Remove Cache
-                                ↓
-                          User Reads
+User types inline query
+        ↓
+    Cache Whisper
+        ↓
+   User Sends Message
+        ↓
+    ┌───────────┴───────────┐
+    ↓                       ↓
+ PATH 1                  PATH 2
+(Primary)              (Fallback)
+    ↓                       ↓
+chosen_inline_    chosen_inline_result
+result FIRES         DOESN'T FIRE
+    ↓                       ↓
+Store in DB          Stays in Cache
+Store Targets              ↓
+Remove Cache        User Clicks "Read"
+    ↓                       ↓
+User Reads          Check DB → Not Found
+                           ↓
+                    Check Cache → Found!
+                           ↓
+                    Store in DB
+                    Store Targets  
+                    Remove Cache
+                           ↓
+                    User Reads
 ```
 
 ### Key Protection Mechanisms
