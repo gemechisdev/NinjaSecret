@@ -10,13 +10,14 @@ This script tests:
 
 import asyncio
 import sys
+import traceback
 from pathlib import Path
 from datetime import datetime
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from motor.motor_asyncio import AsyncIOMotorClient
 import config
 
 async def test_recent_targets():
@@ -25,8 +26,7 @@ async def test_recent_targets():
     print("Testing Recent Targets Functionality")
     print("=" * 60)
     
-    # Import the functions
-    sys.path.insert(0, str(Path(__file__).parent.parent / "NinjaSecret"))
+    # Import the functions from the main codebase
     from NinjaSecret.mongo.whisperdb import store_recent_target, get_recent_targets
     
     # Test user and target IDs (from the problem statement)
@@ -56,7 +56,6 @@ async def test_recent_targets():
         print("✓ Successfully stored recent target")
     except Exception as e:
         print(f"✗ Failed to store recent target: {e}")
-        import traceback
         traceback.print_exc()
         return False
     
@@ -79,7 +78,6 @@ async def test_recent_targets():
             print("  No recent targets found")
     except Exception as e:
         print(f"✗ Failed to retrieve recent targets: {e}")
-        import traceback
         traceback.print_exc()
         return False
     
@@ -104,7 +102,6 @@ async def test_recent_targets():
             print(f"⚠ Warning: Expected 1 target, got {len(recent_targets)}")
     except Exception as e:
         print(f"✗ Failed deduplication test: {e}")
-        import traceback
         traceback.print_exc()
         return False
     
@@ -134,16 +131,16 @@ async def test_recent_targets():
             print(f"⚠ Warning: Expected 2 targets, got {len(recent_targets)}")
     except Exception as e:
         print(f"✗ Failed multiple targets test: {e}")
-        import traceback
         traceback.print_exc()
         return False
     
     # Test 5: Verify data integrity
     print("\n[TEST 5] Verifying data integrity...")
-    client = AsyncIOMotorClient(config.MONGO_DB_URI)
+    # Use the core mongo connection instead of creating a new one
+    from NinjaSecret.core.mongo import mongodb
+    
     try:
-        ninja_db = client.NinjaSecret
-        recent_targets_db = ninja_db.recent_targets
+        recent_targets_db = mongodb.recent_targets
         
         doc = await recent_targets_db.find_one({"user_id": test_sender_id})
         if doc:
@@ -162,11 +159,8 @@ async def test_recent_targets():
             return False
     except Exception as e:
         print(f"✗ Failed data integrity check: {e}")
-        import traceback
         traceback.print_exc()
         return False
-    finally:
-        client.close()
     
     print("\n" + "=" * 60)
     print("✓ All tests passed!")
