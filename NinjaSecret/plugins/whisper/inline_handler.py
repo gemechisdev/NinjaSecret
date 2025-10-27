@@ -23,7 +23,6 @@ from NinjaSecret.mongo.whisperdb import (
     resolve_target,
     update_user_stats,
     check_and_award_achievements,
-    attach_inline_message_id,
     upsert_user,
     store_recent_target,
     get_recent_targets,
@@ -40,6 +39,43 @@ from NinjaSecret.utils.whisper_utils import (
 
 # Get logger for this module
 logger = LOGGER(__name__)
+
+# Temporary cache for whisper data before they are actually sent
+# Key: whisper_id, Value: {"data": whisper_data, "timestamp": datetime}
+# This prevents storing whispers in DB during inline query generation
+pending_whispers_cache: Dict[str, Dict] = {}
+
+# Cache timeout in seconds (5 minutes)
+CACHE_TIMEOUT_SECONDS = 300
+
+# Cleanup counter - cleanup every N queries to reduce overhead
+cleanup_counter = 0
+CLEANUP_INTERVAL = 50  # Cleanup every 50 queries
+
+async def cleanup_stale_cache_entries():
+    """Remove cache entries older than CACHE_TIMEOUT_SECONDS"""
+    global cleanup_counter
+    cleanup_counter += 1
+    
+    # Only cleanup every CLEANUP_INTERVAL queries
+    if cleanup_counter < CLEANUP_INTERVAL:
+        return
+    
+    cleanup_counter = 0
+    current_time = datetime.utcnow()
+    stale_keys = []
+    
+    for whisper_id, cache_entry in pending_whispers_cache.items():
+        timestamp = cache_entry.get("timestamp")
+        if timestamp and (current_time - timestamp).total_seconds() > CACHE_TIMEOUT_SECONDS:
+            stale_keys.append(whisper_id)
+    
+    for key in stale_keys:
+        del pending_whispers_cache[key]
+        logger.debug(f"Removed stale cache entry: {key}")
+    
+    if stale_keys:
+        logger.info(f"Cleaned up {len(stale_keys)} stale cache entries")
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -224,7 +260,7 @@ async def handle_inline_query(client, query: InlineQuery):
                     else:
                         target_mention = target_display
                     
-                    # Pre-store whisper data
+                    # Cache whisper data (don't store in DB yet - only when user sends)
                     store_data = {
                         "whisper_id": whisper_id,
                         "content": message_content,
@@ -235,7 +271,11 @@ async def handle_inline_query(client, query: InlineQuery):
                         "all_targets": [(target_id, target_username, use_target_token)],
                         "target_mentions": target_mention
                     }
-                    await store_whisper(store_data)
+                    # Store in temporary cache with timestamp
+                    pending_whispers_cache[whisper_id] = {
+                        "data": store_data,
+                        "timestamp": datetime.utcnow()
+                    }
                     
                     # Create inline result
                     logger.debug(f"Creating recent target suggestion for {target_display} (ID: {target_id})")
@@ -321,7 +361,7 @@ async def handle_inline_query(client, query: InlineQuery):
         # For simplified storage, use the first target (maintaining compatibility)
         primary_target = resolved_targets[0] if resolved_targets else (None, None, target_token)
 
-        # Pre-store whisper (so callbacks work immediately)
+        # Cache whisper data (don't store in DB yet - only when user actually sends)
         store_data = {
             "whisper_id": whisper_id,
             "content": message_content,
@@ -337,7 +377,14 @@ async def handle_inline_query(client, query: InlineQuery):
         if modifiers:
             store_data["modifiers"] = modifiers
 
-        await store_whisper(store_data)
+        # Store in temporary cache with timestamp
+        pending_whispers_cache[whisper_id] = {
+            "data": store_data,
+            "timestamp": datetime.utcnow()
+        }
+        
+        # Periodically cleanup stale cache entries
+        await cleanup_stale_cache_entries()
 
         # Create inline result (enhanced with special features support)
         result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
@@ -355,12 +402,9 @@ async def handle_inline_query(client, query: InlineQuery):
             reply_markup=result.get("reply_markup")
         )
 
-        # Store whisper data temporarily for when the message is actually sent
-        # We'll use the chosen inline result handler for this
-
+        # Answer the inline query with the result
+        # Whisper will only be stored in DB when user actually sends it (chosen_inline_result)
         await query.answer([pyrogram_result], cache_time=1, is_personal=True)
-
-        # No need to store temp data - whisper is already in database
 
     except Exception as e:
         # Log error and return error response
@@ -376,29 +420,40 @@ async def handle_chosen_inline_result(client, chosen_result):
         logger.info(f"Chosen inline result: whisper_id={whisper_id}, user={chosen_result.from_user.id}")
 
         # Skip if it's not a whisper
-        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
+        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'message_too_long']:
             logger.debug(f"Skipping non-whisper result: {whisper_id}")
             return
 
-        # Attach the inline_message_id to the existing whisper (only if available)
-        if chosen_result.inline_message_id:
-            await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
-
-        # Store recent targets when secret is sent successfully
-        from NinjaSecret.mongo.whisperdb import get_whisper
-        whisper = await get_whisper(whisper_id)
-        if not whisper:
-            logger.warning(f"Whisper not found for ID {whisper_id}")
+        # Retrieve whisper data from cache
+        cache_entry = pending_whispers_cache.get(whisper_id)
+        if not cache_entry:
+            logger.warning(f"Whisper data not found in cache for ID {whisper_id}")
             return
         
-        logger.info(f"Processing whisper {whisper_id} from sender {whisper['sender_id']}")
+        whisper_data = cache_entry.get("data")
+        if not whisper_data:
+            logger.warning(f"Whisper data structure invalid for ID {whisper_id}")
+            return
+        
+        logger.info(f"Retrieved whisper from cache: {whisper_id}")
+        
+        # Add inline_message_id if available
+        if chosen_result.inline_message_id:
+            whisper_data["inline_message_id"] = chosen_result.inline_message_id
+        
+        # NOW store the whisper in the database (only when user actually sends it)
+        await store_whisper(whisper_data)
+        logger.info(f"Stored whisper {whisper_id} in database after user sent it")
+        
+        # Remove from cache to free memory
+        del pending_whispers_cache[whisper_id]
         
         # Get all targets from the whisper
-        all_targets = whisper.get("all_targets", [])
+        all_targets = whisper_data.get("all_targets", [])
         
         # Fallback to single target if all_targets not available
-        if not all_targets and whisper.get("target_id"):
-            all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+        if not all_targets and whisper_data.get("target_id"):
+            all_targets = [(whisper_data["target_id"], whisper_data.get("target_username"), whisper_data.get("original_target_token"))]
         
         if not all_targets:
             logger.warning(f"No targets found in whisper {whisper_id}")
@@ -436,17 +491,17 @@ async def handle_chosen_inline_result(client, chosen_result):
             
             # Store the recent target
             try:
-                logger.info(f"Storing recent target for user {whisper['sender_id']}: target_id={target_id}, username={target_username}, display={target_display}, token={original_token}")
+                logger.info(f"Storing recent target for user {whisper_data['sender_id']}: target_id={target_id}, username={target_username}, display={target_display}, token={original_token}")
                 await store_recent_target(
-                    sender_id=whisper["sender_id"],
+                    sender_id=whisper_data["sender_id"],
                     target_id=target_id,
                     target_username=target_username,
                     target_display=target_display,
                     original_token=original_token
                 )
-                logger.info(f"Successfully stored recent target for user {whisper['sender_id']}")
+                logger.info(f"Successfully stored recent target for user {whisper_data['sender_id']}")
             except Exception:
-                logger.exception(f"Failed to store recent target for user {whisper['sender_id']}")
+                logger.exception(f"Failed to store recent target for user {whisper_data['sender_id']}")
 
     except Exception:
         logger.exception("Error in handle_chosen_inline_result")
