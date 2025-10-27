@@ -26,7 +26,8 @@ from NinjaSecret.mongo.whisperdb import (
     attach_inline_message_id,
     upsert_user,
     store_recent_target,
-    get_recent_targets
+    get_recent_targets,
+    MAX_RECENT_TARGETS
 )
 from NinjaSecret.utils.whisper_utils import (
     create_whisper_inline_result,
@@ -172,7 +173,7 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # If no target specified but we have message content, show recent target suggestions
         if message_content and not target_token:
-            recent_targets = await get_recent_targets(query.from_user.id, 10)
+            recent_targets = await get_recent_targets(query.from_user.id, MAX_RECENT_TARGETS)
             if recent_targets:
                 # Create suggestions for recent targets
                 results = []
