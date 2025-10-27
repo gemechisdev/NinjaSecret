@@ -11,6 +11,9 @@ from NinjaSecret.logging import LOGGER
 # Get logger for this module
 logger = LOGGER(__name__)
 
+# Constants
+MAX_RECENT_TARGETS = 10  # Maximum number of recent targets to store per user
+
 # Collections
 whisperdb = mongodb.whispers
 whisper_stats = mongodb.whisper_stats
@@ -619,8 +622,8 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
         # Add new target at position 0 (newest first)
         targets.insert(0, target_data)
         
-        # Keep only the 10 most recent
-        targets = targets[:10]
+        # Keep only the most recent targets
+        targets = targets[:MAX_RECENT_TARGETS]
         
         # Update the record
         await recent_targets_db.update_one(
@@ -630,7 +633,7 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
         logger.info(f"Updated recent targets for user {sender_id}, now have {len(targets)} target(s)")
 
 
-async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
+async def get_recent_targets(user_id: int, limit: int = MAX_RECENT_TARGETS) -> List[Dict]:
     """Get recent targets for a user
     
     Returns targets in order from newest (position 0) to oldest.
