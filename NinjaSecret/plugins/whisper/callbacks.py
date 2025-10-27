@@ -36,8 +36,81 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         whisper_id = callback_query.matches[0].group(1)
         user_id = callback_query.from_user.id
 
-        # Get whisper message
+        # Get whisper message from database
         whisper = await get_whisper(whisper_id)
+
+        # Fallback: Check if whisper is still in cache (in case chosen_inline_result wasn't fired)
+        # This can happen if inline feedback is not enabled or Telegram doesn't send the update
+        if not whisper:
+            # Import the cache here to avoid circular import
+            from NinjaSecret.plugins.whisper.inline_handler import pending_whispers_cache
+            from NinjaSecret.mongo.whisperdb import store_whisper as store_whisper_func, store_recent_target, resolve_target
+            
+            cache_entry = pending_whispers_cache.get(whisper_id)
+            if cache_entry:
+                # Whisper was never stored because chosen_inline_result wasn't called
+                # Store it now since the user is clearly trying to read a sent message
+                whisper_data = cache_entry.get("data")
+                if whisper_data:
+                    try:
+                        print(f"Late storage: Whisper {whisper_id} found in cache, storing now")
+                        
+                        # Store the whisper now
+                        await store_whisper_func(whisper_data)
+                        print(f"Late storage: Successfully stored whisper {whisper_id}")
+                        
+                        # Also store recent targets (since chosen_inline_result wasn't called to do it)
+                        all_targets = whisper_data.get("all_targets", [])
+                        if not all_targets and whisper_data.get("target_id"):
+                            all_targets = [(whisper_data["target_id"], whisper_data.get("target_username"), whisper_data.get("original_target_token"))]
+                        
+                        # Store recent target for each target (excluding @all/@everyone)
+                        for target_id, target_username, original_token in all_targets:
+                            # Skip special targets
+                            if original_token and original_token.lower() in ["@all", "@everyone"]:
+                                continue
+                            
+                            # Ensure target_id is integer if provided
+                            if target_id:
+                                try:
+                                    target_id = int(target_id)
+                                except (ValueError, TypeError):
+                                    target_id = None
+                            
+                            # Try to get fresh user information
+                            target_display = None
+                            if target_id:
+                                try:
+                                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), client)
+                                    if resolved_display:
+                                        target_display = resolved_display
+                                        target_username = resolved_username
+                                except Exception:
+                                    pass
+                            
+                            # Store the recent target
+                            try:
+                                await store_recent_target(
+                                    sender_id=whisper_data["sender_id"],
+                                    target_id=target_id,
+                                    target_username=target_username,
+                                    target_display=target_display,
+                                    original_token=original_token
+                                )
+                                print(f"Late storage: Stored recent target for user {whisper_data['sender_id']}")
+                            except Exception as e:
+                                print(f"Late storage: Failed to store recent target: {e}")
+                        
+                        # Remove from cache
+                        del pending_whispers_cache[whisper_id]
+                        print(f"Late storage: Removed whisper {whisper_id} from cache")
+                        
+                        # Now retrieve it from database
+                        whisper = await get_whisper(whisper_id)
+                    except Exception as e:
+                        print(f"Error during late whisper storage: {e}")
+                        import traceback
+                        traceback.print_exc()
 
         if not whisper:
             await callback_query.answer(
