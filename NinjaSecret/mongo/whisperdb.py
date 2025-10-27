@@ -522,3 +522,144 @@ async def get_user_by_id(user_id: int) -> Optional[Dict]:
     return await users_db.find_one({"user_id": user_id})
 
 
+# Recent Targets Functions
+async def store_recent_target(sender_id: int, target_id: int = None, target_username: str = None, target_display: str = None, original_token: str = None):
+    """Store a recent target for a user (up to 10 most recent)
+    
+    Stores the target when a secret is sent successfully. Handles duplicates properly:
+    - If same target_id exists, removes old entry and adds new at position 0
+    - If same original_token exists (for unresolved targets), removes old entry and adds new at position 0
+    - Maintains maximum of 10 targets
+    - Newest targets appear at the top (position 0)
+    
+    Args:
+        sender_id: User ID of the sender
+        target_id: Resolved target user ID (can be None for unresolved targets)
+        target_username: Target's username (can be None)
+        target_display: Target's display name (can be None)
+        original_token: Original token used (@username or user_id) - stored for future resolution
+    """
+    from NinjaSecret.core.mongo import mongodb
+    recent_targets_db = mongodb.recent_targets
+
+    # Validate sender_id
+    if sender_id is None:
+        logger.error("sender_id cannot be None")
+        return
+    try:
+        sender_id = int(sender_id)
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid sender_id value '{sender_id}': {e}")
+        return
+    
+    # Ensure target_id is an integer if provided
+    if target_id:
+        try:
+            target_id = int(target_id)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to convert target_id '{target_id}' to int: {e}")
+            target_id = None
+    
+    # We need at least target_id OR original_token to store
+    if not target_id and not original_token:
+        logger.warning(f"Skipping store_recent_target for user {sender_id} - both target_id and original_token are None")
+        return
+    
+    # Try to get fresh user information from cache if we have target_id but no display
+    if target_id and not target_display:
+        try:
+            cached_user = await get_user_by_id(target_id)
+            if cached_user:
+                first_name = cached_user.get("first_name", "")
+                last_name = cached_user.get("last_name", "")
+                if first_name:
+                    target_display = first_name + (f" {last_name}" if last_name else "")
+                if not target_username and cached_user.get("username"):
+                    target_username = cached_user.get("username")
+        except Exception:
+            pass
+
+    # Create target data
+    target_data = {
+        "target_id": target_id,
+        "target_username": target_username,
+        "target_display": target_display,
+        "original_token": original_token,
+        "last_used": datetime.utcnow()
+    }
+
+    # Get current recent targets for user
+    user_targets = await recent_targets_db.find_one({"user_id": sender_id})
+
+    if not user_targets:
+        # Create new record with first target at position 0
+        await recent_targets_db.insert_one({
+            "user_id": sender_id,
+            "targets": [target_data]
+        })
+        logger.info(f"Created new recent targets for user {sender_id} with target {target_id or original_token}")
+    else:
+        targets = user_targets.get("targets", [])
+        
+        # Remove duplicate if exists
+        # Test Case 1: Same target sent twice - check target_id match
+        # Test Case 2: Unresolved then resolved - check original_token match
+        # Test Case 3: Different tokens for same user - check target_id match
+        # Test Case 4: Different users - no match, just add
+        targets = [
+            t for t in targets
+            if not (
+                # Match by target_id if both new and existing have it (Test Cases 1, 3)
+                (target_id and t.get("target_id") and t.get("target_id") == target_id) or
+                # Match by original_token if both have it (Test Case 2)
+                (original_token and t.get("original_token") and t.get("original_token") == original_token)
+            )
+        ]
+        
+        # Add new target at position 0 (newest first)
+        targets.insert(0, target_data)
+        
+        # Keep only the 10 most recent
+        targets = targets[:10]
+        
+        # Update the record
+        await recent_targets_db.update_one(
+            {"user_id": sender_id},
+            {"$set": {"targets": targets}}
+        )
+        logger.info(f"Updated recent targets for user {sender_id}, now have {len(targets)} target(s)")
+
+
+async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
+    """Get recent targets for a user
+    
+    Returns targets in order from newest (position 0) to oldest.
+    
+    Args:
+        user_id: User ID to get recent targets for
+        limit: Maximum number of targets to return (default 10)
+        
+    Returns:
+        List of target dictionaries, newest first
+    """
+    from NinjaSecret.core.mongo import mongodb
+    recent_targets_db = mongodb.recent_targets
+
+    # Validate user_id
+    if user_id is None:
+        logger.error("user_id cannot be None in get_recent_targets")
+        return []
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid user_id value '{user_id}' in get_recent_targets: {e}")
+        return []
+
+    user_targets = await recent_targets_db.find_one({"user_id": user_id})
+
+    if not user_targets:
+        return []
+
+    targets = user_targets.get("targets", [])
+    return targets[:limit]
+
