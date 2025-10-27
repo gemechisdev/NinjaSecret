@@ -65,8 +65,11 @@ async def test_whisper_storage_fix():
         "target_mentions": "[Scorpi](tg://user?id=7708711658)"
     }
     
-    # Add to cache (simulating inline query)
-    pending_whispers_cache[test_whisper_id] = test_whisper_data
+    # Add to cache (simulating inline query) with timestamp structure
+    pending_whispers_cache[test_whisper_id] = {
+        "data": test_whisper_data,
+        "timestamp": datetime.utcnow()
+    }
     print(f"  ✓ Added whisper to cache: {test_whisper_id}")
     
     # Verify NOT in DB yet
@@ -83,9 +86,15 @@ async def test_whisper_storage_fix():
     # This would normally be done by the handler
     from NinjaSecret.mongo.whisperdb import store_whisper
     
-    cached_data = pending_whispers_cache.get(test_whisper_id)
-    if cached_data:
+    cache_entry = pending_whispers_cache.get(test_whisper_id)
+    if cache_entry:
         print(f"  ✓ Retrieved whisper from cache")
+        
+        # Extract the actual data
+        cached_data = cache_entry.get("data")
+        if not cached_data:
+            print("  ✗ ERROR: Cache entry has no data")
+            return False
         
         # Add inline_message_id as would be done in handler
         cached_data["inline_message_id"] = "test_inline_msg_id"
