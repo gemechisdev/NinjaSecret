@@ -41,15 +41,17 @@ Store in database + Update recent targets
 
 ### Run Tests
 ```bash
-# Test the fix
+# Test the fix (tests the cache and storage behavior)
 python scripts/test_whisper_storage_fix.py
 
-# Test recent targets
+# Test recent targets functionality
 python scripts/test_recent_targets.py
 
-# Check recent targets data
+# Check recent targets data in database
 python scripts/check_recent_targets.py
 ```
+
+**Note:** All test scripts are located in the `scripts/` directory and are included in the repository.
 
 ### Expected Results
 ```
@@ -71,21 +73,32 @@ python scripts/check_recent_targets.py
 3. Monitor logs
 
 ### Monitor Logs
-Look for:
+Look for success indicators in your log files:
 ```
-INFO: Retrieved whisper from cache: <id>
-INFO: Stored whisper <id> in database after user sent it
-INFO: Successfully stored recent target for user <id>
+INFO: Retrieved whisper from cache: b1fbd12c-71b3-4c1f-b894-4ad2dc1da819
+INFO: Stored whisper b1fbd12c-71b3-4c1f-b894-4ad2dc1da819 in database after user sent it
+INFO: Successfully stored recent target for user 6153949909
+INFO: Cleaned up 3 stale cache entries
 ```
 
 ## Configuration
 
-Adjust in `NinjaSecret/plugins/whisper/inline_handler.py`:
+Adjust these values in `NinjaSecret/plugins/whisper/inline_handler.py` (lines ~48-51):
 
 ```python
-CACHE_TIMEOUT_SECONDS = 300  # 5 minutes
-CLEANUP_INTERVAL = 50        # Cleanup every 50 queries
+# Default values shown below:
+CACHE_TIMEOUT_SECONDS = 300  # 5 minutes - time before cache entries expire
+CLEANUP_INTERVAL = 50        # Cleanup every 50 queries - how often to run cleanup
+
+# To modify:
+# 1. Edit the file directly, or
+# 2. In future: could be moved to config.py or environment variables
 ```
+
+**Recommendations:**
+- High traffic: Increase CLEANUP_INTERVAL to 100-200
+- Low traffic: Keep defaults or reduce CLEANUP_INTERVAL to 25
+- Memory constrained: Reduce CACHE_TIMEOUT_SECONDS to 180 (3 min)
 
 ## Benefits
 
