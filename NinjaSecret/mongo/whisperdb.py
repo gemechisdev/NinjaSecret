@@ -590,6 +590,8 @@ async def store_recent_target(sender_id: int, target_id: int = None, target_user
         "original_token": original_token,
         "last_used": datetime.utcnow()
     }
+    
+    logger.debug(f"Storing recent target for user {sender_id}: target_id={target_id}, username={target_username}, display={target_display}, token={original_token}")
 
     # Get current recent targets for user
     user_targets = await recent_targets_db.find_one({"user_id": sender_id})
@@ -661,8 +663,10 @@ async def get_recent_targets(user_id: int, limit: int = MAX_RECENT_TARGETS) -> L
     user_targets = await recent_targets_db.find_one({"user_id": user_id})
 
     if not user_targets:
+        logger.debug(f"No recent targets found for user {user_id}")
         return []
 
     targets = user_targets.get("targets", [])
+    logger.debug(f"Retrieved {len(targets)} recent targets for user {user_id} (returning up to {limit})")
     return targets[:limit]
 

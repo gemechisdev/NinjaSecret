@@ -173,7 +173,9 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # If no target specified but we have message content, show recent target suggestions
         if message_content and not target_token:
+            logger.info(f"No target specified for user {query.from_user.id}, checking recent targets...")
             recent_targets = await get_recent_targets(query.from_user.id, MAX_RECENT_TARGETS)
+            logger.info(f"Found {len(recent_targets)} recent targets for user {query.from_user.id}")
             if recent_targets:
                 # Create suggestions for recent targets
                 results = []
@@ -236,9 +238,11 @@ async def handle_inline_query(client, query: InlineQuery):
                     await store_whisper(store_data)
                     
                     # Create inline result
+                    logger.debug(f"Creating recent target suggestion for {target_display} (ID: {target_id})")
                     suggestion = create_recent_target_suggestion(target_display, target_id, whisper_id, "en")
                     results.append(suggestion)
                 
+                logger.info(f"Showing {len(results)} recent target suggestions (plus help) to user {query.from_user.id}")
                 # Add help response as last option
                 results.append(create_invalid_format_response("en"))
                 
@@ -369,9 +373,11 @@ async def handle_chosen_inline_result(client, chosen_result):
     """Handle when user sends an inline result"""
     try:
         whisper_id = chosen_result.result_id
+        logger.info(f"Chosen inline result: whisper_id={whisper_id}, user={chosen_result.from_user.id}")
 
         # Skip if it's not a whisper
         if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
+            logger.debug(f"Skipping non-whisper result: {whisper_id}")
             return
 
         # Attach the inline_message_id to the existing whisper (only if available)
@@ -385,6 +391,8 @@ async def handle_chosen_inline_result(client, chosen_result):
             logger.warning(f"Whisper not found for ID {whisper_id}")
             return
         
+        logger.info(f"Processing whisper {whisper_id} from sender {whisper['sender_id']}")
+        
         # Get all targets from the whisper
         all_targets = whisper.get("all_targets", [])
         
@@ -396,10 +404,13 @@ async def handle_chosen_inline_result(client, chosen_result):
             logger.warning(f"No targets found in whisper {whisper_id}")
             return
         
+        logger.info(f"Found {len(all_targets)} target(s) in whisper {whisper_id}")
+        
         # Store recent target for each target (excluding @all/@everyone)
         for target_id, target_username, original_token in all_targets:
             # Skip special targets
             if original_token and original_token.lower() in ["@all", "@everyone"]:
+                logger.debug(f"Skipping special target: {original_token}")
                 continue
             
             # Ensure target_id is integer if provided
@@ -409,6 +420,8 @@ async def handle_chosen_inline_result(client, chosen_result):
                 except (ValueError, TypeError):
                     target_id = None
             
+            logger.info(f"Processing target: id={target_id}, username={target_username}, token={original_token}")
+            
             # Try to get fresh user information
             target_display = None
             if target_id:
@@ -417,11 +430,13 @@ async def handle_chosen_inline_result(client, chosen_result):
                     if resolved_display:
                         target_display = resolved_display
                         target_username = resolved_username
+                    logger.debug(f"Resolved target {target_id}: display={resolved_display}, username={resolved_username}")
                 except Exception as e:
                     logger.warning(f"Failed to resolve target {target_id}: {e}")
             
             # Store the recent target
             try:
+                logger.info(f"Storing recent target for user {whisper['sender_id']}: target_id={target_id}, username={target_username}, display={target_display}, token={original_token}")
                 await store_recent_target(
                     sender_id=whisper["sender_id"],
                     target_id=target_id,
@@ -429,6 +444,7 @@ async def handle_chosen_inline_result(client, chosen_result):
                     target_display=target_display,
                     original_token=original_token
                 )
+                logger.info(f"Successfully stored recent target for user {whisper['sender_id']}")
             except Exception:
                 logger.exception(f"Failed to store recent target for user {whisper['sender_id']}")
 
