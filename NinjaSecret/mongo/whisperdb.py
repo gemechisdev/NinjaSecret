@@ -6,6 +6,13 @@ Handles secret message storage, targeting, timers, and burn-after-reading functi
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Union
 from NinjaSecret.core.mongo import mongodb
+from NinjaSecret.logging import LOGGER
+
+# Get logger for this module
+logger = LOGGER(__name__)
+
+# Constants
+MAX_RECENT_TARGETS = 10  # Maximum number of recent targets to store per user
 
 # Collections
 whisperdb = mongodb.whispers
@@ -370,15 +377,17 @@ async def check_and_award_achievements(user_id: int):
 
     return new_achievements
 
-async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
+async def resolve_target(token: str, app, chat_id=None) -> tuple:
     """
     Resolve a single target token to (target_id, username, display_name)
     
     Args:
         token: Target identifier (@username or user_id)
         app: Bot client
-        userbot: Userbot client (optional, used as fallback)
         chat_id: Chat ID where the query was made (optional, for optimization)
+    
+    Returns:
+        tuple: (target_id, username, display_name)
     """
     username = None
     target_id = None
@@ -404,14 +413,13 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
             if display.strip():
                 return target_id, username, display.strip()
 
-    # OPTIMIZATION: Try to resolve from chat members first if chat_id is provided
+    # PRIORITY: Try to resolve from chat members first if chat_id is provided
+    # This gets first name, last name, and username from user ID if they're a chat member
     if chat_id and (username or target_id):
         try:
-            # Try to get chat members and find the user
-            # This is much faster than using userbot for each user
             ref = username if username else target_id
             
-            # Try to get the specific member directly
+            # Try to get the specific member directly using get_chat_member
             try:
                 member = await app.get_chat_member(chat_id, ref)
                 user = member.user
@@ -438,10 +446,9 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
             # Chat members fetch failed, continue to other methods
             pass
 
-    # Try to resolve via Telegram API (bot first, then userbot as fallback)
+    # Fallback: Try to resolve via bot's get_users API
     ref = username if username else target_id
     if ref:
-        # Try bot first
         try:
             user = await app.get_users(ref)
             target_id = user.id
@@ -461,32 +468,8 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
             if display.strip():
                 return target_id, username, display.strip()
         except Exception as e:
-            # Fallback to userbot if bot failed and userbot is available
             # Log the error for debugging user resolution issues
             print(f"Bot get_users failed for {ref}: {e}")
-            if userbot:
-                try:
-                    working_client = userbot.get_working_client()
-                    if working_client:
-                        user = await working_client.get_users(ref)
-                        target_id = user.id
-                        if user.username:
-                            username = user.username.lower()
-
-                        # Cache user information
-                        await upsert_user({
-                            "user_id": user.id,
-                            "username": username,
-                            "first_name": user.first_name,
-                            "last_name": user.last_name
-                        })
-
-                        display = (user.first_name or "") + (f" {user.last_name}" if user.last_name else "")
-                        if display.strip():
-                            return target_id, username, display.strip()
-                except Exception as e:
-                    # Log the error for debugging user resolution issues
-                    print(f"Userbot get_users failed for {ref}: {e}")
 
     # Fallback display if unresolved
     if not display or display == token:
@@ -500,11 +483,15 @@ async def resolve_target(token: str, app, userbot=None, chat_id=None) -> tuple:
                     if first_name:
                         display = first_name + (f" {last_name}" if last_name else "")
                     else:
-                        display = f"User {target_id}"
+                        # Return None for display - let the mention format handle it
+                        # Telegram will show the real name when displayed in chat
+                        display = None
                 else:
-                    display = f"User {target_id}"
+                    # Return None for display - let the mention format handle it
+                    display = None
             except Exception:
-                display = f"User {target_id}"
+                # Return None for display - let the mention format handle it
+                display = None
         elif username:
             display = f"@{username}"
         else:
@@ -537,18 +524,51 @@ async def get_user_by_id(user_id: int) -> Optional[Dict]:
 
     return await users_db.find_one({"user_id": user_id})
 
+
 # Recent Targets Functions
-async def store_recent_target(sender_id: int, target_id: int, target_username: str = None, target_display: str = None):
-    """Store a recent target for a user (up to 10 most recent)"""
+async def store_recent_target(sender_id: int, target_id: int = None, target_username: str = None, target_display: str = None, original_token: str = None):
+    """Store a recent target for a user (up to 10 most recent)
+    
+    Stores the target when a secret is sent successfully. Handles duplicates properly:
+    - If same target_id exists, removes old entry and adds new at position 0
+    - If same original_token exists (for unresolved targets), removes old entry and adds new at position 0
+    - Maintains maximum of 10 targets
+    - Newest targets appear at the top (position 0)
+    
+    Args:
+        sender_id: User ID of the sender
+        target_id: Resolved target user ID (can be None for unresolved targets)
+        target_username: Target's username (can be None)
+        target_display: Target's display name (can be None)
+        original_token: Original token used (@username or user_id) - stored for future resolution
+    """
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
 
-    # Ensure target_id is an integer for consistent comparison
-    target_id = int(target_id) if target_id else None
-    if not target_id:
-        return  # Skip if no valid target_id
-
-    # Try to get the most up-to-date user information
+    # Validate sender_id
+    if sender_id is None:
+        logger.error("sender_id cannot be None")
+        return
+    try:
+        sender_id = int(sender_id)
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid sender_id value '{sender_id}': {e}")
+        return
+    
+    # Ensure target_id is an integer if provided
+    if target_id:
+        try:
+            target_id = int(target_id)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to convert target_id '{target_id}' to int: {e}")
+            target_id = None
+    
+    # We need at least target_id OR original_token to store
+    if not target_id and not original_token:
+        logger.warning(f"Skipping store_recent_target for user {sender_id} - both target_id and original_token are None")
+        return
+    
+    # Try to get fresh user information from cache if we have target_id but no display
     if target_id and not target_display:
         try:
             cached_user = await get_user_by_id(target_id)
@@ -557,6 +577,7 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
                 last_name = cached_user.get("last_name", "")
                 if first_name:
                     target_display = first_name + (f" {last_name}" if last_name else "")
+                if not target_username and cached_user.get("username"):
                     target_username = cached_user.get("username")
         except Exception:
             pass
@@ -565,7 +586,8 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
     target_data = {
         "target_id": target_id,
         "target_username": target_username,
-        "target_display": target_display or f"User {target_id}",
+        "target_display": target_display,
+        "original_token": original_token,
         "last_used": datetime.utcnow()
     }
 
@@ -573,33 +595,68 @@ async def store_recent_target(sender_id: int, target_id: int, target_username: s
     user_targets = await recent_targets_db.find_one({"user_id": sender_id})
 
     if not user_targets:
-        # Create new record
+        # Create new record with first target at position 0
         await recent_targets_db.insert_one({
             "user_id": sender_id,
             "targets": [target_data]
         })
+        logger.info(f"Created new recent targets for user {sender_id} with target {target_id or original_token}")
     else:
         targets = user_targets.get("targets", [])
-
-        # Remove existing target if present (to update position)
-        targets = [t for t in targets if t.get("target_id") != target_id]
-
-        # Add new target at the beginning (most recent)
+        
+        # Remove duplicate if exists
+        # Test Case 1: Same target sent twice - check target_id match
+        # Test Case 2: Unresolved then resolved - check original_token match
+        # Test Case 3: Different tokens for same user - check target_id match
+        # Test Case 4: Different users - no match, just add
+        targets = [
+            t for t in targets
+            if not (
+                # Match by target_id if both new and existing have it (Test Cases 1, 3)
+                (target_id and t.get("target_id") and t.get("target_id") == target_id) or
+                # Match by original_token if both have it (Test Case 2)
+                (original_token and t.get("original_token") and t.get("original_token") == original_token)
+            )
+        ]
+        
+        # Add new target at position 0 (newest first)
         targets.insert(0, target_data)
-
-        # Keep only the 10 most recent
-        targets = targets[:10]
-
+        
+        # Keep only the most recent targets
+        targets = targets[:MAX_RECENT_TARGETS]
+        
         # Update the record
         await recent_targets_db.update_one(
             {"user_id": sender_id},
             {"$set": {"targets": targets}}
         )
+        logger.info(f"Updated recent targets for user {sender_id}, now have {len(targets)} target(s)")
 
-async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
-    """Get recent targets for a user"""
+
+async def get_recent_targets(user_id: int, limit: int = MAX_RECENT_TARGETS) -> List[Dict]:
+    """Get recent targets for a user
+    
+    Returns targets in order from newest (position 0) to oldest.
+    
+    Args:
+        user_id: User ID to get recent targets for
+        limit: Maximum number of targets to return (default 10)
+        
+    Returns:
+        List of target dictionaries, newest first
+    """
     from NinjaSecret.core.mongo import mongodb
     recent_targets_db = mongodb.recent_targets
+
+    # Validate user_id
+    if user_id is None:
+        logger.error("user_id cannot be None in get_recent_targets")
+        return []
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid user_id value '{user_id}' in get_recent_targets: {e}")
+        return []
 
     user_targets = await recent_targets_db.find_one({"user_id": user_id})
 
@@ -608,3 +665,4 @@ async def get_recent_targets(user_id: int, limit: int = 10) -> List[Dict]:
 
     targets = user_targets.get("targets", [])
     return targets[:limit]
+

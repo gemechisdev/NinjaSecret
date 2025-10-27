@@ -16,7 +16,8 @@ from pyrogram.types import (
 )
 from strings import get_string
 
-from NinjaSecret import app, userbot
+from NinjaSecret import app
+from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import (
     store_whisper,
     resolve_target,
@@ -25,7 +26,8 @@ from NinjaSecret.mongo.whisperdb import (
     attach_inline_message_id,
     upsert_user,
     store_recent_target,
-    get_recent_targets
+    get_recent_targets,
+    MAX_RECENT_TARGETS
 )
 from NinjaSecret.utils.whisper_utils import (
     create_whisper_inline_result,
@@ -35,6 +37,9 @@ from NinjaSecret.utils.whisper_utils import (
     parse_whisper_command,
     NINJA_EMOJIS
 )
+
+# Get logger for this module
+logger = LOGGER(__name__)
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -168,72 +173,75 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # If no target specified but we have message content, show recent target suggestions
         if message_content and not target_token:
-            recent_targets = await get_recent_targets(query.from_user.id, 10)
+            recent_targets = await get_recent_targets(query.from_user.id, MAX_RECENT_TARGETS)
             if recent_targets:
                 # Create suggestions for recent targets
                 results = []
                 for target in recent_targets:
-                    # Refresh target information to get updated name
+                    # Get target information
                     target_id = target.get("target_id")
                     target_username = target.get("target_username")
-
-                    # Try to resolve current user information using userbot first
+                    original_token = target.get("original_token")
+                    target_display = target.get("target_display")
+                    
+                    # Try to get fresh display name if we have target_id
                     if target_id:
                         try:
-                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
-                            if resolved_display and resolved_display != f"User {target_id}":
-                                # Update target with fresh information
-                                target["target_display"] = resolved_display
-                                target["target_username"] = resolved_username
-                        except Exception as e:
+                            resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
+                            if resolved_display:
+                                target_display = resolved_display
+                                target_username = resolved_username
+                        except Exception:
                             pass  # Use cached information if resolution fails
-
-                    # Create a whisper ID for this suggestion
+                    
+                    # Generate whisper ID for this suggestion
                     whisper_id = generate_whisper_id()
-
-                    # Pre-store whisper data for this suggestion
-                    # Create proper target token
-                    if target.get("target_username"):
-                        target_token = f"@{target['target_username']}"
+                    
+                    # Determine target token for whisper storage
+                    if original_token:
+                        use_target_token = original_token
+                    elif target_username:
+                        use_target_token = f"@{target_username}"
+                    elif target_id:
+                        use_target_token = str(target_id)
                     else:
-                        target_token = str(target.get("target_id"))
-
-                    # Create proper mention for the message
-                    target_display = target.get("target_display")
+                        continue  # Skip if we can't identify the target
+                    
+                    # Create display name if not available
                     if not target_display:
-                        language = get_string("en")
-                        target_display = language['whisper_user_fallback'].format(target_id)
-
-                    # Create mention with tg://user?id= format
+                        if target_username:
+                            target_display = f"@{target_username}"
+                        elif target_id:
+                            target_display = str(target_id)
+                        else:
+                            target_display = original_token or "Unknown"
+                    
+                    # Create mention for message
                     if target_id:
                         target_mention = f"[{target_display}](tg://user?id={target_id})"
                     else:
                         target_mention = target_display
-
+                    
+                    # Pre-store whisper data
                     store_data = {
                         "whisper_id": whisper_id,
                         "content": message_content,
                         "sender_id": query.from_user.id,
-                        "target_username": target.get("target_username"),
-                        "target_id": target.get("target_id"),
-                        "original_target_token": target_token,
-                        "all_targets": [(target.get("target_id"), target.get("target_username"), target_token)],
+                        "target_username": target_username,
+                        "target_id": target_id,
+                        "original_target_token": use_target_token,
+                        "all_targets": [(target_id, target_username, use_target_token)],
                         "target_mentions": target_mention
                     }
                     await store_whisper(store_data)
-
-                    # Create the suggestion with proper whisper format
-                    suggestion = create_recent_target_suggestion_with_id(target, message_content, whisper_id, "en")
+                    
+                    # Create inline result
+                    suggestion = create_recent_target_suggestion(target_display, target_id, whisper_id, "en")
                     results.append(suggestion)
-
-                # Also add the help response as the last option
+                
+                # Add help response as last option
                 results.append(create_invalid_format_response("en"))
-
-                await query.answer(results, cache_time=1, is_personal=True)
-                return
-            else:
-                # No recent targets, show normal invalid format response
-                results = [create_invalid_format_response("en")]
+                
                 await query.answer(results, cache_time=1, is_personal=True)
                 return
 
@@ -265,14 +273,23 @@ async def handle_inline_query(client, query: InlineQuery):
                 display_names.append(everyone_text)
                 target_mentions.append(everyone_text)
             else:
-                target_id, target_username, display_name = await resolve_target(token, app, userbot)
+                target_id, target_username, display_name = await resolve_target(token, app)
                 resolved_targets.append((target_id, target_username, token))
-                # Use the display name returned by resolve_target (it handles all cases properly)
-                display_names.append(display_name or token)
+                
+                # When display_name is None but we have target_id, use user ID as placeholder
+                if display_name:
+                    display_names.append(display_name)
+                elif target_id:
+                    # Use user ID as placeholder for display
+                    display_names.append(str(target_id))
+                else:
+                    display_names.append(token)
 
                 # Create mention for the message (using Markdown format)
                 if target_id:
-                    mention = f"[{display_name or token}](tg://user?id={target_id})"
+                    # Use user ID as placeholder if no display name - more informative than zero-width space
+                    placeholder = display_name if display_name else str(target_id)
+                    mention = f"[{placeholder}](tg://user?id={target_id})"
                     target_mentions.append(mention)
                 else:
                     target_mentions.append(display_name or token)
@@ -354,60 +371,69 @@ async def handle_chosen_inline_result(client, chosen_result):
         whisper_id = chosen_result.result_id
 
         # Skip if it's not a whisper
-        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'recent_targets_help']:
+        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
             return
 
-        # Attach the inline_message_id to the existing whisper
+        # Attach the inline_message_id to the existing whisper (only if available)
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
 
-            # If this was a recent target suggestion, update the recent targets with fresh info
-            from NinjaSecret.mongo.whisperdb import get_whisper
-            whisper = await get_whisper(whisper_id)
-            if whisper:
-                # Get all targets from the whisper
-                all_targets = whisper.get("all_targets", [])
-                
-                # If all_targets is not available, fallback to single target
-                if not all_targets and whisper.get("target_id"):
-                    all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
-                
-                # Store recent target for each actual target (excluding @all/@everyone)
-                for target_id, target_username, original_token in all_targets:
-                    # Skip if no target_id or if it's @all/@everyone
-                    if not target_id:
-                        continue
-                    if original_token and original_token.lower() in ["@all", "@everyone"]:
-                        continue
-                    
-                    # Ensure target_id is an integer for consistent comparison
-                    target_id = int(target_id) if target_id else None
-                    if not target_id:
-                        continue
-                    
-                    # Try to get fresh user information
-                    target_display = None
-                    try:
-                        resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app, userbot)
-                        if resolved_display and resolved_display != f"User {target_id}":
-                            target_display = resolved_display
-                            target_username = resolved_username
-                    except Exception as e:
-                        pass
-                    
-                    # Fallback to cached display name if resolution failed
-                    if not target_display:
-                        target_display = get_string("en")['whisper_user_fallback'].format(target_id)
-                    
-                    await store_recent_target(
-                        sender_id=whisper["sender_id"],
-                        target_id=target_id,
-                        target_username=target_username,
-                        target_display=target_display
-                    )
+        # Store recent targets when secret is sent successfully
+        from NinjaSecret.mongo.whisperdb import get_whisper
+        whisper = await get_whisper(whisper_id)
+        if not whisper:
+            logger.warning(f"Whisper not found for ID {whisper_id}")
+            return
+        
+        # Get all targets from the whisper
+        all_targets = whisper.get("all_targets", [])
+        
+        # Fallback to single target if all_targets not available
+        if not all_targets and whisper.get("target_id"):
+            all_targets = [(whisper["target_id"], whisper.get("target_username"), whisper.get("original_target_token"))]
+        
+        if not all_targets:
+            logger.warning(f"No targets found in whisper {whisper_id}")
+            return
+        
+        # Store recent target for each target (excluding @all/@everyone)
+        for target_id, target_username, original_token in all_targets:
+            # Skip special targets
+            if original_token and original_token.lower() in ["@all", "@everyone"]:
+                continue
+            
+            # Ensure target_id is integer if provided
+            if target_id:
+                try:
+                    target_id = int(target_id)
+                except (ValueError, TypeError):
+                    target_id = None
+            
+            # Try to get fresh user information
+            target_display = None
+            if target_id:
+                try:
+                    resolved_target_id, resolved_username, resolved_display = await resolve_target(str(target_id), app)
+                    if resolved_display:
+                        target_display = resolved_display
+                        target_username = resolved_username
+                except Exception as e:
+                    logger.warning(f"Failed to resolve target {target_id}: {e}")
+            
+            # Store the recent target
+            try:
+                await store_recent_target(
+                    sender_id=whisper["sender_id"],
+                    target_id=target_id,
+                    target_username=target_username,
+                    target_display=target_display,
+                    original_token=original_token
+                )
+            except Exception:
+                logger.exception(f"Failed to store recent target for user {whisper['sender_id']}")
 
-    except Exception as e:
-        print(f"Chosen inline result error: {e}")
+    except Exception:
+        logger.exception("Error in handle_chosen_inline_result")
 
 def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle:
     """Create response for invalid format"""
@@ -427,6 +453,28 @@ def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle
                 switch_inline_query_current_chat=""
             )]
         ])
+    )
+
+def create_recent_target_suggestion(target_display: str, target_id: int, whisper_id: str, lang: str = "en") -> InlineQueryResultArticle:
+    """Create inline query result for recent target suggestion"""
+    language = get_string(lang)
+    
+    # Create mention for message
+    if target_id:
+        mention = f"[{target_display}](tg://user?id={target_id})"
+    else:
+        mention = target_display
+    
+    return InlineQueryResultArticle(
+        id=whisper_id,
+        title=language['whisper_recent_secret_for'].format(target_display),
+        description=language['whisper_recent_click_desc'],
+        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
+        input_message_content=InputTextMessageContent(
+            message_text=language['whisper_recent_secret_message'].format(mention),
+            parse_mode=enums.ParseMode.MARKDOWN
+        ),
+        reply_markup=create_whisper_keyboard(whisper_id)
     )
 
 def create_no_targets_response(lang: str = "en") -> InlineQueryResultArticle:
@@ -484,73 +532,6 @@ def create_error_response(lang: str = "en") -> InlineQueryResultArticle:
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 f"{NINJA_EMOJIS['lightning']} {language['whisper_try_again']}",
-                switch_inline_query_current_chat=""
-            )]
-        ])
-    )
-
-def create_recent_target_whisper_message(target_display: str, target_id: int, lang: str = "en") -> str:
-    """Create whisper message with proper user mention"""
-    language = get_string(lang)
-    if target_id:
-        # Create proper Telegram mention
-        mention = f"[{target_display}](tg://user?id={target_id})"
-        return language['whisper_recent_secret_message'].format(mention)
-    else:
-        return language['whisper_recent_secret_message'].format(target_display)
-
-def create_recent_target_suggestion_with_id(target: Dict, message_content: str, whisper_id: str, lang: str = "en") -> InlineQueryResultArticle:
-    """Create inline query result for recent target suggestion - creates actual whisper"""
-    target_id = target.get("target_id")
-    target_username = target.get("target_username")
-    target_display = target.get("target_display")
-    if not target_display:
-        language = get_string(lang)
-        target_display = language['whisper_user_fallback'].format(target_id)
-
-    language = get_string(lang)
-
-    return InlineQueryResultArticle(
-        id=whisper_id,
-        title=language['whisper_recent_secret_for'].format(target_display),
-        description=language['whisper_recent_click_desc'],
-        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Kkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
-        input_message_content=InputTextMessageContent(
-            message_text=create_recent_target_whisper_message(target_display, target_id, lang),
-            parse_mode=enums.ParseMode.MARKDOWN
-        ),
-        reply_markup=create_whisper_keyboard(whisper_id)
-    )
-
-def create_recent_targets_help_response(recent_targets: List[Dict], lang: str = "en") -> InlineQueryResultArticle:
-    """Create help response showing recent targets"""
-    language = get_string(lang)
-
-    targets_list = []
-    for i, target in enumerate(recent_targets[:5], 1):
-        target_display = target.get("target_display")
-        if not target_display:
-            target_display = language['whisper_user_fallback'].format(target.get('target_id'))
-
-        if target.get("target_username"):
-            targets_list.append(f"{i}. {target_display} (@{target['target_username']})")
-        else:
-            targets_list.append(f"{i}. {target_display} (ID: {target.get('target_id')})")
-
-    targets_text = "\n".join(targets_list) if targets_list else language['whisper_no_recent_targets']
-
-    return InlineQueryResultArticle(
-        id="recent_targets_help",
-        title=f"{NINJA_EMOJIS['ninja']} {language['whisper_recent_targets_title']}",
-        description=language['whisper_recent_targets_desc'].format(len(recent_targets)),
-        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
-        input_message_content=InputTextMessageContent(
-            message_text=language['whisper_recent_targets_message'].format(targets_text),
-            parse_mode=enums.ParseMode.MARKDOWN
-        ),
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                f"{NINJA_EMOJIS['lightning']} {language['whisper_start_typing']}",
                 switch_inline_query_current_chat=""
             )]
         ])
