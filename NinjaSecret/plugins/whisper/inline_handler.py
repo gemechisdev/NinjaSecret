@@ -41,9 +41,41 @@ from NinjaSecret.utils.whisper_utils import (
 logger = LOGGER(__name__)
 
 # Temporary cache for whisper data before they are actually sent
-# Key: whisper_id, Value: whisper data dict
+# Key: whisper_id, Value: {"data": whisper_data, "timestamp": datetime}
 # This prevents storing whispers in DB during inline query generation
 pending_whispers_cache: Dict[str, Dict] = {}
+
+# Cache timeout in seconds (5 minutes)
+CACHE_TIMEOUT_SECONDS = 300
+
+# Cleanup counter - cleanup every N queries to reduce overhead
+cleanup_counter = 0
+CLEANUP_INTERVAL = 50  # Cleanup every 50 queries
+
+async def cleanup_stale_cache_entries():
+    """Remove cache entries older than CACHE_TIMEOUT_SECONDS"""
+    global cleanup_counter
+    cleanup_counter += 1
+    
+    # Only cleanup every CLEANUP_INTERVAL queries
+    if cleanup_counter < CLEANUP_INTERVAL:
+        return
+    
+    cleanup_counter = 0
+    current_time = datetime.utcnow()
+    stale_keys = []
+    
+    for whisper_id, cache_entry in pending_whispers_cache.items():
+        timestamp = cache_entry.get("timestamp")
+        if timestamp and (current_time - timestamp).total_seconds() > CACHE_TIMEOUT_SECONDS:
+            stale_keys.append(whisper_id)
+    
+    for key in stale_keys:
+        del pending_whispers_cache[key]
+        logger.debug(f"Removed stale cache entry: {key}")
+    
+    if stale_keys:
+        logger.info(f"Cleaned up {len(stale_keys)} stale cache entries")
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -239,8 +271,11 @@ async def handle_inline_query(client, query: InlineQuery):
                         "all_targets": [(target_id, target_username, use_target_token)],
                         "target_mentions": target_mention
                     }
-                    # Store in temporary cache, not database
-                    pending_whispers_cache[whisper_id] = store_data
+                    # Store in temporary cache with timestamp
+                    pending_whispers_cache[whisper_id] = {
+                        "data": store_data,
+                        "timestamp": datetime.utcnow()
+                    }
                     
                     # Create inline result
                     logger.debug(f"Creating recent target suggestion for {target_display} (ID: {target_id})")
@@ -342,8 +377,14 @@ async def handle_inline_query(client, query: InlineQuery):
         if modifiers:
             store_data["modifiers"] = modifiers
 
-        # Store in temporary cache, not database
-        pending_whispers_cache[whisper_id] = store_data
+        # Store in temporary cache with timestamp
+        pending_whispers_cache[whisper_id] = {
+            "data": store_data,
+            "timestamp": datetime.utcnow()
+        }
+        
+        # Periodically cleanup stale cache entries
+        await cleanup_stale_cache_entries()
 
         # Create inline result (enhanced with special features support)
         result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
@@ -384,9 +425,14 @@ async def handle_chosen_inline_result(client, chosen_result):
             return
 
         # Retrieve whisper data from cache
-        whisper_data = pending_whispers_cache.get(whisper_id)
-        if not whisper_data:
+        cache_entry = pending_whispers_cache.get(whisper_id)
+        if not cache_entry:
             logger.warning(f"Whisper data not found in cache for ID {whisper_id}")
+            return
+        
+        whisper_data = cache_entry.get("data")
+        if not whisper_data:
+            logger.warning(f"Whisper data structure invalid for ID {whisper_id}")
             return
         
         logger.info(f"Retrieved whisper from cache: {whisper_id}")
