@@ -21,45 +21,52 @@ whisper_achievements = mongodb.whisper_achievements
 
 async def store_whisper(data: Dict) -> str:
     """Store a new whisper message with optional special features support"""
-    whisper_data = {
-        "whisper_id": data["whisper_id"],
-        "inline_message_id": data.get("inline_message_id"),
-        "content": data["content"],
-        "sender_id": data["sender_id"],
-        "target_username": data.get("target_username"),
-        "target_id": data.get("target_id"),
-        "original_target_token": data.get("original_target_token"),
-        "all_targets": data.get("all_targets"),  # Store all targets for recent targets history
-        "target_mentions": data.get("target_mentions"),  # Store formatted mentions
-        "created_at": datetime.utcnow(),
-        "read_at": None,
-        "reader_id": None,
-        "status": "active"
-    }
+    try:
+        logger.info(f"Storing whisper {data.get('whisper_id')} for sender {data.get('sender_id')}")
+        
+        whisper_data = {
+            "whisper_id": data["whisper_id"],
+            "inline_message_id": data.get("inline_message_id"),
+            "content": data["content"],
+            "sender_id": data["sender_id"],
+            "target_username": data.get("target_username"),
+            "target_id": data.get("target_id"),
+            "original_target_token": data.get("original_target_token"),
+            "all_targets": data.get("all_targets"),  # Store all targets for recent targets history
+            "target_mentions": data.get("target_mentions"),  # Store formatted mentions
+            "created_at": datetime.utcnow(),
+            "read_at": None,
+            "reader_id": None,
+            "status": "active"
+        }
 
-    # Add special features settings if provided
-    if data.get("modifiers"):
-        settings = {}
-        modifiers = data["modifiers"]
+        # Add special features settings if provided
+        if data.get("modifiers"):
+            settings = {}
+            modifiers = data["modifiers"]
 
-        # Handle timer expiration
-        if modifiers.get("timer"):
-            expires_at = datetime.utcnow() + timedelta(seconds=modifiers["timer"])
-            settings["expires_at"] = expires_at
+            # Handle timer expiration
+            if modifiers.get("timer"):
+                expires_at = datetime.utcnow() + timedelta(seconds=modifiers["timer"])
+                settings["expires_at"] = expires_at
 
-        # Handle burn after reading
-        if modifiers.get("burn_after_reading"):
-            settings["burn_after_reading"] = True
+            # Handle burn after reading
+            if modifiers.get("burn_after_reading"):
+                settings["burn_after_reading"] = True
 
-        # Handle styling
-        if modifiers.get("style"):
-            settings["style"] = modifiers["style"]
+            # Handle styling
+            if modifiers.get("style"):
+                settings["style"] = modifiers["style"]
 
-        if settings:
-            whisper_data["settings"] = settings
+            if settings:
+                whisper_data["settings"] = settings
 
-    await whisperdb.insert_one(whisper_data)
-    return data["whisper_id"]
+        await whisperdb.insert_one(whisper_data)
+        logger.info(f"Successfully inserted whisper {data['whisper_id']} into database")
+        return data["whisper_id"]
+    except Exception as e:
+        logger.exception(f"Error storing whisper {data.get('whisper_id')}: {e}")
+        raise
 
 async def attach_inline_message_id(whisper_id: str, inline_message_id: str):
     """Attach inline_message_id to a whisper after it's chosen"""
@@ -70,7 +77,17 @@ async def attach_inline_message_id(whisper_id: str, inline_message_id: str):
 
 async def get_whisper(whisper_id: str) -> Optional[Dict]:
     """Get whisper message by whisper_id"""
-    return await whisperdb.find_one({"whisper_id": whisper_id})
+    try:
+        logger.debug(f"Looking up whisper {whisper_id} in database")
+        whisper = await whisperdb.find_one({"whisper_id": whisper_id})
+        if whisper:
+            logger.debug(f"Found whisper {whisper_id} in database, status: {whisper.get('status')}")
+        else:
+            logger.warning(f"Whisper {whisper_id} not found in database")
+        return whisper
+    except Exception as e:
+        logger.exception(f"Error retrieving whisper {whisper_id}: {e}")
+        return None
 
 async def mark_whisper_read(whisper_id: str, reader_id: int):
     """Mark whisper as read"""

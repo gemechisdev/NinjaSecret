@@ -50,7 +50,7 @@ CACHE_TIMEOUT_SECONDS = 300
 
 # Cleanup counter - cleanup every N queries to reduce overhead
 cleanup_counter = 0
-CLEANUP_INTERVAL = 50  # Cleanup every 50 queries
+CLEANUP_INTERVAL = 10  # Cleanup every 10 queries (more frequent for faster cleanup)
 
 async def cleanup_stale_cache_entries():
     """Remove cache entries older than CACHE_TIMEOUT_SECONDS"""
@@ -76,6 +76,9 @@ async def cleanup_stale_cache_entries():
     
     if stale_keys:
         logger.info(f"Cleaned up {len(stale_keys)} stale cache entries")
+    
+    # Also log cache statistics
+    logger.debug(f"Cache stats: {len(pending_whispers_cache)} entries, cleanup_counter={cleanup_counter}")
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -276,6 +279,7 @@ async def handle_inline_query(client, query: InlineQuery):
                         "data": store_data,
                         "timestamp": datetime.utcnow()
                     }
+                    logger.debug(f"Cached recent target suggestion {whisper_id} for target {target_display}")
                     
                     # Create inline result
                     logger.debug(f"Creating recent target suggestion for {target_display} (ID: {target_id})")
@@ -382,6 +386,7 @@ async def handle_inline_query(client, query: InlineQuery):
             "data": store_data,
             "timestamp": datetime.utcnow()
         }
+        logger.info(f"Cached whisper {whisper_id} for user {query.from_user.id} (cache size: {len(pending_whispers_cache)})")
         
         # Periodically cleanup stale cache entries
         await cleanup_stale_cache_entries()
@@ -427,26 +432,45 @@ async def handle_chosen_inline_result(client, chosen_result):
         # Retrieve whisper data from cache
         cache_entry = pending_whispers_cache.get(whisper_id)
         if not cache_entry:
-            logger.warning(f"Whisper data not found in cache for ID {whisper_id}")
+            logger.error(f"Whisper data not found in cache for ID {whisper_id}. Cache has {len(pending_whispers_cache)} entries.")
+            logger.error(f"Available whisper IDs in cache: {list(pending_whispers_cache.keys())[:5]}")
             return
         
         whisper_data = cache_entry.get("data")
         if not whisper_data:
-            logger.warning(f"Whisper data structure invalid for ID {whisper_id}")
+            logger.error(f"Whisper data structure invalid for ID {whisper_id}. Cache entry: {cache_entry}")
             return
         
         logger.info(f"Retrieved whisper from cache: {whisper_id}")
+        logger.debug(f"Whisper data: sender={whisper_data.get('sender_id')}, target={whisper_data.get('target_id')}, content_len={len(whisper_data.get('content', ''))}")
         
         # Add inline_message_id if available
         if chosen_result.inline_message_id:
             whisper_data["inline_message_id"] = chosen_result.inline_message_id
+            logger.debug(f"Added inline_message_id: {chosen_result.inline_message_id}")
+        else:
+            logger.warning(f"No inline_message_id provided for whisper {whisper_id}")
         
         # NOW store the whisper in the database (only when user actually sends it)
-        await store_whisper(whisper_data)
-        logger.info(f"Stored whisper {whisper_id} in database after user sent it")
+        try:
+            await store_whisper(whisper_data)
+            logger.info(f"Successfully stored whisper {whisper_id} in database")
+            
+            # Verify it was stored by trying to retrieve it
+            from NinjaSecret.mongo.whisperdb import get_whisper
+            verification = await get_whisper(whisper_id)
+            if verification:
+                logger.info(f"Verification: Whisper {whisper_id} found in database after storage")
+            else:
+                logger.error(f"Verification FAILED: Whisper {whisper_id} NOT found in database after storage!")
+        except Exception as store_error:
+            logger.exception(f"CRITICAL: Failed to store whisper {whisper_id} in database: {store_error}")
+            # Don't remove from cache if storage failed, so we can retry
+            return
         
-        # Remove from cache to free memory
+        # Remove from cache to free memory (only if storage succeeded)
         del pending_whispers_cache[whisper_id]
+        logger.debug(f"Removed whisper {whisper_id} from cache")
         
         # Get all targets from the whisper
         all_targets = whisper_data.get("all_targets", [])
