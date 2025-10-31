@@ -40,6 +40,9 @@ from NinjaSecret.utils.whisper_utils import (
 # Get logger for this module
 logger = LOGGER(__name__)
 
+# Log when module is loaded
+logger.info("Whisper inline_handler module loaded - on_chosen_inline_result handler registered")
+
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
     # First try the advanced parser for special features
