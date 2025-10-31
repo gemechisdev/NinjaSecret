@@ -272,8 +272,8 @@ def create_dashboard_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(
-                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ {NINJA_EMOJIS['scroll']}",
-                callback_data="whisper_settings"
+                f"🎯 ʀᴇᴄᴇɴᴛ ᴛᴀʀɢᴇᴛs",
+                callback_data="whisper_recent_targets"
             ),
             InlineKeyboardButton(
                 f"{NINJA_EMOJIS['shuriken']} sᴇᴄʀᴇᴛ sᴛᴀᴛs",
@@ -282,9 +282,15 @@ def create_dashboard_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(
+                f"⚙️ ᴍʏ ᴊᴜɴɢʟᴇ {NINJA_EMOJIS['scroll']}",
+                callback_data="whisper_settings"
+            ),
+            InlineKeyboardButton(
                 f"{NINJA_EMOJIS['stealth']} ғᴜɴ ᴍᴏᴅᴇs",
                 callback_data="whisper_styles"
-            ),
+            )
+        ],
+        [
             InlineKeyboardButton(
                 f"{NINJA_EMOJIS['scroll']} ʜᴇʟᴘ ᴛʀᴇᴇ",
                 callback_data="whisper_help"

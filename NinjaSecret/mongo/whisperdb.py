@@ -4,7 +4,7 @@ Handles secret message storage, targeting, timers, and burn-after-reading functi
 """
 
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 from NinjaSecret.core.mongo import mongodb
 from NinjaSecret.logging import LOGGER
 
@@ -96,10 +96,18 @@ async def get_whisper_by_id(whisper_id: str) -> Optional[Dict]:
     """Get whisper message by whisper ID (UUID)"""
     whisper = await whisperdb.find_one({"whisper_id": whisper_id})
 
-    # Check if message has expired
+    # Check if message has expired (only if timer was set)
     if whisper and whisper.get("settings", {}).get("expires_at"):
         if datetime.utcnow() > whisper["settings"]["expires_at"]:
-            await mark_whisper_expired(whisper["inline_message_id"])
+            # Only mark as expired if inline_message_id exists
+            if whisper.get("inline_message_id"):
+                await mark_whisper_expired(whisper["inline_message_id"])
+            else:
+                # Mark as expired using whisper_id
+                await whisperdb.update_one(
+                    {"whisper_id": whisper_id},
+                    {"$set": {"status": "expired"}}
+                )
             return None
 
     return whisper
@@ -522,3 +530,98 @@ async def get_user_by_id(user_id: int) -> Optional[Dict]:
     return await users_db.find_one({"user_id": user_id})
 
 
+
+async def add_recent_target(sender_id: int, target_data: Dict[str, Any]):
+    """
+    Add a target to the user's recent targets list.
+    Maintains a list of up to 10 recent targets, with most recent first.
+    
+    Args:
+        sender_id: The user ID of the sender
+        target_data: Dict containing target info (user_id, username, display_name)
+    """
+    from NinjaSecret.core.mongo import mongodb
+    users_db = mongodb.users
+    
+    # Get current user document
+    user_doc = await users_db.find_one({"user_id": sender_id})
+    
+    if not user_doc:
+        # Create new user document with recent_targets
+        await users_db.insert_one({
+            "user_id": sender_id,
+            "recent_targets": [target_data],
+            "last_updated": datetime.utcnow()
+        })
+        return
+    
+    # Get existing recent_targets or initialize empty list
+    recent_targets = user_doc.get("recent_targets", [])
+    
+    # Remove any existing entry for this target (by user_id)
+    target_user_id = target_data.get("user_id")
+    if target_user_id:
+        recent_targets = [t for t in recent_targets if t.get("user_id") != target_user_id]
+    else:
+        # If no user_id, try to match by username
+        target_username = target_data.get("username")
+        if target_username:
+            recent_targets = [t for t in recent_targets if t.get("username") != target_username]
+    
+    # Add the new target at the beginning (most recent first)
+    recent_targets.insert(0, target_data)
+    
+    # Keep only the last 10 targets
+    recent_targets = recent_targets[:10]
+    
+    # Update the database
+    await users_db.update_one(
+        {"user_id": sender_id},
+        {
+            "$set": {
+                "recent_targets": recent_targets,
+                "last_updated": datetime.utcnow()
+            }
+        },
+        upsert=True
+    )
+
+async def get_recent_targets(user_id: int) -> List[Dict[str, Any]]:
+    """
+    Get the list of recent targets for a user.
+    
+    Args:
+        user_id: The user ID
+        
+    Returns:
+        List of recent target dicts (up to 10), most recent first
+    """
+    from NinjaSecret.core.mongo import mongodb
+    users_db = mongodb.users
+    
+    user_doc = await users_db.find_one({"user_id": user_id})
+    
+    if not user_doc:
+        return []
+    
+    return user_doc.get("recent_targets", [])
+
+async def clear_recent_targets(user_id: int):
+    """
+    Clear all recent targets for a user.
+    
+    Args:
+        user_id: The user ID
+    """
+    from NinjaSecret.core.mongo import mongodb
+    users_db = mongodb.users
+    
+    await users_db.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "recent_targets": [],
+                "last_updated": datetime.utcnow()
+            }
+        }
+    )
