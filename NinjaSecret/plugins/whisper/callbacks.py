@@ -8,6 +8,7 @@ from pyrogram import filters, enums
 from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from NinjaSecret import app
+from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import (
     get_whisper,
     mark_whisper_read,
@@ -29,6 +30,9 @@ from NinjaSecret.utils.whisper_utils import (
     NINJA_EMOJIS
 )
 from config import BANNED_USERS
+
+# Get logger for this module
+logger = LOGGER(__name__)
 
 @app.on_callback_query(filters.regex(r"whisper_view_(.+)") & ~BANNED_USERS)
 @languageCB
@@ -703,10 +707,8 @@ Click any button below to send a secret to that target!"""
             reply_markup=recent_keyboard
         )
     
-    except Exception as e:
-        print(f"Recent targets error: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Error in handle_recent_targets")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} Error loading recent targets!",
             show_alert=True
@@ -746,8 +748,8 @@ Use inline mode to send secrets:
             reply_markup=clear_keyboard
         )
     
-    except Exception as e:
-        print(f"Clear recent targets error: {e}")
+    except Exception:
+        logger.exception("Error in handle_clear_recent_targets")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} Error clearing targets!",
             show_alert=True
