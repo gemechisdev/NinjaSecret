@@ -13,7 +13,9 @@ from NinjaSecret.mongo.whisperdb import (
     mark_whisper_read,
     get_user_whisper_stats,
     update_user_stats,
-    upsert_user
+    upsert_user,
+    get_recent_targets,
+    clear_recent_targets
 )
 from NinjaSecret.utils.decorators.language import languageCB
 from NinjaSecret.utils.whisper_utils import (
@@ -607,5 +609,146 @@ async def handle_settings(client, callback_query: CallbackQuery):
         print(f"Settings error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_settings']}",
+            show_alert=True
+        )
+
+@app.on_callback_query(filters.regex("whisper_recent_targets") & ~BANNED_USERS)
+async def handle_recent_targets(client, callback_query: CallbackQuery):
+    """Show recent targets list"""
+    try:
+        await callback_query.answer()
+        
+        user_id = callback_query.from_user.id
+        recent_targets = await get_recent_targets(user_id)
+        
+        if not recent_targets:
+            recent_text = f"""{NINJA_EMOJIS['see_no_evil']} **No Recent Targets**
+
+You haven't sent any secrets yet! 
+
+Use inline mode to send your first secret message:
+`@ninjasecretbot [message] [target]`
+
+Example: `@ninjasecretbot Hey there! @username`"""
+        else:
+            recent_text = f"""{NINJA_EMOJIS['scroll']} **Recent Targets**
+
+Here are your last {len(recent_targets)} secret recipients (most recent first):
+
+"""
+            for i, target in enumerate(recent_targets, 1):
+                display_name = target.get("display_name", "Unknown")
+                username = target.get("username")
+                user_id_str = target.get("user_id")
+                
+                # Format target info
+                if username:
+                    target_info = f"@{username}"
+                elif user_id_str:
+                    target_info = str(user_id_str)
+                else:
+                    target_info = target.get("original_token", "Unknown")
+                
+                recent_text += f"{i}. {display_name} ({target_info})\n"
+            
+            recent_text += f"""
+{NINJA_EMOJIS['shuriken']} **Quick Send:**
+Click any button below to send a secret to that target!"""
+        
+        # Create buttons for recent targets
+        buttons = []
+        for i, target in enumerate(recent_targets[:5], 1):  # Show top 5 as quick buttons
+            display_name = target.get("display_name", "Unknown")
+            username = target.get("username")
+            user_id_str = target.get("user_id")
+            
+            # Determine what to use as the target reference
+            if username:
+                target_ref = f"@{username}"
+            elif user_id_str:
+                target_ref = str(user_id_str)
+            else:
+                target_ref = target.get("original_token", "@unknown")
+            
+            # Truncate long display names
+            button_text = display_name[:20] + "..." if len(display_name) > 20 else display_name
+            
+            buttons.append([
+                InlineKeyboardButton(
+                    f"{i}. {button_text}",
+                    switch_inline_query_current_chat=f"Your message here {target_ref}"
+                )
+            ])
+        
+        # Add control buttons
+        if recent_targets:
+            buttons.append([
+                InlineKeyboardButton(
+                    f"🗑️ Clear History",
+                    callback_data="whisper_clear_recent_targets"
+                )
+            ])
+        
+        buttons.append([
+            InlineKeyboardButton(
+                f"🏠 {NINJA_EMOJIS['shuriken']} Dashboard",
+                callback_data="whisper_dashboard"
+            )
+        ])
+        
+        recent_keyboard = InlineKeyboardMarkup(buttons)
+        
+        await callback_query.edit_message_text(
+            recent_text,
+            reply_markup=recent_keyboard
+        )
+    
+    except Exception as e:
+        print(f"Recent targets error: {e}")
+        import traceback
+        traceback.print_exc()
+        await callback_query.answer(
+            f"{NINJA_EMOJIS['see_no_evil']} Error loading recent targets!",
+            show_alert=True
+        )
+
+@app.on_callback_query(filters.regex("whisper_clear_recent_targets") & ~BANNED_USERS)
+async def handle_clear_recent_targets(client, callback_query: CallbackQuery):
+    """Clear recent targets"""
+    try:
+        user_id = callback_query.from_user.id
+        await clear_recent_targets(user_id)
+        
+        await callback_query.answer(
+            f"{NINJA_EMOJIS['sparkles']} Recent targets cleared!",
+            show_alert=True
+        )
+        
+        # Refresh the view
+        recent_text = f"""{NINJA_EMOJIS['see_no_evil']} **No Recent Targets**
+
+Your recent targets history has been cleared!
+
+Use inline mode to send secrets:
+`@ninjasecretbot [message] [target]`"""
+        
+        clear_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    f"🏠 {NINJA_EMOJIS['shuriken']} Dashboard",
+                    callback_data="whisper_dashboard"
+                )
+            ]
+        ])
+        
+        await callback_query.edit_message_text(
+            recent_text,
+            reply_markup=clear_keyboard
+        )
+    
+    except Exception as e:
+        print(f"Clear recent targets error: {e}")
+        await callback_query.answer(
+            f"{NINJA_EMOJIS['see_no_evil']} Error clearing targets!",
             show_alert=True
         )
