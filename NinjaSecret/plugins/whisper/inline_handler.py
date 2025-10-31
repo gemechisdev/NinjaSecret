@@ -294,61 +294,82 @@ async def handle_chosen_inline_result(client, chosen_result):
     """Handle when user sends an inline result"""
     try:
         whisper_id = chosen_result.result_id
+        
+        logger.info(f"Chosen inline result: whisper_id={whisper_id}")
 
         # Skip if it's not a whisper
         if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'message_too_long']:
+            logger.info(f"Skipping non-whisper result: {whisper_id}")
             return
 
         # Attach the inline_message_id to the existing whisper (only if available)
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
+            logger.info(f"Attached inline_message_id for whisper {whisper_id}")
         
         # Get the whisper to extract target information
         whisper = await get_whisper(whisper_id)
-        if whisper:
-            sender_id = whisper.get("sender_id")
-            all_targets = whisper.get("all_targets", [])
+        if not whisper:
+            logger.error(f"Whisper not found: {whisper_id}")
+            return
             
-            # Add each target to the sender's recent targets list
-            for target_id, target_username, original_token in all_targets:
-                # Skip @all and @everyone
-                if original_token.lower() in ["@all", "@everyone"]:
-                    continue
-                
-                # Get display name for the target
-                display_name = None
-                if target_id:
-                    try:
-                        user = await client.get_users(target_id)
-                        display_name = user.first_name
-                        if user.last_name:
-                            display_name += f" {user.last_name}"
-                        # Update username if it changed
-                        if user.username:
-                            target_username = user.username.lower()
-                    except Exception:
-                        pass
-                
-                # If we still don't have a display name, use username or ID
-                if not display_name:
-                    if target_username:
-                        display_name = f"@{target_username}"
-                    elif target_id:
-                        display_name = str(target_id)
-                    else:
-                        display_name = original_token
-                
-                # Create target data dict
-                target_data = {
-                    "user_id": target_id,
-                    "username": target_username,
-                    "display_name": display_name,
-                    "original_token": original_token,
-                    "added_at": datetime.utcnow()
-                }
-                
-                # Add to recent targets
+        logger.info(f"Retrieved whisper {whisper_id} for sender {whisper.get('sender_id')}")
+        
+        sender_id = whisper.get("sender_id")
+        all_targets = whisper.get("all_targets", [])
+        
+        logger.info(f"Processing {len(all_targets)} targets for recent targets list")
+        
+        # Add each target to the sender's recent targets list
+        for target_id, target_username, original_token in all_targets:
+            # Skip @all and @everyone
+            if original_token.lower() in ["@all", "@everyone"]:
+                logger.info(f"Skipping @all/@everyone target")
+                continue
+            
+            logger.info(f"Processing target: id={target_id}, username={target_username}, token={original_token}")
+            
+            # Get display name for the target
+            display_name = None
+            if target_id:
+                try:
+                    user = await client.get_users(target_id)
+                    display_name = user.first_name
+                    if user.last_name:
+                        display_name += f" {user.last_name}"
+                    # Update username if it changed
+                    if user.username:
+                        target_username = user.username.lower()
+                    logger.info(f"Fetched user info: display_name={display_name}, username={target_username}")
+                except Exception as e:
+                    logger.warning(f"Could not fetch user info for {target_id}: {e}")
+            
+            # If we still don't have a display name, use username or ID
+            if not display_name:
+                if target_username:
+                    display_name = f"@{target_username}"
+                elif target_id:
+                    display_name = str(target_id)
+                else:
+                    display_name = original_token
+            
+            # Create target data dict
+            target_data = {
+                "user_id": target_id,
+                "username": target_username,
+                "display_name": display_name,
+                "original_token": original_token,
+                "added_at": datetime.utcnow()
+            }
+            
+            logger.info(f"Adding to recent targets: {target_data}")
+            
+            # Add to recent targets
+            try:
                 await add_recent_target(sender_id, target_data)
+                logger.info(f"Successfully added target to recent targets for sender {sender_id}")
+            except Exception as e:
+                logger.exception(f"Failed to add recent target: {e}")
 
     except Exception:
         logger.exception("Error in handle_chosen_inline_result")
