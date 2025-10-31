@@ -24,7 +24,9 @@ from NinjaSecret.mongo.whisperdb import (
     update_user_stats,
     check_and_award_achievements,
     attach_inline_message_id,
-    upsert_user
+    upsert_user,
+    add_recent_target,
+    get_whisper
 )
 from NinjaSecret.utils.whisper_utils import (
     create_whisper_inline_result,
@@ -294,12 +296,59 @@ async def handle_chosen_inline_result(client, chosen_result):
         whisper_id = chosen_result.result_id
 
         # Skip if it's not a whisper
-        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error']:
+        if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'message_too_long']:
             return
 
         # Attach the inline_message_id to the existing whisper (only if available)
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
+        
+        # Get the whisper to extract target information
+        whisper = await get_whisper(whisper_id)
+        if whisper:
+            sender_id = whisper.get("sender_id")
+            all_targets = whisper.get("all_targets", [])
+            
+            # Add each target to the sender's recent targets list
+            for target_id, target_username, original_token in all_targets:
+                # Skip @all and @everyone
+                if original_token.lower() in ["@all", "@everyone"]:
+                    continue
+                
+                # Get display name for the target
+                display_name = None
+                if target_id:
+                    try:
+                        user = await client.get_users(target_id)
+                        display_name = user.first_name
+                        if user.last_name:
+                            display_name += f" {user.last_name}"
+                        # Update username if it changed
+                        if user.username:
+                            target_username = user.username.lower()
+                    except Exception:
+                        pass
+                
+                # If we still don't have a display name, use username or ID
+                if not display_name:
+                    if target_username:
+                        display_name = f"@{target_username}"
+                    elif target_id:
+                        display_name = str(target_id)
+                    else:
+                        display_name = original_token
+                
+                # Create target data dict
+                target_data = {
+                    "user_id": target_id,
+                    "username": target_username,
+                    "display_name": display_name,
+                    "original_token": original_token,
+                    "added_at": datetime.utcnow()
+                }
+                
+                # Add to recent targets
+                await add_recent_target(sender_id, target_data)
 
     except Exception:
         logger.exception("Error in handle_chosen_inline_result")
