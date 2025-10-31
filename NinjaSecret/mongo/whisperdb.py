@@ -4,7 +4,7 @@ Handles secret message storage, targeting, timers, and burn-after-reading functi
 """
 
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 from NinjaSecret.core.mongo import mongodb
 from NinjaSecret.logging import LOGGER
 
@@ -531,7 +531,7 @@ async def get_user_by_id(user_id: int) -> Optional[Dict]:
 
 
 
-async def add_recent_target(sender_id: int, target_data: Dict):
+async def add_recent_target(sender_id: int, target_data: Dict[str, Any]):
     """
     Add a target to the user's recent targets list.
     Maintains a list of up to 10 recent targets, with most recent first.
@@ -586,7 +586,7 @@ async def add_recent_target(sender_id: int, target_data: Dict):
         upsert=True
     )
 
-async def get_recent_targets(user_id: int) -> List[Dict]:
+async def get_recent_targets(user_id: int) -> List[Dict[str, Any]]:
     """
     Get the list of recent targets for a user.
     
