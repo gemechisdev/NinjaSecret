@@ -316,7 +316,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         if settings.get("expires_at"):
             time_left = get_time_remaining_text(settings["expires_at"])
             if time_left != "Expired":
-                display_content += f"\n\n⏰ Expires in: {time_left}"
+                display_content += f"\n⏰ {time_left}"
 
         # Add style emoji based on settings
         if settings.get("burn_after_reading"):
