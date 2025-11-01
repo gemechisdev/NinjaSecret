@@ -261,7 +261,8 @@ async def handle_inline_query(client, query: InlineQuery):
                         "target_id": target_user_id,
                         "original_target_token": target_ref,
                         "all_targets": [(target_user_id, target_username, target_ref)],
-                        "target_mentions": target_mention
+                        "target_mentions": target_mention,
+                        "created_at": datetime.utcnow()  # Track when cached for cleanup
                     }
                     
                     if modifiers:
@@ -383,7 +384,8 @@ async def handle_inline_query(client, query: InlineQuery):
             "target_id": primary_target[0],
             "original_target_token": target_token,  # Store the full target string for multiple targets
             "all_targets": resolved_targets,  # Store all targets for future use
-            "target_mentions": combined_mentions  # Store formatted mentions for the message
+            "target_mentions": combined_mentions,  # Store formatted mentions for the message
+            "created_at": datetime.utcnow()  # Track when cached for cleanup
         }
 
         # Add modifiers if present (special features)
