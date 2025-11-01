@@ -190,10 +190,60 @@ async def handle_inline_query(client, query: InlineQuery):
                 for i, target in enumerate(recent_targets[:5], 1):  # Show top 5
                     target_username = target.get("username")
                     target_user_id = target.get("user_id")
-                    display_name = target.get("display_name", "Unknown")
                     original_token = target.get("original_token", "")
                     
-                    # Determine the target reference to use
+                    # Try to fetch fresh user info to get updated names
+                    display_name = None
+                    fresh_first_name = None
+                    fresh_last_name = None
+                    
+                    if target_user_id:
+                        try:
+                            user = await client.get_users(target_user_id)
+                            # Build display name from first_name + last_name
+                            fresh_first_name = user.first_name
+                            fresh_last_name = user.last_name
+                            display_name = user.first_name
+                            if user.last_name:
+                                display_name += f" {user.last_name}"
+                            # Update username if it changed
+                            if user.username:
+                                target_username = user.username.lower()
+                            
+                            # Update the stored recent target with fresh info
+                            target["display_name"] = display_name
+                            target["username"] = target_username
+                            target["first_name"] = fresh_first_name
+                            target["last_name"] = fresh_last_name
+                            await add_recent_target(user_id, target)
+                            
+                            logger.info(f"Fetched and updated recent target: {display_name} (@{target_username})")
+                        except Exception as e:
+                            logger.warning(f"Could not fetch fresh user info for {target_user_id}: {e}")
+                            # Fall back to stored display_name
+                            display_name = target.get("display_name")
+                    
+                    # If we still don't have a display name, build it from stored data or fallback
+                    if not display_name:
+                        stored_first = target.get("first_name")
+                        stored_last = target.get("last_name")
+                        
+                        if stored_first:
+                            # Use stored first + last name
+                            display_name = stored_first
+                            if stored_last:
+                                display_name += f" {stored_last}"
+                        elif target_username:
+                            # Fallback to username
+                            display_name = f"@{target_username}"
+                        elif target_user_id:
+                            # Fallback to user ID
+                            display_name = str(target_user_id)
+                        else:
+                            # Last resort: use original token
+                            display_name = original_token or "Unknown"
+                    
+                    # Determine the target reference for mentions
                     if target_username:
                         target_ref = f"@{target_username}"
                     elif target_user_id:
@@ -204,6 +254,12 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Generate whisper for this target
                     whisper_id = generate_whisper_id()
                     
+                    # Create proper mention with display name (not username/ID)
+                    if target_user_id:
+                        target_mention = f"[{display_name}](tg://user?id={target_user_id})"
+                    else:
+                        target_mention = display_name
+                    
                     # Store whisper with this target
                     store_data = {
                         "whisper_id": whisper_id,
@@ -213,7 +269,7 @@ async def handle_inline_query(client, query: InlineQuery):
                         "target_id": target_user_id,
                         "original_target_token": target_ref,
                         "all_targets": [(target_user_id, target_username, target_ref)],
-                        "target_mentions": f"[{display_name}](tg://user?id={target_user_id})" if target_user_id else target_ref
+                        "target_mentions": target_mention
                     }
                     
                     if modifiers:
@@ -226,11 +282,11 @@ async def handle_inline_query(client, query: InlineQuery):
                         whisper_id, 
                         message_content, 
                         display_name,
-                        store_data["target_mentions"],
+                        target_mention,
                         "en"
                     )
                     
-                    # Convert to Pyrogram format
+                    # Convert to Pyrogram format with display name in title
                     pyrogram_result = InlineQueryResultArticle(
                         id=result_data["id"],
                         title=f"{NINJA_EMOJIS['lightning']} {display_name} (Recent)",
@@ -422,9 +478,14 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
             
             # Get display name for the target
             display_name = None
+            first_name = None
+            last_name = None
+            
             if target_id:
                 try:
                     user = await client.get_users(target_id)
+                    first_name = user.first_name
+                    last_name = user.last_name
                     display_name = user.first_name
                     if user.last_name:
                         display_name += f" {user.last_name}"
@@ -444,10 +505,12 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
                 else:
                     display_name = original_token
             
-            # Create target data dict
+            # Create target data dict with first_name and last_name
             target_data = {
                 "user_id": target_id,
                 "username": target_username,
+                "first_name": first_name,
+                "last_name": last_name,
                 "display_name": display_name,
                 "original_token": original_token,
                 "added_at": datetime.utcnow()
