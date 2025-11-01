@@ -28,7 +28,8 @@ from NinjaSecret.mongo.whisperdb import (
     upsert_user,
     add_recent_target,
     get_whisper,
-    get_recent_targets
+    get_recent_targets,
+    get_user_by_id
 )
 from NinjaSecret.utils.whisper_utils import (
     create_whisper_inline_result,
@@ -192,58 +193,41 @@ async def handle_inline_query(client, query: InlineQuery):
                     target_user_id = target.get("user_id")
                     original_token = target.get("original_token", "")
                     
-                    # Try to fetch fresh user info to get updated names
-                    display_name = None
-                    fresh_first_name = None
-                    fresh_last_name = None
+                    # Build token for resolve_target (prefer username, fallback to user_id)
+                    token_to_resolve = None
+                    if target_username:
+                        token_to_resolve = f"@{target_username}"
+                    elif target_user_id:
+                        token_to_resolve = str(target_user_id)
+                    else:
+                        token_to_resolve = original_token
                     
-                    if target_user_id:
-                        try:
-                            user = await client.get_users(target_user_id)
-                            # Build display name from first_name + last_name
-                            fresh_first_name = user.first_name
-                            fresh_last_name = user.last_name
-                            display_name = user.first_name
-                            if user.last_name:
-                                display_name += f" {user.last_name}"
-                            # Update username if it changed
-                            if user.username:
-                                target_username = user.username.lower()
-                            
-                            # Update the stored recent target with fresh info
-                            target["display_name"] = display_name
-                            target["username"] = target_username
-                            target["first_name"] = fresh_first_name
-                            target["last_name"] = fresh_last_name
-                            await add_recent_target(user_id, target)
-                            
-                            logger.info(f"Fetched and updated recent target: {display_name} (@{target_username})")
-                        except Exception as e:
-                            logger.warning(f"Could not fetch fresh user info for {target_user_id}: {e}")
-                            # Fall back to stored display_name
-                            display_name = target.get("display_name")
+                    # Use existing resolve_target to get fresh info (checks DB first, then API)
+                    resolved_id, resolved_username, display_name = await resolve_target(token_to_resolve, client)
                     
-                    # If we still don't have a display name, build it from stored data or fallback
+                    # Update with resolved values
+                    if resolved_id:
+                        target_user_id = resolved_id
+                    if resolved_username:
+                        target_username = resolved_username
+                    
+                    # Fallback to stored data if resolve_target didn't find display_name
                     if not display_name:
                         stored_first = target.get("first_name")
                         stored_last = target.get("last_name")
                         
                         if stored_first:
-                            # Use stored first + last name
                             display_name = stored_first
                             if stored_last:
                                 display_name += f" {stored_last}"
                         elif target_username:
-                            # Fallback to username
                             display_name = f"@{target_username}"
                         elif target_user_id:
-                            # Fallback to user ID
                             display_name = str(target_user_id)
                         else:
-                            # Last resort: use original token
-                            display_name = original_token or "Unknown"
+                            display_name = token_to_resolve or "Unknown"
                     
-                    # Determine the target reference for mentions
+                    # Determine the target reference for storage
                     if target_username:
                         target_ref = f"@{target_username}"
                     elif target_user_id:
@@ -254,11 +238,13 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Generate whisper for this target
                     whisper_id = generate_whisper_id()
                     
-                    # Create proper mention with display name (not username/ID)
-                    if target_user_id:
+                    # Create proper mention with display name
+                    if target_user_id and display_name:
                         target_mention = f"[{display_name}](tg://user?id={target_user_id})"
-                    else:
+                    elif display_name:
                         target_mention = display_name
+                    else:
+                        target_mention = target_ref
                     
                     # Store whisper with this target
                     store_data = {
@@ -476,27 +462,26 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
             
             logger.info(f"Processing target: id={target_id}, username={target_username}, token={original_token}")
             
-            # Get display name for the target
-            display_name = None
+            # Use resolve_target to get/update user info (uses DB cache first, then API if needed)
+            # This ensures we always have the latest info and updates the users collection
+            resolved_id, resolved_username, display_name = await resolve_target(original_token, client)
+            
+            # Update with resolved values
+            if resolved_id:
+                target_id = resolved_id
+            if resolved_username:
+                target_username = resolved_username
+            
+            # Get additional user info from database after resolve_target has cached it
             first_name = None
             last_name = None
-            
             if target_id:
-                try:
-                    user = await client.get_users(target_id)
-                    first_name = user.first_name
-                    last_name = user.last_name
-                    display_name = user.first_name
-                    if user.last_name:
-                        display_name += f" {user.last_name}"
-                    # Update username if it changed
-                    if user.username:
-                        target_username = user.username.lower()
-                    logger.info(f"Fetched user info: display_name={display_name}, username={target_username}")
-                except Exception as e:
-                    logger.warning(f"Could not fetch user info for {target_id}: {e}")
+                cached_user = await get_user_by_id(target_id)
+                if cached_user:
+                    first_name = cached_user.get("first_name")
+                    last_name = cached_user.get("last_name")
             
-            # If we still don't have a display name, use username or ID
+            # Fallback display name logic if resolve_target didn't provide one
             if not display_name:
                 if target_username:
                     display_name = f"@{target_username}"
