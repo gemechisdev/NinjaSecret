@@ -43,6 +43,13 @@ from NinjaSecret.utils.whisper_utils import (
 # Get logger for this module
 logger = LOGGER(__name__)
 
+# In-memory cache for pending whispers (before they are sent)
+# Key: whisper_id, Value: whisper data dict
+# This prevents saving whispers to DB before user actually sends them
+# Note: This is safe in asyncio single-threaded event loop environment
+# If using multiple workers, consider using Redis or similar shared cache
+pending_whispers = {}
+
 # Log when module is loaded
 logger.info("Whisper inline_handler module loaded - on_chosen_inline_result handler registered")
 logger.info("NOTE: ChosenInlineResult handler requires 'inline feedback' enabled in @BotFather")
@@ -246,7 +253,8 @@ async def handle_inline_query(client, query: InlineQuery):
                     else:
                         target_mention = target_ref
                     
-                    # Store whisper with this target
+                    # Cache whisper data temporarily (don't save to DB yet)
+                    # Will be saved to DB only when user actually sends it (in chosen_inline_result handler)
                     store_data = {
                         "whisper_id": whisper_id,
                         "content": message_content,
@@ -255,13 +263,15 @@ async def handle_inline_query(client, query: InlineQuery):
                         "target_id": target_user_id,
                         "original_target_token": target_ref,
                         "all_targets": [(target_user_id, target_username, target_ref)],
-                        "target_mentions": target_mention
+                        "target_mentions": target_mention,
+                        "created_at": datetime.utcnow()  # Track when cached for cleanup
                     }
                     
                     if modifiers:
                         store_data["modifiers"] = modifiers
                     
-                    await store_whisper(store_data)
+                    # Store in memory cache instead of database
+                    pending_whispers[whisper_id] = store_data
                     
                     # Create inline result
                     result_data = create_simple_whisper_inline_result(
@@ -366,7 +376,8 @@ async def handle_inline_query(client, query: InlineQuery):
         # For simplified storage, use the first target (maintaining compatibility)
         primary_target = resolved_targets[0] if resolved_targets else (None, None, target_token)
 
-        # Pre-store whisper (so callbacks work immediately)
+        # Cache whisper data temporarily (don't save to DB yet)
+        # Will be saved to DB only when user actually sends it (in chosen_inline_result handler)
         store_data = {
             "whisper_id": whisper_id,
             "content": message_content,
@@ -375,14 +386,16 @@ async def handle_inline_query(client, query: InlineQuery):
             "target_id": primary_target[0],
             "original_target_token": target_token,  # Store the full target string for multiple targets
             "all_targets": resolved_targets,  # Store all targets for future use
-            "target_mentions": combined_mentions  # Store formatted mentions for the message
+            "target_mentions": combined_mentions,  # Store formatted mentions for the message
+            "created_at": datetime.utcnow()  # Track when cached for cleanup
         }
 
         # Add modifiers if present (special features)
         if modifiers:
             store_data["modifiers"] = modifiers
 
-        await store_whisper(store_data)
+        # Store in memory cache instead of database
+        pending_whispers[whisper_id] = store_data
 
         # Create inline result (enhanced with special features support)
         result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
@@ -435,15 +448,39 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
             logger.info(f"Skipping non-whisper result: {whisper_id}")
             return
 
-        # Attach the inline_message_id to the existing whisper (only if available)
+        # Retrieve whisper data from pending cache
+        whisper_data = pending_whispers.get(whisper_id)
+        if not whisper_data:
+            logger.error(f"Whisper data not found in cache: {whisper_id}")
+            # Fallback: Try to get from database for backward compatibility
+            # This handles edge cases like:
+            # 1. Bot restart between inline query and chosen result (cache lost)
+            # 2. Old whispers created before this change
+            # 3. Whispers created by other instances in multi-instance setup
+            whisper = await get_whisper(whisper_id)
+            if not whisper:
+                logger.error(f"Whisper not found in database either: {whisper_id}")
+                return
+            logger.info(f"Retrieved whisper from database (fallback): {whisper_id}")
+        else:
+            # Store the whisper to database now that it's actually sent
+            logger.info(f"Storing whisper {whisper_id} to database (user sent it)")
+            await store_whisper(whisper_data)
+            
+            # Remove from pending cache
+            del pending_whispers[whisper_id]
+            logger.info(f"Removed whisper {whisper_id} from pending cache")
+            
+            # Retrieve the stored whisper for further processing
+            whisper = await get_whisper(whisper_id)
+        
+        # Attach the inline_message_id to the whisper (only if available)
         if chosen_result.inline_message_id:
             await attach_inline_message_id(whisper_id, chosen_result.inline_message_id)
             logger.info(f"Attached inline_message_id for whisper {whisper_id}")
         
-        # Get the whisper to extract target information
-        whisper = await get_whisper(whisper_id)
         if not whisper:
-            logger.error(f"Whisper not found: {whisper_id}")
+            logger.error(f"Whisper not found after storage: {whisper_id}")
             return
             
         logger.info(f"Retrieved whisper {whisper_id} for sender {whisper.get('sender_id')}")
