@@ -11,6 +11,9 @@ from NinjaSecret.logging import LOGGER
 # Get logger for this module
 logger = LOGGER(__name__)
 
+# Log when module is loaded
+logger.info("Whisper database module loaded - recent_targets functions available")
+
 # Collections
 whisperdb = mongodb.whispers
 whisper_stats = mongodb.whisper_stats
@@ -540,64 +543,67 @@ async def add_recent_target(sender_id: int, target_data: Dict[str, Any]):
         sender_id: The user ID of the sender
         target_data: Dict containing target info (user_id, username, display_name)
     """
-    from NinjaSecret.core.mongo import mongodb
-    users_db = mongodb.users
-    
-    logger.info(f"add_recent_target called: sender_id={sender_id}, target={target_data.get('display_name')}")
-    
-    # Get current user document
-    user_doc = await users_db.find_one({"user_id": sender_id})
-    
-    if not user_doc:
-        # Create new user document with recent_targets
-        logger.info(f"Creating new user document for {sender_id} with recent_targets")
-        await users_db.insert_one({
-            "user_id": sender_id,
-            "recent_targets": [target_data],
-            "last_updated": datetime.utcnow()
-        })
-        logger.info(f"Successfully created user document with recent_targets")
-        return
-    
-    # Get existing recent_targets or initialize empty list
-    recent_targets = user_doc.get("recent_targets", [])
-    logger.info(f"User {sender_id} currently has {len(recent_targets)} recent targets")
-    
-    # Remove any existing entry for this target (by user_id)
-    target_user_id = target_data.get("user_id")
-    if target_user_id:
-        old_len = len(recent_targets)
-        recent_targets = [t for t in recent_targets if t.get("user_id") != target_user_id]
-        if len(recent_targets) < old_len:
-            logger.info(f"Removed duplicate target with user_id={target_user_id}")
-    else:
-        # If no user_id, try to match by username
-        target_username = target_data.get("username")
-        if target_username:
-            old_len = len(recent_targets)
-            recent_targets = [t for t in recent_targets if t.get("username") != target_username]
-            if len(recent_targets) < old_len:
-                logger.info(f"Removed duplicate target with username={target_username}")
-    
-    # Add the new target at the beginning (most recent first)
-    recent_targets.insert(0, target_data)
-    logger.info(f"Added new target to beginning of list, now have {len(recent_targets)} targets")
-    
-    # Keep only the last 10 targets
-    recent_targets = recent_targets[:10]
-    
-    # Update the database
-    result = await users_db.update_one(
-        {"user_id": sender_id},
-        {
-            "$set": {
-                "recent_targets": recent_targets,
+    try:
+        from NinjaSecret.core.mongo import mongodb
+        users_db = mongodb.users
+        
+        logger.info(f"add_recent_target called: sender_id={sender_id}, target={target_data.get('display_name')}")
+        
+        # Get current user document
+        user_doc = await users_db.find_one({"user_id": sender_id})
+        
+        if not user_doc:
+            # Create new user document with recent_targets
+            logger.info(f"Creating new user document for {sender_id} with recent_targets")
+            await users_db.insert_one({
+                "user_id": sender_id,
+                "recent_targets": [target_data],
                 "last_updated": datetime.utcnow()
-            }
-        },
-        upsert=True
-    )
-    logger.info(f"Database update result: matched={result.matched_count}, modified={result.modified_count}, upserted_id={result.upserted_id}")
+            })
+            logger.info(f"Successfully created user document with recent_targets")
+            return
+        
+        # Get existing recent_targets or initialize empty list
+        recent_targets = user_doc.get("recent_targets", [])
+        logger.info(f"User {sender_id} currently has {len(recent_targets)} recent targets")
+        
+        # Remove any existing entry for this target (by user_id)
+        target_user_id = target_data.get("user_id")
+        if target_user_id:
+            old_len = len(recent_targets)
+            recent_targets = [t for t in recent_targets if t.get("user_id") != target_user_id]
+            if len(recent_targets) < old_len:
+                logger.info(f"Removed duplicate target with user_id={target_user_id}")
+        else:
+            # If no user_id, try to match by username
+            target_username = target_data.get("username")
+            if target_username:
+                old_len = len(recent_targets)
+                recent_targets = [t for t in recent_targets if t.get("username") != target_username]
+                if len(recent_targets) < old_len:
+                    logger.info(f"Removed duplicate target with username={target_username}")
+        
+        # Add the new target at the beginning (most recent first)
+        recent_targets.insert(0, target_data)
+        logger.info(f"Added new target to beginning of list, now have {len(recent_targets)} targets")
+        
+        # Keep only the last 10 targets
+        recent_targets = recent_targets[:10]
+        
+        # Update the database
+        result = await users_db.update_one(
+            {"user_id": sender_id},
+            {
+                "$set": {
+                    "recent_targets": recent_targets,
+                    "last_updated": datetime.utcnow()
+                }
+            },
+            upsert=True
+        )
+        logger.info(f"Database update result: matched={result.matched_count}, modified={result.modified_count}, upserted_id={result.upserted_id}")
+    except Exception as e:
+        logger.exception(f"Error in add_recent_target for sender {sender_id}: {e}")
 
 async def get_recent_targets(user_id: int) -> List[Dict[str, Any]]:
     """

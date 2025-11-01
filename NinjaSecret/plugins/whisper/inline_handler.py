@@ -12,7 +12,8 @@ from pyrogram.types import (
     InlineQueryResultArticle,
     InputTextMessageContent,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    ChosenInlineResult
 )
 from strings import get_string
 
@@ -39,6 +40,11 @@ from NinjaSecret.utils.whisper_utils import (
 
 # Get logger for this module
 logger = LOGGER(__name__)
+
+# Log when module is loaded
+logger.info("Whisper inline_handler module loaded - on_chosen_inline_result handler registered")
+logger.info("NOTE: ChosenInlineResult handler requires 'inline feedback' enabled in @BotFather")
+logger.info("To enable: Message @BotFather -> /mybots -> Select bot -> Bot Settings -> Inline Feedback -> Turn on")
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
@@ -290,12 +296,21 @@ async def handle_inline_query(client, query: InlineQuery):
         await query.answer(results, cache_time=1, is_personal=True)
 
 @app.on_chosen_inline_result()
-async def handle_chosen_inline_result(client, chosen_result):
-    """Handle when user sends an inline result"""
+async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult):
+    """Handle when user sends an inline result
+    
+    Note: This handler requires 'inline feedback' to be enabled in @BotFather
+    for the bot to receive ChosenInlineResult updates.
+    """
     try:
         whisper_id = chosen_result.result_id
+        from_user = chosen_result.from_user
         
-        logger.info(f"Chosen inline result: whisper_id={whisper_id}")
+        logger.info(f"=== ChosenInlineResult received ===")
+        logger.info(f"  result_id (whisper_id): {whisper_id}")
+        logger.info(f"  from_user: {from_user.id if from_user else 'None'} (@{from_user.username if from_user and from_user.username else 'no username'})")
+        logger.info(f"  inline_message_id: {chosen_result.inline_message_id if chosen_result.inline_message_id else 'None'}")
+        logger.info(f"  query: {chosen_result.query if hasattr(chosen_result, 'query') else 'N/A'}")
 
         # Skip if it's not a whisper
         if whisper_id in ['empty_query', 'invalid_format', 'no_targets', 'error', 'message_too_long']:
