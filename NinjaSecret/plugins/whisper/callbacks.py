@@ -75,12 +75,14 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         target_username = whisper.get("target_username")
         target_id = whisper.get("target_id")
         original_token = whisper.get("original_target_token")
+        all_targets = whisper.get("all_targets", [])
 
         is_sender = user_id == sender_id
         is_target = False
         is_owner = user_id == OWNER_ID
 
         # Check if user is the target (support multiple targets)
+        # First check the primary target fields for backward compatibility
         if target_id and user_id == target_id:
             is_target = True
         elif callback_query.from_user.username and target_username:
@@ -88,27 +90,51 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 is_target = True
         elif original_token and original_token.isdigit() and int(original_token) == user_id:
             is_target = True
-        else:
-            # Check if user matches any of the multiple targets in original_target_token
-            if original_token:
-                # Handle @all/@everyone - everyone can access
-                if original_token.lower() in ["@all", "@everyone"]:
-                    is_target = True
-                elif "," in original_token:
-                    target_tokens = [token.strip() for token in original_token.split(",")]
-                    for token in target_tokens:
-                        # Check for @all/@everyone in multiple targets
-                        if token.lower() in ["@all", "@everyone"]:
+        
+        # Check all_targets array if not already authorized
+        if not is_target and all_targets:
+            for target_tuple in all_targets:
+                # all_targets format: [(target_id, target_username, original_token), ...]
+                if len(target_tuple) == 3:
+                    t_id, t_username, t_token = target_tuple
+                    
+                    # Check for @all/@everyone
+                    if t_token and t_token.lower() in ["@all", "@everyone"]:
+                        is_target = True
+                        break
+                    
+                    # Check if user_id matches (use 'is not None' to handle user_id=0)
+                    if t_id is not None and t_id == user_id:
+                        is_target = True
+                        break
+                    
+                    # Check if username matches
+                    if t_username and callback_query.from_user.username:
+                        if t_username.lower() == callback_query.from_user.username.lower():
                             is_target = True
                             break
-                        elif token.startswith("@") and callback_query.from_user.username:
-                            if token[1:].lower() == callback_query.from_user.username.lower():
-                                is_target = True
-                                break
-                        elif token.isdigit() and 4 <= len(token) <= 15:
-                            if int(token) == user_id:
-                                is_target = True
-                                break
+        
+        # Fallback: Check original_target_token string for comma-separated targets
+        # (for backward compatibility with older whispers without all_targets)
+        if not is_target and original_token:
+            # Handle @all/@everyone - everyone can access
+            if original_token.lower() in ["@all", "@everyone"]:
+                is_target = True
+            elif "," in original_token:
+                target_tokens = [token.strip() for token in original_token.split(",")]
+                for token in target_tokens:
+                    # Check for @all/@everyone in multiple targets
+                    if token.lower() in ["@all", "@everyone"]:
+                        is_target = True
+                        break
+                    elif token.startswith("@") and callback_query.from_user.username:
+                        if token[1:].lower() == callback_query.from_user.username.lower():
+                            is_target = True
+                            break
+                    elif token.isdigit() and 4 <= len(token) <= 15:
+                        if int(token) == user_id:
+                            is_target = True
+                            break
 
         # Allow owner to read any whisper for moderation purposes
         if not (is_sender or is_target or is_owner):
