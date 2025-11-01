@@ -8,11 +8,14 @@ from datetime import datetime, timedelta
 from NinjaSecret.mongo.whisperdb import cleanup_expired_whispers
 from NinjaSecret.logging import LOGGER
 
+# Cache cleanup configuration
+PENDING_WHISPER_MAX_AGE_SECONDS = 300  # 5 minutes - whispers not sent after this time are removed
+
 async def cleanup_pending_whispers_cache():
     """
     Clean up old pending whispers from in-memory cache.
     Import and call this from the inline_handler module.
-    Pending whispers older than 5 minutes are removed (they were never sent).
+    Pending whispers older than PENDING_WHISPER_MAX_AGE_SECONDS are removed (they were never sent).
     """
     # Import inside function to avoid circular dependency at module load time
     # The inline_handler module imports this module for the cleanup task
@@ -24,14 +27,14 @@ async def cleanup_pending_whispers_cache():
     # Get current time
     now = datetime.utcnow()
     
-    # Find whispers older than 5 minutes (300 seconds)
+    # Find whispers older than configured max age
     # We store creation timestamp in the cache entries
     to_remove = []
     for whisper_id, data in pending_whispers.items():
         # Check if whisper has been in cache for too long
         # If no created_at field (old format), consider it stale
         created_at = data.get("created_at")
-        if created_at is None or (now - created_at).total_seconds() > 300:
+        if created_at is None or (now - created_at).total_seconds() > PENDING_WHISPER_MAX_AGE_SECONDS:
             to_remove.append(whisper_id)
     
     # Remove stale whispers
