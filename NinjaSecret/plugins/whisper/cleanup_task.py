@@ -14,6 +14,8 @@ async def cleanup_pending_whispers_cache():
     Import and call this from the inline_handler module.
     Pending whispers older than 5 minutes are removed (they were never sent).
     """
+    # Import inside function to avoid circular dependency at module load time
+    # The inline_handler module imports this module for the cleanup task
     from NinjaSecret.plugins.whisper.inline_handler import pending_whispers
     
     if not pending_whispers:
@@ -22,7 +24,7 @@ async def cleanup_pending_whispers_cache():
     # Get current time
     now = datetime.utcnow()
     
-    # Find whispers older than 5 minutes (360 seconds)
+    # Find whispers older than 5 minutes (300 seconds)
     # We store creation timestamp in the cache entries
     to_remove = []
     for whisper_id, data in pending_whispers.items():
