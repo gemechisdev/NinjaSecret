@@ -316,14 +316,13 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         if settings.get("expires_at"):
             time_left = get_time_remaining_text(settings["expires_at"])
             if time_left != "Expired":
-                display_content += f"\n\n⏰ Expires in: {time_left}"
-
-        # Add burn info if present
-        if settings.get("burn_after_reading"):
-            display_content += f"\n💀 Burns after reading!"
+                display_content += f"\n⏰ {time_left}"
 
         # Add style emoji based on settings
-        if settings.get("style") == "vip":
+        if settings.get("burn_after_reading"):
+            # For burn after reading, just prefix with skull emoji (no text)
+            display_content = f"💀 {display_content}"
+        elif settings.get("style") == "vip":
             display_content = f"👑 {display_content}"
         elif settings.get("style") == "cute":
             display_content = f"💕 {display_content}"
@@ -341,7 +340,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         )
 
 @app.on_callback_query(filters.regex(r"whisper_targets_(.+)") & ~BANNED_USERS)
-async def handle_whisper_targets(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_whisper_targets(client, callback_query: CallbackQuery, _):
     """Show who the whisper is for"""
     try:
         await callback_query.answer()
@@ -400,7 +400,8 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery):
         )
 
 @app.on_callback_query(filters.regex("whisper_dashboard") & ~BANNED_USERS)
-async def handle_dashboard(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_dashboard(client, callback_query: CallbackQuery, _):
     """Show user dashboard"""
     try:
         await callback_query.answer()
@@ -427,7 +428,8 @@ async def handle_dashboard(client, callback_query: CallbackQuery):
         )
 
 @app.on_callback_query(filters.regex("whisper_stats") & ~BANNED_USERS)
-async def handle_stats(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_stats(client, callback_query: CallbackQuery, _):
     """Show detailed user stats"""
     try:
         await callback_query.answer()
@@ -461,7 +463,8 @@ async def handle_stats(client, callback_query: CallbackQuery):
         )
 
 @app.on_callback_query(filters.regex("whisper_tutorial") & ~BANNED_USERS)
-async def handle_tutorial(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_tutorial(client, callback_query: CallbackQuery, _):
     """Show tutorial"""
     try:
         await callback_query.answer()
@@ -506,7 +509,8 @@ async def handle_tutorial(client, callback_query: CallbackQuery):
         )
 
 @app.on_callback_query(filters.regex("whisper_styles") & ~BANNED_USERS)
-async def handle_styles(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_styles(client, callback_query: CallbackQuery, _):
     """Show available styles"""
     try:
         await callback_query.answer()
@@ -557,7 +561,8 @@ async def handle_styles(client, callback_query: CallbackQuery):
         )
 
 @app.on_callback_query(filters.regex("whisper_help") & ~BANNED_USERS)
-async def handle_help(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_help(client, callback_query: CallbackQuery, _):
     """Show help tree"""
     try:
         await callback_query.answer()
@@ -610,7 +615,8 @@ async def handle_help(client, callback_query: CallbackQuery):
         )
 
 @app.on_callback_query(filters.regex("whisper_settings") & ~BANNED_USERS)
-async def handle_settings(client, callback_query: CallbackQuery):
+@languageCB
+async def handle_settings(client, callback_query: CallbackQuery, _):
     """Show user settings (placeholder for future features)"""
     try:
         await callback_query.answer()

@@ -104,7 +104,7 @@ def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
         else:
             if not display_name.startswith("@"):
                 display_name = f"{display_name}"
-            target_names.append(f"{display_name} (ɴᴏᴛ ғᴏᴜɴᴅ)")
+            target_names.append(display_name)
 
     if len(targets) > max_display:
         remaining = len(targets) - max_display
