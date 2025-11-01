@@ -273,14 +273,27 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Store in memory cache instead of database
                     pending_whispers[whisper_id] = store_data
                     
-                    # Create inline result
-                    result_data = create_simple_whisper_inline_result(
-                        whisper_id, 
-                        message_content, 
-                        display_name,
-                        target_mention,
-                        "en"
-                    )
+                    # Create inline result (enhanced if modifiers, simple otherwise)
+                    if modifiers:
+                        # Use enhanced result with special features styling
+                        result_data = create_enhanced_whisper_inline_result(
+                            whisper_id,
+                            message_content,
+                            [(target_user_id, target_username, target_ref)],
+                            modifiers,
+                            display_name,
+                            target_mention,
+                            "en"
+                        )
+                    else:
+                        # Use simple result for basic whispers
+                        result_data = create_simple_whisper_inline_result(
+                            whisper_id, 
+                            message_content, 
+                            display_name,
+                            target_mention,
+                            "en"
+                        )
                     
                     # Convert to Pyrogram format with display name in title
                     pyrogram_result = InlineQueryResultArticle(
