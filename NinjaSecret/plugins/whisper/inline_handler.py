@@ -27,7 +27,8 @@ from NinjaSecret.mongo.whisperdb import (
     attach_inline_message_id,
     upsert_user,
     add_recent_target,
-    get_whisper
+    get_whisper,
+    get_recent_targets
 )
 from NinjaSecret.utils.whisper_utils import (
     create_whisper_inline_result,
@@ -176,6 +177,81 @@ async def handle_inline_query(client, query: InlineQuery):
         # Extract message, target, and modifiers (with fallback to simple parsing)
         message_content, target_token, modifiers = extract_message_and_target_with_modifiers(query_text)
 
+        # If message but no target, show recent targets as quick-select options
+        if message_content and not target_token:
+            user_id = query.from_user.id
+            recent_targets = await get_recent_targets(user_id)
+            
+            if recent_targets:
+                # Create inline results for each recent target
+                results = []
+                language = get_string("en")
+                
+                for i, target in enumerate(recent_targets[:5], 1):  # Show top 5
+                    target_username = target.get("username")
+                    target_user_id = target.get("user_id")
+                    display_name = target.get("display_name", "Unknown")
+                    original_token = target.get("original_token", "")
+                    
+                    # Determine the target reference to use
+                    if target_username:
+                        target_ref = f"@{target_username}"
+                    elif target_user_id:
+                        target_ref = str(target_user_id)
+                    else:
+                        target_ref = original_token
+                    
+                    # Generate whisper for this target
+                    whisper_id = generate_whisper_id()
+                    
+                    # Store whisper with this target
+                    store_data = {
+                        "whisper_id": whisper_id,
+                        "content": message_content,
+                        "sender_id": query.from_user.id,
+                        "target_username": target_username,
+                        "target_id": target_user_id,
+                        "original_target_token": target_ref,
+                        "all_targets": [(target_user_id, target_username, target_ref)],
+                        "target_mentions": f"[{display_name}](tg://user?id={target_user_id})" if target_user_id else target_ref
+                    }
+                    
+                    if modifiers:
+                        store_data["modifiers"] = modifiers
+                    
+                    await store_whisper(store_data)
+                    
+                    # Create inline result
+                    result_data = create_simple_whisper_inline_result(
+                        whisper_id, 
+                        message_content, 
+                        display_name,
+                        store_data["target_mentions"],
+                        "en"
+                    )
+                    
+                    # Convert to Pyrogram format
+                    pyrogram_result = InlineQueryResultArticle(
+                        id=result_data["id"],
+                        title=f"{NINJA_EMOJIS['lightning']} {display_name} (Recent)",
+                        description=result_data["description"],
+                        thumb_url=result_data.get("thumb_url"),
+                        input_message_content=InputTextMessageContent(
+                            message_text=result_data["input_message_content"]["message_text"],
+                            parse_mode=enums.ParseMode.MARKDOWN
+                        ),
+                        reply_markup=result_data.get("reply_markup")
+                    )
+                    results.append(pyrogram_result)
+                
+                await query.answer(results, cache_time=1, is_personal=True)
+                return
+            else:
+                # No recent targets, show error with guidance
+                results = [create_invalid_format_response("en")]
+                await query.answer(results, cache_time=1, is_personal=True)
+                return
+        
         # Invalid format - show help with example
         if not message_content or not target_token:
             results = [create_invalid_format_response("en")]
