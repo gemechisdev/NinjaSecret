@@ -95,16 +95,16 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         if not is_target and all_targets:
             for target_tuple in all_targets:
                 # all_targets format: [(target_id, target_username, original_token), ...]
-                if len(target_tuple) >= 3:
-                    t_id, t_username, t_token = target_tuple[0], target_tuple[1], target_tuple[2]
+                if len(target_tuple) == 3:
+                    t_id, t_username, t_token = target_tuple
                     
                     # Check for @all/@everyone
                     if t_token and t_token.lower() in ["@all", "@everyone"]:
                         is_target = True
                         break
                     
-                    # Check if user_id matches
-                    if t_id and t_id == user_id:
+                    # Check if user_id matches (use 'is not None' to handle user_id=0)
+                    if t_id is not None and t_id == user_id:
                         is_target = True
                         break
                     
