@@ -29,7 +29,7 @@ from NinjaSecret.utils.whisper_utils import (
     get_time_remaining_text,
     NINJA_EMOJIS
 )
-from config import BANNED_USERS
+from config import BANNED_USERS, OWNER_ID
 
 # Get logger for this module
 logger = LOGGER(__name__)
@@ -78,6 +78,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
 
         is_sender = user_id == sender_id
         is_target = False
+        is_owner = user_id == OWNER_ID
 
         # Check if user is the target (support multiple targets)
         if target_id and user_id == target_id:
@@ -109,7 +110,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                                 is_target = True
                                 break
 
-        if not (is_sender or is_target):
+        # Allow owner to read any whisper for moderation purposes
+        if not (is_sender or is_target or is_owner):
             await callback_query.answer(
                 create_unauthorized_access_text("en"),
                 show_alert=True
