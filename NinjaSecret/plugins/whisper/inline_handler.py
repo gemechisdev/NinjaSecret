@@ -46,6 +46,8 @@ logger = LOGGER(__name__)
 # In-memory cache for pending whispers (before they are sent)
 # Key: whisper_id, Value: whisper data dict
 # This prevents saving whispers to DB before user actually sends them
+# Note: This is safe in asyncio single-threaded event loop environment
+# If using multiple workers, consider using Redis or similar shared cache
 pending_whispers = {}
 
 # Log when module is loaded
@@ -450,7 +452,11 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
         whisper_data = pending_whispers.get(whisper_id)
         if not whisper_data:
             logger.error(f"Whisper data not found in cache: {whisper_id}")
-            # Try to get from database (fallback for compatibility)
+            # Fallback: Try to get from database for backward compatibility
+            # This handles edge cases like:
+            # 1. Bot restart between inline query and chosen result (cache lost)
+            # 2. Old whispers created before this change
+            # 3. Whispers created by other instances in multi-instance setup
             whisper = await get_whisper(whisper_id)
             if not whisper:
                 logger.error(f"Whisper not found in database either: {whisper_id}")
