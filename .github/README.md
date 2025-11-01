@@ -1,110 +1,193 @@
-━━━━━━━━━━━━━━━━━━━━
+# Ninja Secret🥷 - Secret Messaging Bot
 
-<h2 align="center">
-    ──「⛦🦋 𝗦𝗰𝗼𝗿𝗽𝗶𝘁𝘂𝗻𝗲 ✘ 𝗠𝗨𝗦𝗜𝗖 🦋⛦」──
-</h2>
+Send private, ninja-style secret messages to anyone in Telegram groups and chats! 🤫
 
-<p align="center">
-  <img src="https://telegra.ph/file/d02b81736a7e9519c6386.jpg">
-</p>
+## What is Ninja Secret?
 
-<p align="center">
-<a href="https://github.com/venopyX/stargazers"><img src="https://img.shields.io/github/stars/venopyx/ScorpiTune?color=black&logo=github&logoColor=black&style=for-the-badge" alt="Stars" /></a>
-<a href="https://github.com/venopyx/ScorpiTune/network/members"> <img src="https://img.shields.io/github/forks/venopyx/ScorpiTune?color=black&logo=github&logoColor=black&style=for-the-badge" /></a>
-<a href="https://github.com/venopyx/ScorpiTune/blob/master/LICENSE"> <img src="https://img.shields.io/badge/License-MIT-blueviolet?style=for-the-badge" alt="License" /> </a>
-<a href="https://www.python.org/"> <img src="https://img.shields.io/badge/Written%20in-Python-orange?style=for-the-badge&logo=python" alt="Python" /> </a>
-<a href="https://github.com/venopyx/ScorpiTune/commits/venopyX"> <img src="https://img.shields.io/github/last-commit/venopyx/ScorpiTune?color=blue&logo=github&logoColor=green&style=for-the-badge" /></a>
-</p>
+**Ninja Secret** is a Telegram bot that lets you send secret messages (whispers) to specific people in groups. Only the sender and intended recipient(s) can read the message - perfect for private conversations in public spaces!
 
-━━━━━━━━━━━━━━━━━━━━
+## Core Features
 
-</h2>
-<img src="https://readme-typing-svg.herokuapp.com?color=FF0000&width=420&lines=♦𝙳𝙴𝙿𝙻𝙾𝚈+𝙾𝙽+𝙷𝙴𝚁𝙾𝙺𝚄♦;📡+𝙽𝙾+𝙷𝙴𝚁𝙾𝙺𝚄+𝙱𝙰𝙽+𝙸𝚂𝚂𝚄𝙴+𝙰𝙻𝚂𝙾+𝚅𝙿𝚂+𝙳𝙴𝙿𝙻𝙾𝚈+📍+𝙿𝚁𝙴𝚂𝙴𝙽𝚃;❤️+𝙿𝙾𝚆𝙴𝚁𝙳+𝙱𝚈+𝗦𝗰𝗼𝗿𝗽𝗶𝘁𝘂𝗻𝗲+𝗞𝗜𝗡𝗚🔥">
+🥷 **Secret Shuriken Delivery**
+- Send secrets to one person or multiple people
+- Use `@all` or `@everyone` to share with the whole group
+- Sender and targets can read - everyone else gets blocked
 
-<p align="center">
-  <img src="https://telegra.ph/file/925eade709484516c5fe3.jpg">
-</p>
+🔥 **Special Abilities**
+- 💀 **Burn After Reading** (`!delete`) - Message self-destructs after all targets read it
+- ⏰ **Timed Secrets** (`!timer:seconds`) - Auto-expires after specified time
+- 👑 **VIP Style** (`!vip`) - Golden shuriken with crown styling
+- 💕 **Cute Style** (`!cute`) - Playful hearts and love
 
-<h3 align="center">
-    ─「 ᴅᴇᴩʟᴏʏ ᴏɴ ʜᴇʀᴏᴋᴜ 」─
-</h3>
+📊 **Ninja Stats & Achievements**
+- Track your secret-sending statistics
+- Unlock achievements as you become a master ninja
+- View recent targets for quick secret drops
 
-<p align="center"><a href="https://dashboard.heroku.com/new?template=https://github.com/venopyx/ScorpiTune"> <img src="https://img.shields.io/badge/Deploy%20On%20Heroku-black?style=for-the-badge&logo=heroku" width="220" height="38.45"/></a></p>
+## Quick Start Guide
 
-</p>
+### Basic Usage
 
-**𝙏𝙀𝙎𝙏 𝘽𝙊𝙏 ➣ [ScorpiTune ꭙ 𝐌ᴜꜱɪᴄ™ ˹ʙꜱ](https://t.me/scorpitunebot)**
+**Format:** `@ninjasecretbot [your message] [targets]`
 
-<img src="https://readme-typing-svg.herokuapp.com?color=FF0000&width=420&lines=⚠️𝗙𝗢𝗥𝗞+𝗧𝗛𝗜𝗦+𝗥𝗘𝗣𝗢+𝗙𝗜𝗥𝗦𝗧𝗟𝗬⚠️">
+**Examples:**
+```
+@ninjasecretbot pizza party tonight! @alice
+@ninjasecretbot meeting at 3pm @bob,@charlie
+@ninjasecretbot announcement everyone! @all
+```
 
-<h3 align="center">
-    ─「 ᴅᴇᴩʟᴏʏ ᴏɴ ʟᴏᴄᴀʟ ʜᴏsᴛ/ ᴠᴘs 」─
-</h3>
+### Advanced Features
 
-- Get your [Necessary Variables](https://github.com/venopyx/ScorpiTune/blob/master/sample.env)
+**Burn After Reading:**
+```
+@ninjasecretbot confidential info @boss !delete
+```
+
+**Timed Secrets:**
+```
+@ninjasecretbot party at 8pm @friends !timer:3600
+```
+(Timer uses seconds: 3600 = 1 hour, 7200 = 2 hours)
+
+**VIP Styling:**
+```
+@ninjasecretbot special announcement @all !vip
+```
+
+**Mix & Match:**
+```
+@ninjasecretbot top secret @user1,@user2 !delete !timer:1800
+```
+
+## Target Options
+
+- **Single user**: `@alice` or `123456789` (user ID)
+- **Multiple users**: `@bob,@charlie,@david`
+- **Everyone**: `@all` or `@everyone`
+- **Recent targets**: Just type your message and select from suggestions!
+
+## Installation
+
+### Requirements
+- Python 3.8+
+- MongoDB database
+- Telegram Bot Token from @BotFather
+- Telegram API credentials from my.telegram.org
+
+### Setup Steps
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/gemechisdev/NinjaSecret
+   cd NinjaSecret
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure environment**
+   ```bash
+   cp sample.env .env
+   # Edit .env with your configuration
+   ```
+
+4. **Essential environment variables**
+   ```env
+   API_ID=your_api_id
+   API_HASH=your_api_hash
+   BOT_TOKEN=your_bot_token
+   MONGO_DB_URI=mongodb_connection_string
+   OWNER_ID=your_telegram_user_id
+   LOGGER_ID=log_group_id
+   ```
+
+5. **Run the bot**
+   ```bash
+   python -m NinjaSecret
+   ```
+
+### Enable Inline Feedback (Required)
+
+For the bot to track when messages are sent:
+1. Message @BotFather on Telegram
+2. Select your bot
+3. Go to Bot Settings → Inline Feedback
+4. Turn it ON
+
+## Bot Commands
+
+- `/start` - Start the bot and see the main dashboard
+- `/help` - Get help and documentation
+- `/ping` - Check bot status
+- `/stats` - View your whisper statistics
+
+**Admin commands** (for group admins):
+- `/auth` - Authorize users
+- `/reload` - Reload admin cache
+
+## Project Structure
+
+```
+NinjaSecret/
+├── core/              # Core bot functionality
+├── plugins/
+│   ├── whisper/       # Secret messaging features
+│   ├── admins/        # Admin-only commands
+│   ├── bot/           # Basic bot commands
+│   ├── misc/          # Miscellaneous features
+│   └── tools/         # Utility tools
+├── utils/             # Helper utilities
+│   └── whisper_utils.py  # Whisper formatting & logic
+├── mongo/             # Database models
+│   └── whisperdb.py   # Whisper data storage
+└── strings/           # Localization strings
+```
+
+## Features in Detail
+
+### Security & Privacy
+- Messages are only viewable by sender and specified targets
+- Optional burn-after-reading for maximum privacy
+- Timed expiration for temporary secrets
+- Owner can read all messages for moderation
+
+### User Experience
+- Recent targets suggestions for quick messaging
+- Achievement system to encourage engagement
+- Statistics tracking (weekly and lifetime)
+- Multiple message styling options
+- Inline mode works in any chat
+
+### Database Storage
+- MongoDB for scalable data storage
+- User caching for fast target resolution
+- Statistics and achievements tracking
+- Recent targets history (last 10)
+
+## Technologies Used
+
+- **Pyrogram** - Modern Telegram Bot framework
+- **MongoDB** - NoSQL database for data storage
+- **Python 3.8+** - Core programming language
+- **Motor** - Async MongoDB driver
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For issues, questions, or suggestions:
+- Open an issue on GitHub
+- Contact the bot owner through the bot's support button
 
 ---
 
-### 🔧 Quick Setup
-
-1. **Upgrade & Update:**
-
-   ```bash
-   sudo apt-get update && sudo apt-get upgrade -y
-   ```
-
-2. **Install Required Packages:**
-   ```bash
-   sudo apt-get install python3-pip ffmpeg -y
-   ```
-3. **Setting up PIP**
-   ```bash
-   sudo pip3 install -U pip
-   ```
-4. **Installing Node**
-   ```bash
-   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash && source ~/.bashrc && nvm install v18
-   ```
-5. **Clone the Repository**
-   ```bash
-   git clone https://github.com/venopyx/ScorpiTune && cd ScorpiTune
-   ```
-6. **Install Requirements**
-   ```bash
-   pip3 install -U -r requirements.txt
-   ```
-7. **Create .env with sample.env**
-   ```bash
-   cp sample.env .env
-   ```
-   - Edit .env with your vars
-8. **Editing Vars:**
-   ```bash
-   vi .env
-   ```
-   - Edit .env with your values.
-   - Press `I` button on keyboard to start editing.
-   - Press `Ctrl + C` once you are done with editing vars and type `:wq` to save .env or `:qa` to exit editing.
-9. **Installing tmux**
-   ```bash
-   sudo apt install tmux -y && tmux
-   ```
-10. **Run the Bot**
-    ```bash
-    bash start
-    ━━━━━━━━━━━━━━━━━━━━
-    ```
-
-<h3 align="center">
-    ─「 sᴜᴩᴩᴏʀᴛ 」─
-</h3>
-
-<p align="center">
-<a href="https://t.me/moonlight_familyplus"><img src="https://img.shields.io/badge/-Support%20Group-blue.svg?style=for-the-badge&logo=Telegram"></a>
-</p>
-
-<p align="center">
-<a href="https://t.me/CodeTactics"><img src="https://img.shields.io/badge/-Support%20Channel-blue.svg?style=for-the-badge&logo=Telegram"></a>
-</p>
-
-- <b> _sᴩᴇᴄɪᴀʟ ᴛʜᴀɴᴋs ᴛᴏ [ᴛᴇᴀᴍ ScorpiTune](https://github.com/venopyX) ғᴏʀ [ScorpiTune ᴍᴜsɪᴄ ʙᴏᴛ](https://t.me/scorpitunebot)_</b>
+Made with 🥷 by the Ninja Secret team
