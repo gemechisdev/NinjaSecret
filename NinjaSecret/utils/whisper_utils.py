@@ -178,7 +178,6 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         "id": whisper_id,
         "title": language["whisper_inline_title"].format(style_emoji),
         "description": "\n".join(description_parts),
-        "thumb_url": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         "input_message_content": {
             "message_text": create_whisper_posted_message(content, targets, modifiers, lang),
             "parse_mode": enums.ParseMode.MARKDOWN
@@ -307,7 +306,6 @@ def create_empty_query_response(lang: str = "en") -> InlineQueryResultArticle:
         id="empty_query",
         title=language["whisper_empty_title"].format(NINJA_EMOJIS['ninja']),
         description=language["whisper_empty_desc"].format(NINJA_EMOJIS['ninja']),
-        thumb_url="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzZnaHloOWJ5N25scGo1OHFhY3h0bnEyb2Rkc2xkYWR2dW1qdm42ciZlcD12MV9naWZzX3NlYXJjaCZjdD1n/cwksT0tmuElnj09vuK/giphy.gif",
         input_message_content=InputTextMessageContent(
             message_text=create_empty_query_help_text(lang),
             parse_mode=enums.ParseMode.MARKDOWN

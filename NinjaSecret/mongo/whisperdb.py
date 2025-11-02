@@ -275,29 +275,89 @@ async def cleanup_expired_whispers():
 
 # User Statistics Functions
 async def get_user_whisper_stats(user_id: int) -> Dict:
-    """Get user's whisper statistics"""
-    stats = await whisper_stats.find_one({"user_id": user_id})
-    if not stats:
-        # Initialize default stats
-        default_stats = {
-            "user_id": user_id,
-            "secrets_sent": 0,
-            "secrets_received": 0,
-            "secrets_burned": 0,
-            "secrets_timed": 0,
-            "total_targets_reached": 0,
-            "favorite_targets": {},  # {user_id: count}
-            "weekly_stats": {
-                "secrets_sent": 0,
-                "secrets_received": 0,
-                "week_start": datetime.utcnow()
-            },
-            "achievements": []
-        }
-        await whisper_stats.insert_one(default_stats)
-        return default_stats
-
-    return stats
+    """Get user's whisper statistics by counting directly from the database in real-time"""
+    from datetime import datetime, timedelta
+    
+    # Calculate week start (7 days ago)
+    week_start = datetime.utcnow() - timedelta(days=7)
+    
+    # Count secrets sent (this week and total)
+    secrets_sent_total = await whisperdb.count_documents({"sender_id": user_id})
+    secrets_sent_week = await whisperdb.count_documents({
+        "sender_id": user_id,
+        "created_at": {"$gte": week_start}
+    })
+    
+    # Count secrets received (this week and total)
+    # A secret is "received" when the user is the target_id
+    # Note: all_targets stores tuples, so we check if any tuple has user_id in first position
+    # We need to check both the simple target_id field and all_targets array
+    secrets_received_total = 0
+    secrets_received_week = 0
+    
+    # Count from target_id field (simple case)
+    secrets_received_total += await whisperdb.count_documents({"target_id": user_id})
+    secrets_received_week += await whisperdb.count_documents({
+        "target_id": user_id,
+        "created_at": {"$gte": week_start}
+    })
+    
+    # For all_targets, we need to iterate since MongoDB doesn't handle Python tuples well
+    # We'll query all whispers and check in Python
+    all_whispers_cursor = whisperdb.find({
+        "all_targets": {"$exists": True, "$ne": None}
+    })
+    
+    async for whisper in all_whispers_cursor:
+        all_targets = whisper.get("all_targets", [])
+        # Check if user_id is in any of the target tuples
+        for target_tuple in all_targets:
+            if isinstance(target_tuple, (list, tuple)) and len(target_tuple) >= 1:
+                if target_tuple[0] == user_id:
+                    secrets_received_total += 1
+                    if whisper.get("created_at") and whisper["created_at"] >= week_start:
+                        secrets_received_week += 1
+                    break  # Found user in this whisper, move to next
+    
+    # Count burned secrets (status = "burned")
+    secrets_burned = await whisperdb.count_documents({
+        "sender_id": user_id,
+        "status": "burned"
+    })
+    
+    # Count timed secrets (those with timer set)
+    secrets_timed = await whisperdb.count_documents({
+        "sender_id": user_id,
+        "settings.expires_at": {"$exists": True}
+    })
+    
+    # Get achievements (placeholder - can be calculated based on milestones)
+    achievements = []
+    if secrets_sent_total >= 50:
+        achievements.append("secret_swinger")
+    if secrets_burned >= 10:
+        achievements.append("burn_master")
+    if secrets_timed >= 5:
+        achievements.append("time_keeper")
+    if secrets_sent_total >= 1:
+        achievements.append("whisper_rookie")
+    if secrets_received_total >= 25:
+        achievements.append("banana_collector")
+    
+    return {
+        "user_id": user_id,
+        "secrets_sent": secrets_sent_total,
+        "secrets_received": secrets_received_total,
+        "secrets_burned": secrets_burned,
+        "secrets_timed": secrets_timed,
+        "weekly_stats": {
+            "secrets_sent": secrets_sent_week,
+            "secrets_received": secrets_received_week,
+            "week_start": week_start
+        },
+        "achievements": achievements,
+        "favorite_targets": {}  # Can be calculated if needed
+    }
 
 async def update_user_stats(user_id: int, stat_type: str, increment: int = 1, **kwargs):
     """Update user statistics"""

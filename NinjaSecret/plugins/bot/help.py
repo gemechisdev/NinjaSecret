@@ -52,19 +52,43 @@ async def helper_private(
         _ = get_string(language)
         keyboard = help_pannel(_)
 
-        await update.reply_video(
-            video="https://graph.org/file/84d30d4fd04570c0e0256.mp4",
-            caption=_["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard)
+        # Get user's profile photo, fallback to text-only message
+        try:
+            user_photos = await client.get_profile_photos(update.from_user.id, limit=1)
+            if user_photos.total_count > 0:
+                await update.reply_photo(
+                    photo=user_photos.photos[0].file_id,
+                    caption=_["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard)
+            else:
+                await update.reply_text(
+                    text=_["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard)
+        except Exception:
+            # Fallback to text-only if photo fetch fails
+            await update.reply_text(
+                text=_["help_1"].format(SUPPORT_CHAT), reply_markup=keyboard)
 
 
 @app.on_message(filters.command(["help"]) & filters.group & ~BANNED_USERS)
 @LanguageStart
 async def help_com_group(client, message: Message, _):
     keyboard = private_help_panel(_)
-    await message.reply_video(
-        video="https://te.legra.ph/file/51293513e6af319726fe7.mp4",
-        caption=_["help_2"], reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    # Get bot's profile photo, fallback to text-only message
+    try:
+        bot_photos = await client.get_profile_photos("me", limit=1)
+        if bot_photos.total_count > 0:
+            await message.reply_photo(
+                photo=bot_photos.photos[0].file_id,
+                caption=_["help_2"], reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        else:
+            await message.reply_text(
+                text=_["help_2"], reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+    except Exception:
+        # Fallback to text-only if photo fetch fails
+        await message.reply_text(
+            text=_["help_2"], reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 @app.on_callback_query(filters.regex("help_callback") & ~BANNED_USERS)
 @languageCB
