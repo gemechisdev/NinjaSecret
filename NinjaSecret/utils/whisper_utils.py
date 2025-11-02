@@ -35,6 +35,20 @@ def generate_whisper_id() -> str:
     """Generate unique whisper message ID"""
     return str(uuid.uuid4())
 
+def get_style_emojis() -> List[str]:
+    """Get list of emojis used for different whisper styles
+    
+    This is used to detect if a title has style indicators.
+    Should be kept in sync with the emojis used in create_whisper_inline_result.
+    """
+    return [
+        NINJA_EMOJIS['crown'],      # VIP style
+        NINJA_EMOJIS['heart'],      # Cute style
+        NINJA_EMOJIS['fire'],       # Burn style
+        NINJA_EMOJIS['timer'],      # Timer style
+        '💀'                         # Burn style alternative
+    ]
+
 def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict[str, any]]:
     """
     Parse whisper command from inline query

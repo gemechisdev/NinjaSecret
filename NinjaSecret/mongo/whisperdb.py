@@ -290,7 +290,11 @@ async def get_user_whisper_stats(user_id: int) -> Dict:
     
     # Count secrets received (this week and total)
     # Use MongoDB aggregation pipeline for better performance
-    # We unwind all_targets array and match user_id in the first element of each tuple
+    # Note: all_targets is stored as an array of tuples/lists where:
+    #   - First element (index 0) is the target_id (int)
+    #   - Second element (index 1) is the username (str or None)
+    #   - Third element (index 2) is the original_token (str)
+    # We unwind the array and match on the first element to find user_id
     pipeline_total = [
         {"$match": {"all_targets": {"$exists": True, "$ne": None}}},
         {"$unwind": "$all_targets"},
@@ -316,10 +320,21 @@ async def get_user_whisper_stats(user_id: int) -> Dict:
     secrets_received_week = received_week_result[0]["total"] if received_week_result else 0
     
     # Also count from simple target_id field (for backwards compatibility)
-    secrets_received_total += await whisperdb.count_documents({"target_id": user_id})
+    # Only count whispers that DON'T have all_targets to avoid double-counting
+    secrets_received_total += await whisperdb.count_documents({
+        "target_id": user_id,
+        "$or": [
+            {"all_targets": {"$exists": False}},
+            {"all_targets": None}
+        ]
+    })
     secrets_received_week += await whisperdb.count_documents({
         "target_id": user_id,
-        "created_at": {"$gte": week_start}
+        "created_at": {"$gte": week_start},
+        "$or": [
+            {"all_targets": {"$exists": False}},
+            {"all_targets": None}
+        ]
     })
     
     # Count burned secrets (status = "burned")
