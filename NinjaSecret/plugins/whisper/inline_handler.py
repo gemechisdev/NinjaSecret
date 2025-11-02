@@ -126,6 +126,21 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
     This function replaces the old create_simple_whisper_inline_result and create_enhanced_whisper_inline_result
     to provide a single, consistent way to create inline results that properly handles all cases including
     tags (!cute, !delete, !timer) with recent targets.
+    
+    Args:
+        whisper_id: Unique identifier for the whisper
+        content: The actual message content (tags already removed)
+        targets: List of tuples (target_id, target_username, original_token)
+        modifiers: Dict containing styling/behavior modifiers:
+            - 'style': 'cute'|'vip' - Visual styling
+            - 'burn_after_reading': True - Delete after all targets read
+            - 'timer': int - Seconds until auto-deletion
+        target_display: Human-readable display name(s) for target(s)
+        target_mentions: Optional Markdown mention string(s) for target(s)
+        lang: Language code for localization (default: "en")
+    
+    Returns:
+        Dict containing inline query result data with proper styling and message formatting
     """
     language = get_string(lang)
     
@@ -136,16 +151,17 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
             if original_token.lower() in ["@all", "@everyone"]:
                 targets_dict.append({"display_name": language['whisper_everyone'], "type": "all"})
             else:
-                # Use mention format if we have target_id, otherwise use display
+                # For single targets, use the provided mention/display
+                # For multiple targets, target_mentions contains combined string so we use target_display
                 if target_id and target_mentions:
-                    # Extract the mention for this specific target from combined mentions
                     display_name = target_mentions
                 else:
                     display_name = target_display
                 targets_dict.append({"display_name": display_name, "type": "user"})
     
-    # Always use create_whisper_inline_result - it handles both styled and plain whispers
-    # When modifiers is empty dict, it will create a plain whisper with default styling
+    # Always use create_whisper_inline_result which handles both styled and plain whispers
+    # When modifiers is empty dict {}, it creates a plain whisper with classic ninja styling
+    # (see create_whisper_inline_result in whisper_utils.py for default styling logic)
     return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
 
 from config import BANNED_USERS
