@@ -58,16 +58,11 @@ logger.info("To enable: Message @BotFather -> /mybots -> Select bot -> Bot Setti
 
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
-    # First try the advanced parser for special features
+    # Use the advanced parser for special features - it always extracts modifiers correctly
     message_content, targets_string, modifiers = parse_whisper_command(text)
-
-    # If advanced parser found everything, return it
-    if message_content and targets_string:
-        return message_content, targets_string, modifiers
-
-    # Fallback to simple parsing (existing logic) for compatibility
-    message_content, targets_string = extract_message_and_target(text)
-    return message_content, targets_string, {}
+    
+    # Return the parsed result - modifiers are preserved even when there's no target
+    return message_content, targets_string, modifiers
 
 def extract_message_and_target(text: str):
     """Extract message and target from query text - targets must be at the END only"""
@@ -125,48 +120,49 @@ def is_single_target_valid(part: str) -> bool:
 
     return False
 
-def create_enhanced_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
-    """Create enhanced inline query result that supports special features"""
-    if modifiers:
-        # Use advanced result with special features
-        # Create proper target dictionaries for the advanced formatter
-        targets_dict = []
-        language = get_string(lang)
-        if targets:
-            for target_id, target_username, original_token in targets:
-                if original_token.lower() in ["@all", "@everyone"]:
-                    targets_dict.append({"display_name": language['whisper_everyone'], "type": "all"})
-                else:
-                    # Use mention format if we have target_id, otherwise use display
-                    if target_id and target_mentions:
-                        # Extract the mention for this specific target from combined mentions
-                        display_name = target_mentions
-                    else:
-                        display_name = target_display
-                    targets_dict.append({"display_name": display_name, "type": "user"})
-
-        return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
-    else:
-        # Use simple result for compatibility
-        return create_simple_whisper_inline_result(whisper_id, content, target_display, target_mentions, lang)
-
-def create_simple_whisper_inline_result(whisper_id: str, content: str, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
-    """Create simplified inline query result for whisper"""
+def create_unified_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
+    """Create unified inline query result that handles all whisper types (with or without modifiers)
+    
+    This function replaces the old create_simple_whisper_inline_result and create_enhanced_whisper_inline_result
+    to provide a single, consistent way to create inline results that properly handles all cases including
+    tags (!cute, !delete, !timer) with recent targets.
+    
+    Args:
+        whisper_id: Unique identifier for the whisper
+        content: The actual message content (tags already removed)
+        targets: List of tuples (target_id, target_username, original_token)
+        modifiers: Dict containing styling/behavior modifiers:
+            - 'style': 'cute'|'vip' - Visual styling
+            - 'burn_after_reading': True - Delete after all targets read
+            - 'timer': int - Seconds until auto-deletion
+        target_display: Human-readable display name(s) for target(s)
+        target_mentions: Optional Markdown mention string(s) for target(s)
+        lang: Language code for localization (default: "en")
+    
+    Returns:
+        Dict containing inline query result data with proper styling and message formatting
+    """
     language = get_string(lang)
-
-    # Use mentions if provided, otherwise fall back to display
-    target_for_message = target_mentions if target_mentions else target_display
-
-    return {
-        "id": whisper_id,
-        "title": language["whisper_simple_title"].format(target_display),
-        "description": language["whisper_simple_desc"],
-        "input_message_content": {
-            "message_text": language["whisper_simple_message"].format(target_for_message),
-            "parse_mode": "MARKDOWN"
-        },
-        "reply_markup": create_whisper_keyboard(whisper_id)
-    }
+    
+    # Create proper target dictionaries for the formatter
+    targets_dict = []
+    if targets:
+        for target_id, target_username, original_token in targets:
+            if original_token.lower() in ["@all", "@everyone"]:
+                targets_dict.append({"display_name": language['whisper_everyone'], "type": "all"})
+            else:
+                # For single targets, use the provided mention/display
+                # For multiple targets, target_mentions contains combined string so we use target_display
+                if target_id and target_mentions:
+                    display_name = target_mentions
+                else:
+                    display_name = target_display
+                targets_dict.append({"display_name": display_name, "type": "user"})
+    
+    # Always use create_whisper_inline_result which handles both styled and plain whispers
+    # When modifiers is empty dict {}, it creates a plain whisper with classic ninja styling
+    # (see create_whisper_inline_result in whisper_utils.py for default styling logic)
+    return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
 
 from config import BANNED_USERS
 
@@ -273,27 +269,16 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Store in memory cache instead of database
                     pending_whispers[whisper_id] = store_data
                     
-                    # Create inline result (enhanced if modifiers, simple otherwise)
-                    if modifiers:
-                        # Use enhanced result with special features styling
-                        result_data = create_enhanced_whisper_inline_result(
-                            whisper_id,
-                            message_content,
-                            [(target_user_id, target_username, target_ref)],
-                            modifiers,
-                            display_name,
-                            target_mention,
-                            "en"
-                        )
-                    else:
-                        # Use simple result for basic whispers
-                        result_data = create_simple_whisper_inline_result(
-                            whisper_id, 
-                            message_content, 
-                            display_name,
-                            target_mention,
-                            "en"
-                        )
+                    # Create inline result using unified function that handles all cases
+                    result_data = create_unified_whisper_inline_result(
+                        whisper_id,
+                        message_content,
+                        [(target_user_id, target_username, target_ref)],
+                        modifiers,
+                        display_name,
+                        target_mention,
+                        "en"
+                    )
                     
                     # Convert to Pyrogram format - preserve style from result_data
                     # For recent targets, we want to show the target name in the title
@@ -424,8 +409,8 @@ async def handle_inline_query(client, query: InlineQuery):
         # Store in memory cache instead of database
         pending_whispers[whisper_id] = store_data
 
-        # Create inline result (enhanced with special features support)
-        result = create_enhanced_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
+        # Create inline result using unified function that handles all cases
+        result = create_unified_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
 
         # Convert to Pyrogram format
         pyrogram_result = InlineQueryResultArticle(
