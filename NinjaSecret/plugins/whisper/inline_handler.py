@@ -294,15 +294,25 @@ async def handle_inline_query(client, query: InlineQuery):
                             "en"
                         )
                     
-                    # Convert to Pyrogram format - use the title from result_data to preserve styling
-                    # Add (Recent) suffix to show it's a recent target, but keep the style emoji
+                    # Convert to Pyrogram format - preserve style from result_data
+                    # For recent targets, we want to show the target name in the title
+                    # while preserving any style indicators from the modifiers
                     title_text = result_data["title"]
-                    # If title has a style indicator, keep it; otherwise add display name
-                    if "sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ᴅʀᴏᴘ!" in title_text or "sᴇᴄʀᴇᴛ ғᴏʀ" in title_text:
-                        # Keep the styled title as is, just mention it's recent
-                        final_title = title_text.replace("!", f" → {display_name}!")
+                    
+                    # Check if we have a styled title (contains style emoji)
+                    has_style_emoji = any(emoji in title_text for emoji in [
+                        NINJA_EMOJIS['crown'],      # VIP style
+                        NINJA_EMOJIS['heart'],      # Cute style
+                        NINJA_EMOJIS['fire'],       # Burn style
+                        NINJA_EMOJIS['timer'],      # Timer style
+                        '💀'                         # Burn style alternative
+                    ])
+                    
+                    if has_style_emoji:
+                        # Keep the styled title, add target name as suffix
+                        final_title = f"{title_text} → {display_name}"
                     else:
-                        # Fallback for simple results
+                        # Simple result, show target name with lightning emoji
                         final_title = f"{NINJA_EMOJIS['lightning']} {display_name} (Recent)"
                     
                     pyrogram_result = InlineQueryResultArticle(
