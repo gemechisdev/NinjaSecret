@@ -10,7 +10,6 @@ answer.extend(
         InlineQueryResultArticle(
             title="🥷 Ninja Secret Tutorial",
             description="Learn how to use Ninja Secret for secret messaging",
-            thumb_url="https://i.imgur.com/ninja-whisper.gif",
             input_message_content=InputTextMessageContent(
                 "🥷 **Ninja Secret Tutorial**\n\n"
                 "🎯 **How to Send Secrets:**\n"
@@ -32,7 +31,6 @@ answer.extend(
         InlineQueryResultArticle(
             title="🤫 Create Secret Message",
             description="Start creating a secret message",
-            thumb_url="https://i.imgur.com/ninja-whisper.gif",
             input_message_content=InputTextMessageContent(
                 "🤫 **Ready to Send a Secret?**\n\n"
                 "🥷 Use the format: `@ninjasecretbot [message] [targets]`\n\n"

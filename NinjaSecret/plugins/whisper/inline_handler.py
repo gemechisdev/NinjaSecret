@@ -37,7 +37,8 @@ from NinjaSecret.utils.whisper_utils import (
     generate_whisper_id,
     create_whisper_keyboard,
     parse_whisper_command,
-    NINJA_EMOJIS
+    NINJA_EMOJIS,
+    get_style_emojis
 )
 
 # Get logger for this module
@@ -160,7 +161,6 @@ def create_simple_whisper_inline_result(whisper_id: str, content: str, target_di
         "id": whisper_id,
         "title": language["whisper_simple_title"].format(target_display),
         "description": language["whisper_simple_desc"],
-        "thumb_url": "https://i.imgur.com/monkey-whisper.gif",
         "input_message_content": {
             "message_text": language["whisper_simple_message"].format(target_for_message),
             "parse_mode": "MARKDOWN"
@@ -295,10 +295,24 @@ async def handle_inline_query(client, query: InlineQuery):
                             "en"
                         )
                     
-                    # Convert to Pyrogram format with display name in title
+                    # Convert to Pyrogram format - preserve style from result_data
+                    # For recent targets, we want to show the target name in the title
+                    # while preserving any style indicators from the modifiers
+                    title_text = result_data["title"]
+                    
+                    # Check if we have a styled title (contains style emoji)
+                    has_style_emoji = any(emoji in title_text for emoji in get_style_emojis())
+                    
+                    if has_style_emoji:
+                        # Keep the styled title, add target name as suffix
+                        final_title = f"{title_text} → {display_name}"
+                    else:
+                        # Simple result, show target name with lightning emoji
+                        final_title = f"{NINJA_EMOJIS['lightning']} {display_name} (Recent)"
+                    
                     pyrogram_result = InlineQueryResultArticle(
                         id=result_data["id"],
-                        title=f"{NINJA_EMOJIS['lightning']} {display_name} (Recent)",
+                        title=final_title,
                         description=result_data["description"],
                         thumb_url=result_data.get("thumb_url"),
                         input_message_content=InputTextMessageContent(
@@ -570,7 +584,6 @@ def create_invalid_format_response(lang: str = "en") -> InlineQueryResultArticle
         id="invalid_format",
         title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_invalid_format_title']}",
         description=language['whisper_invalid_format_desc'],
-        thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
             message_text=language['whisper_invalid_format_message'],
             parse_mode=enums.ParseMode.MARKDOWN
@@ -590,7 +603,6 @@ def create_no_targets_response(lang: str = "en") -> InlineQueryResultArticle:
         id="no_targets",
         title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_no_targets_title']}",
         description=language['whisper_no_targets_desc'],
-        thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
             message_text=language['whisper_no_targets_message'],
             parse_mode=enums.ParseMode.MARKDOWN
@@ -610,7 +622,6 @@ def create_message_too_long_response(current_length: int, max_length: int, lang:
         id="message_too_long",
         title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_message_too_long_title']}",
         description=language['whisper_message_too_long_desc'].format(current_length, max_length),
-        thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
             message_text=language['whisper_message_too_long_message'].format(current_length, max_length, current_length - max_length),
             parse_mode=enums.ParseMode.MARKDOWN
@@ -630,7 +641,6 @@ def create_error_response(lang: str = "en") -> InlineQueryResultArticle:
         id="error",
         title=f"{NINJA_EMOJIS['see_no_evil']} {language['whisper_something_wrong_title']}",
         description=language['whisper_something_wrong_desc'],
-        thumb_url="https://i.imgur.com/monkey-error.gif",
         input_message_content=InputTextMessageContent(
             message_text=language['whisper_something_wrong_message'],
             parse_mode=enums.ParseMode.MARKDOWN

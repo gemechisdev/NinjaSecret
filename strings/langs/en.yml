@@ -228,7 +228,7 @@ whisper_3: "⭐ {0}"
 whisper_4: "🙈 ɴᴏᴛ ғᴏʀ ʏᴏᴜ!\n\n🥷 ᴛʜɪs sᴇᴄʀᴇᴛ ɪs ɴᴏᴛ ғᴏʀ ʏᴏᴜ.\nʙᴜᴛ ʏᴏᴜ ᴄᴀɴ sᴇɴᴅ ʏᴏᴜʀ ᴏᴡɴ sᴇᴄʀᴇᴛs!\n\n💭 ᴛʏᴘᴇ: @ninjasecretbot [ʏᴏᴜʀ sᴇᴄʀᴇᴛ] [ᴛᴀʀɢᴇᴛ]"
 whisper_5: "⭐ **ʏᴏᴜʀ sᴛᴀᴛɪsᴛɪᴄs**\n\n🥷 **ᴛʜɪs ᴡᴇᴇᴋ:**\n• {0} sᴇᴄʀᴇᴛs sᴇɴᴛ 🎯\n• {1} sᴇᴄʀᴇᴛs ʀᴇᴄᴇɪᴠᴇᴅ 📥\n• {2} ᴅᴇsᴛʀᴏʏᴇᴅ ᴍᴇssᴀɢᴇs 💀\n• {3} ᴛɪᴍᴇᴅ sᴇᴄʀᴇᴛs ⏰"
 whisper_6: "🙈 **sᴇᴄʀᴇᴛ ᴍᴇssᴀɢᴇ!** 🤫\n🎯 **ғᴏʀ:** {0} ({1} ᴘᴇᴏᴘʟᴇ)\n💀 **ᴅᴇsᴛʀᴏʏs ᴀғᴛᴇʀ ᴀʟʟ ʀᴇᴀᴅ**\n⏰ **ᴇxᴘɪʀᴇs:** {2}"
-whisper_7: "🎯 **ɴɪɴᴊᴀ sᴇᴇ, ɴɪɴᴊᴀ ᴅᴏ!**\n🥷 ᴛʏᴘᴇ ʏᴏᴜʀ sᴇᴄʀᴇᴛ + ᴡʜᴏ ɢᴇᴛs ɪᴛ\n\n💡 **ᴇxᴀᴍᴘʟᴇs:**\n• `@ninjasecretbot sᴇᴄʀᴇᴛ @alice`\n• `@ninjasecretbot ɴᴇᴡs @bob,@charlie`\n• `@ninjasecretbot ᴘɪᴢᴢᴀ! @all`\n• `@ninjasecretbot ᴄᴏɴғɪᴅᴇɴᴛɪᴀʟ @boss !delete`\n\n✨ **ʀᴇᴀᴅʏ ᴛᴏ ᴘʟᴀɴᴛ?** 📜"
+whisper_7: "🎯 **ɴɪɴᴊᴀ sᴇᴇ, ɴɪɴᴊᴀ ᴅᴏ!**\n🥷 ᴛʏᴘᴇ ʏᴏᴜʀ sᴇᴄʀᴇᴛ + ᴡʜᴏ ɢᴇᴛs ɪᴛ\n\n💡 **ᴇxᴀᴍᴘʟᴇs:**\n• `@ninjasecretbot sᴇᴄʀᴇᴛ @alice`\n• `@ninjasecretbot ɴᴇᴡs @bob,@charlie`\n• `@ninjasecretbot ᴘɪᴢᴢᴀ! @all`\n• `@ninjasecretbot ᴄᴏɴғɪᴅᴇɴᴛɪᴀʟ @boss !delete`\n• `@ninjasecretbot ᴍᴇᴇᴛ ᴀᴛ 5ᴘᴍ @friend !timer:3600`\n\n✨ **ʀᴇᴀᴅʏ ᴛᴏ ᴘʟᴀɴᴛ?** 📜"
 
 # Additional whisper delivery templates
 whisper_delivery_base: "🤫 **sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ᴅᴇʟɪᴠᴇʀʏ** 🥷"
