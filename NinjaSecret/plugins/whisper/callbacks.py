@@ -307,9 +307,21 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
 
         # Get the whisper content (no truncation - user should have been warned during creation)
         content = whisper['content']
+        
+        # Handle dual message content
+        if isinstance(content, dict) and 'public' in content and 'private' in content:
+            # Dual message: show appropriate message based on access
+            if is_target or is_owner:
+                # Authorized user sees the private message
+                display_content = content.get('private', content.get('public', 'No message'))
+            else:
+                # Unauthorized user sees the public message
+                display_content = content.get('public', 'No message')
+        else:
+            # Single message (backward compatible)
+            display_content = content
 
         # Add special features info if present
-        display_content = content
         settings = whisper.get("settings", {})
 
         # Add timer info if present
@@ -478,6 +490,8 @@ async def handle_tutorial(client, callback_query: CallbackQuery, _):
 {_['whisper_tutorial_examples']}
 
 {_['whisper_tutorial_features']}
+
+{_['whisper_tutorial_dual']}
 
 {_['whisper_tutorial_advanced']}
 

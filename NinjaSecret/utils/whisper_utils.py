@@ -53,8 +53,12 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
     """
     Parse whisper command from inline query
     Format: @ninjasecretbot [message] [targets] [modifiers]
+    Dual Message Format: @ninjasecretbot [public_message] | [private_message] [targets] [modifiers]
 
     Returns: (message_content, targets_string, modifiers)
+    
+    For dual messages, message_content will be a dict with 'public' and 'private' keys
+    For single messages, message_content will be a string (backward compatible)
     """
     if not text.strip():
         return None, None, {}
@@ -63,6 +67,7 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 
     modifiers = {}
 
+    # Extract modifiers first (before splitting by pipe)
     timer_match = re.search(r'!timer:(\d+)', text)
     if timer_match:
         modifiers['timer'] = int(timer_match.group(1))
@@ -80,6 +85,43 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         modifiers['style'] = 'cute'
         text = text.replace('!cute', '').strip()
 
+    # Check for dual message format (pipe separator)
+    # Split by pipe to separate public and private messages
+    has_dual_message = '|' in text
+    
+    if has_dual_message:
+        # Split by pipe
+        parts = text.split('|', 1)  # Split only on first pipe
+        public_part = parts[0].strip()
+        private_part = parts[1].strip() if len(parts) > 1 else ""
+        
+        # Extract targets from the private part
+        target_pattern = r'((?:@(?:[\w]+|all|everyone)|[\d]{6,15})(?:\s*,\s*(?:@(?:[\w]+|all|everyone)|[\d]{6,15}))*)\s*$'
+        target_match = re.search(target_pattern, private_part)
+        
+        if target_match:
+            targets_string = target_match.group(1).strip()
+            private_message = private_part[:target_match.start()].strip()
+        else:
+            # Try alternative single target pattern
+            alt_pattern = r'(@(?:[\w]+|all|everyone)|[\d]{6,15})\s*$'
+            alt_match = re.search(alt_pattern, private_part)
+            if alt_match:
+                targets_string = alt_match.group(1).strip()
+                private_message = private_part[:alt_match.start()].strip()
+            else:
+                # No valid targets found in private part
+                return text.strip() if text.strip() else None, None, modifiers
+        
+        # Return dual message structure
+        message_content = {
+            'public': public_part if public_part else None,
+            'private': private_message if private_message else None
+        }
+        modifiers['dual_message'] = True
+        return message_content, targets_string, modifiers
+    
+    # Original single message parsing (backward compatible)
     target_pattern = r'((?:@(?:[\w]+|all|everyone)|[\d]{6,15})(?:\s*,\s*(?:@(?:[\w]+|all|everyone)|[\d]{6,15}))*)\s*$'
     target_match = re.search(target_pattern, text)
 
@@ -156,13 +198,24 @@ def get_time_remaining_text(expires_at: datetime) -> str:
         return f"{remaining.seconds}s"
 
 def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Dict], modifiers: Dict, lang: str = "en") -> Dict:
-    """Create inline query result for whisper"""
+    """Create inline query result for whisper
+    
+    Args:
+        content: Can be either a string (single message) or a dict with 'public' and 'private' keys (dual message)
+    """
     language = get_string(lang)
 
     target_display = format_targets_display(targets)
     target_count = len([t for t in targets if t.get("type") != "all"]) if not any(t.get("type") == "all" for t in targets) else "∞"
 
+    # Detect if this is a dual message
+    is_dual_message = isinstance(content, dict) and 'public' in content and 'private' in content
+    
+    # Add dual message indicator to style emoji if applicable
     style_emoji = f"{NINJA_EMOJIS['whisper']}{NINJA_EMOJIS['thought']}"
+    if is_dual_message:
+        style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
+    
     if modifiers.get('style') == 'vip':
         style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
     elif modifiers.get('style') == 'cute':
@@ -173,6 +226,11 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
 
     description_parts = []
+    
+    # Add dual message indicator in description
+    if is_dual_message:
+        description_parts.append("ᴅᴜᴀʟ ᴍᴇssᴀɢᴇ: ᴘᴜʙʟɪᴄ & ᴘʀɪᴠᴀᴛᴇ")
+    
     if target_count == "∞":
         description_parts.append(language["whisper_inline_desc_everyone"])
     else:
