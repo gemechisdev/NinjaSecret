@@ -40,16 +40,18 @@ Send private, ninja-style secret messages to anyone in Telegram groups and chats
 ### Advanced Features
 
 **Dual Messages (NEW!):**
-Send different messages to public viewers vs. specific targets:
+Send different messages to different target groups:
 ```
-@ninjasecretbot Hi everyone! | Secret note for you @user1,@user2
-@ninjasecretbot Message for Alice @alice | Message for Bob @bob
-@ninjasecretbot Public announcement | Private details @team !vip
+@ninjasecretbot Hi user1! @user1 | Hi user2 and user3! @user2,12345678
+@ninjasecretbot For Alice @alice | For Bob @bob
+@ninjasecretbot Public announcement @all | Private details @admin,@moderator
 ```
-Format: `public_message | private_message [targets]`
-- Non-targets see the public message (before `|`)
-- Targets see the private message (after `|`)
+Format: `message [targets] | message [targets]`
+- Users in first target list see the first message (before `|`)
+- Users in second target list see the second message (after `|`)
+- Users not in any target list cannot read the message
 - Works with all modifiers (!cute, !timer, !delete, etc.)
+- Sender and bot owner can always see the private (second) message
 
 **Burn After Reading:**
 ```

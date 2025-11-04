@@ -308,18 +308,24 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Get the whisper content (no truncation - user should have been warned during creation)
         content = whisper['content']
         
-        # Handle dual message content
-        if isinstance(content, dict) and 'public' in content and 'private' in content:
-            # Dual message: show appropriate message based on access
-            if is_target or is_owner:
-                # Authorized user sees the private message
-                display_content = content.get('private', content.get('public', 'No message'))
-            else:
-                # Unauthorized user sees the public message
-                display_content = content.get('public', 'No message')
-        else:
-            # Single message (backward compatible)
-            display_content = content
+        # Handle dual message content with new logic
+        from NinjaSecret.utils.whisper_utils import get_content_for_user
+        
+        display_content = get_content_for_user(
+            content=content,
+            user_id=user_id,
+            username=callback_query.from_user.username,
+            is_sender=is_sender,
+            is_owner=is_owner
+        )
+        
+        # If None returned, user has no access to either message
+        if display_content is None:
+            await callback_query.answer(
+                create_unauthorized_access_text("en"),
+                show_alert=True
+            )
+            return
 
         # Add special features info if present
         settings = whisper.get("settings", {})
