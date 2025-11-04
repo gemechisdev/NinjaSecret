@@ -485,6 +485,15 @@ def check_user_in_targets(user_id: int, username: Optional[str], targets_string:
 def get_content_for_user(content: any, user_id: int, username: Optional[str], is_sender: bool, is_owner: bool) -> Optional[str]:
     """Get the appropriate content for a user based on dual message logic
     
+    Dual Message Logic:
+    - The | operator activates dual mode
+    - First part (before |): If has targets → for those targets only. If NO targets → PUBLIC
+    - Second part (after |): For specified targets only
+    - If user is in second part targets → sees second part (takes precedence)
+    - If user is in first part targets → sees first part
+    - If first part has NO targets AND user not in second part → sees first part (public)
+    - Otherwise → no access
+    
     Args:
         content: Either a string (single message) or dict (dual message)
         user_id: User's Telegram ID
@@ -504,19 +513,23 @@ def get_content_for_user(content: any, user_id: int, username: Optional[str], is
         public_targets = content.get('public_targets', '')
         private_targets = content.get('private_targets', '')
         
-        # Sender and owner can always see private content (takes precedence)
+        # Sender and owner can always see private content
         if is_sender or is_owner:
             return content.get('private', content.get('public', 'No message'))
         
-        # Check if user is in private targets (private takes precedence)
+        # Check if user is in private targets (second part - takes precedence)
         if private_targets and check_user_in_targets(user_id, username, private_targets):
             return content.get('private', 'No message')
         
-        # Check if user is in public targets
+        # Check if user is in public targets (first part)
         if public_targets and check_user_in_targets(user_id, username, public_targets):
             return content.get('public', 'No message')
         
-        # User not in any targets - no access
+        # If first part has NO targets (public), show it to unauthorized users
+        if not public_targets and content.get('public'):
+            return content.get('public', 'No message')
+        
+        # User not authorized for either part
         return None
     
     # Fallback for unknown format
