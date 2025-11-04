@@ -139,6 +139,10 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
             # No valid targets found in either part
             return text.strip() if text.strip() else None, None, modifiers
         
+        # If public part has no targets, default it to @all for dual messages
+        if not public_targets and private_targets:
+            public_targets = '@all'
+        
         # Combine all targets for storage (all authorized users)
         all_targets = []
         if public_targets:
@@ -315,8 +319,39 @@ def format_timer_display(seconds: int) -> str:
     else:
         return f"{seconds} sᴇᴄᴏɴᴅ{'s' if seconds != 1 else ''}"
 
-def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: Dict, lang: str = "en") -> str:
-    """Create the message that gets posted in chat"""
+def create_whisper_posted_message(content: any, targets: List[Dict], modifiers: Dict, lang: str = "en") -> str:
+    """Create the message that gets posted in chat
+    
+    For dual messages, targets should only include unique targets (no duplicates)
+    """
+    # For dual messages, deduplicate targets by display name (case-insensitive)
+    if isinstance(content, dict) and 'public' in content and 'private' in content:
+        # Dual message - extract unique targets based on display_name
+        unique_targets = []
+        seen_names = set()
+        
+        for target in targets:
+            display_name = target.get('display_name', '').strip()
+            target_type = target.get('type')
+            
+            # For @all type, always include
+            if target_type == "all":
+                unique_targets.append(target)
+                continue
+            
+            # Normalize display name for comparison (remove formatting, lowercase)
+            # Remove markdown link format if present
+            import re
+            clean_name = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', display_name)
+            clean_name = clean_name.lower().strip()
+            
+            # Check if we've seen this name before
+            if clean_name and clean_name not in seen_names:
+                unique_targets.append(target)
+                seen_names.add(clean_name)
+        
+        targets = unique_targets
+    
     target_display = format_targets_display(targets)
     language = get_string(lang)
 
