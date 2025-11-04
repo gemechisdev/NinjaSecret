@@ -191,6 +191,24 @@ async def handle_inline_query(client, query: InlineQuery):
                 results = []
                 language = get_string("en")
                 
+                # Handle dual message format - extract the private part if it exists
+                is_dual = isinstance(message_content, dict)
+                if is_dual:
+                    # For dual messages with recent targets, use the private part as the actual message
+                    # and default the public part to @all if not specified
+                    public_msg = message_content.get('public', '')
+                    private_msg = message_content.get('private', '')
+                    public_targets_str = message_content.get('public_targets', '')
+                    
+                    # If public part has no targets, it defaults to @all
+                    if not public_targets_str:
+                        public_targets_str = '@all'
+                else:
+                    # Single message format
+                    public_msg = None
+                    private_msg = message_content
+                    public_targets_str = None
+                
                 for i, target in enumerate(recent_targets[:5], 1):  # Show top 5
                     target_username = target.get("username")
                     target_user_id = target.get("user_id")
@@ -249,11 +267,24 @@ async def handle_inline_query(client, query: InlineQuery):
                     else:
                         target_mention = target_ref
                     
+                    # Reconstruct message_content for storage
+                    if is_dual:
+                        # For dual messages, reconstruct with the recent target in private part
+                        final_content = {
+                            'public': public_msg,
+                            'private': private_msg,
+                            'public_targets': public_targets_str,
+                            'private_targets': target_ref
+                        }
+                    else:
+                        # Single message - keep as string
+                        final_content = message_content
+                    
                     # Cache whisper data temporarily (don't save to DB yet)
                     # Will be saved to DB only when user actually sends it (in chosen_inline_result handler)
                     store_data = {
                         "whisper_id": whisper_id,
-                        "content": message_content,
+                        "content": final_content,
                         "sender_id": query.from_user.id,
                         "target_username": target_username,
                         "target_id": target_user_id,
@@ -272,7 +303,7 @@ async def handle_inline_query(client, query: InlineQuery):
                     # Create inline result using unified function that handles all cases
                     result_data = create_unified_whisper_inline_result(
                         whisper_id,
-                        message_content,
+                        final_content,
                         [(target_user_id, target_username, target_ref)],
                         modifiers,
                         display_name,
