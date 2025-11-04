@@ -324,10 +324,22 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # Check message length (Telegram callback answer limit is ~200 chars)
         max_content_length = 180  # Leave buffer for safety
-        if len(message_content) > max_content_length:
-            results = [create_message_too_long_response(len(message_content), max_content_length, "en")]
-            await query.answer(results, cache_time=1, is_personal=True)
-            return
+        # Handle both single message (string) and dual message (dict)
+        if isinstance(message_content, dict):
+            # For dual messages, check both public and private content
+            public_len = len(message_content.get('public', ''))
+            private_len = len(message_content.get('private', ''))
+            if public_len > max_content_length or private_len > max_content_length:
+                max_len = max(public_len, private_len)
+                results = [create_message_too_long_response(max_len, max_content_length, "en")]
+                await query.answer(results, cache_time=1, is_personal=True)
+                return
+        else:
+            # Single message (string)
+            if len(message_content) > max_content_length:
+                results = [create_message_too_long_response(len(message_content), max_content_length, "en")]
+                await query.answer(results, cache_time=1, is_personal=True)
+                return
 
         # Parse multiple targets
         target_tokens = [token.strip() for token in target_token.split(",")]
