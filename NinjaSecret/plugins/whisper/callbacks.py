@@ -307,9 +307,27 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
 
         # Get the whisper content (no truncation - user should have been warned during creation)
         content = whisper['content']
+        
+        # Handle dual message content with new logic
+        from NinjaSecret.utils.whisper_utils import get_content_for_user
+        
+        display_content = get_content_for_user(
+            content=content,
+            user_id=user_id,
+            username=callback_query.from_user.username,
+            is_sender=is_sender,
+            is_owner=is_owner
+        )
+        
+        # If None returned, user has no access to either message
+        if display_content is None:
+            await callback_query.answer(
+                create_unauthorized_access_text("en"),
+                show_alert=True
+            )
+            return
 
         # Add special features info if present
-        display_content = content
         settings = whisper.get("settings", {})
 
         # Add timer info if present
@@ -478,6 +496,8 @@ async def handle_tutorial(client, callback_query: CallbackQuery, _):
 {_['whisper_tutorial_examples']}
 
 {_['whisper_tutorial_features']}
+
+{_['whisper_tutorial_dual']}
 
 {_['whisper_tutorial_advanced']}
 

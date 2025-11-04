@@ -53,8 +53,16 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
     """
     Parse whisper command from inline query
     Format: @ninjasecretbot [message] [targets] [modifiers]
+    Dual Message Format: @ninjasecretbot [public_message] [public_targets] | [private_message] [private_targets] [modifiers]
 
     Returns: (message_content, targets_string, modifiers)
+    
+    For dual messages, message_content will be a dict with:
+      - 'public': public message text
+      - 'private': private message text
+      - 'public_targets': targets who see the public message
+      - 'private_targets': targets who see the private message
+    For single messages, message_content will be a string (backward compatible)
     """
     if not text.strip():
         return None, None, {}
@@ -63,6 +71,7 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 
     modifiers = {}
 
+    # Extract modifiers first (before splitting by pipe)
     timer_match = re.search(r'!timer:(\d+)', text)
     if timer_match:
         modifiers['timer'] = int(timer_match.group(1))
@@ -80,6 +89,75 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         modifiers['style'] = 'cute'
         text = text.replace('!cute', '').strip()
 
+    # Check for dual message format (pipe separator)
+    # Split by pipe to separate public and private messages
+    has_dual_message = '|' in text
+    
+    if has_dual_message:
+        # Split by pipe
+        parts = text.split('|', 1)  # Split only on first pipe
+        public_part = parts[0].strip()
+        private_part = parts[1].strip() if len(parts) > 1 else ""
+        
+        # Extract targets from the public part
+        target_pattern = r'((?:@(?:[\w]+|all|everyone)|[\d]{6,15})(?:\s*,\s*(?:@(?:[\w]+|all|everyone)|[\d]{6,15}))*)\s*$'
+        public_target_match = re.search(target_pattern, public_part)
+        
+        public_targets = None
+        public_message = public_part
+        
+        if public_target_match:
+            public_targets = public_target_match.group(1).strip()
+            public_message = public_part[:public_target_match.start()].strip()
+        else:
+            # Try alternative single target pattern
+            alt_pattern = r'(@(?:[\w]+|all|everyone)|[\d]{6,15})\s*$'
+            alt_match = re.search(alt_pattern, public_part)
+            if alt_match:
+                public_targets = alt_match.group(1).strip()
+                public_message = public_part[:alt_match.start()].strip()
+        
+        # Extract targets from the private part
+        private_target_match = re.search(target_pattern, private_part)
+        
+        private_targets = None
+        private_message = private_part
+        
+        if private_target_match:
+            private_targets = private_target_match.group(1).strip()
+            private_message = private_part[:private_target_match.start()].strip()
+        else:
+            # Try alternative single target pattern
+            alt_pattern = r'(@(?:[\w]+|all|everyone)|[\d]{6,15})\s*$'
+            alt_match = re.search(alt_pattern, private_part)
+            if alt_match:
+                private_targets = alt_match.group(1).strip()
+                private_message = private_part[:alt_match.start()].strip()
+        
+        # Must have at least one set of targets
+        if not public_targets and not private_targets:
+            # No valid targets found in either part
+            return text.strip() if text.strip() else None, None, modifiers
+        
+        # Combine all targets for storage (all authorized users)
+        all_targets = []
+        if public_targets:
+            all_targets.append(public_targets)
+        if private_targets:
+            all_targets.append(private_targets)
+        combined_targets = ','.join(all_targets)
+        
+        # Return dual message structure
+        message_content = {
+            'public': public_message if public_message else None,
+            'private': private_message if private_message else None,
+            'public_targets': public_targets,
+            'private_targets': private_targets
+        }
+        modifiers['dual_message'] = True
+        return message_content, combined_targets, modifiers
+    
+    # Original single message parsing (backward compatible)
     target_pattern = r'((?:@(?:[\w]+|all|everyone)|[\d]{6,15})(?:\s*,\s*(?:@(?:[\w]+|all|everyone)|[\d]{6,15}))*)\s*$'
     target_match = re.search(target_pattern, text)
 
@@ -156,13 +234,24 @@ def get_time_remaining_text(expires_at: datetime) -> str:
         return f"{remaining.seconds}s"
 
 def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Dict], modifiers: Dict, lang: str = "en") -> Dict:
-    """Create inline query result for whisper"""
+    """Create inline query result for whisper
+    
+    Args:
+        content: Can be either a string (single message) or a dict with 'public' and 'private' keys (dual message)
+    """
     language = get_string(lang)
 
     target_display = format_targets_display(targets)
     target_count = len([t for t in targets if t.get("type") != "all"]) if not any(t.get("type") == "all" for t in targets) else "∞"
 
+    # Detect if this is a dual message
+    is_dual_message = isinstance(content, dict) and 'public' in content and 'private' in content
+    
+    # Add dual message indicator to style emoji if applicable
     style_emoji = f"{NINJA_EMOJIS['whisper']}{NINJA_EMOJIS['thought']}"
+    if is_dual_message:
+        style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
+    
     if modifiers.get('style') == 'vip':
         style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
     elif modifiers.get('style') == 'cute':
@@ -173,6 +262,16 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
 
     description_parts = []
+    
+    # Add dual message indicator in description
+    if is_dual_message:
+        public_targets_str = content.get('public_targets', '')
+        private_targets_str = content.get('private_targets', '')
+        if public_targets_str and private_targets_str:
+            description_parts.append("ᴅᴜᴀʟ ᴍᴇssᴀɢᴇ: ᴅɪғғᴇʀᴇɴᴛ ᴛᴀʀɢᴇᴛs")
+        else:
+            description_parts.append("ᴅᴜᴀʟ ᴍᴇssᴀɢᴇ: ᴛᴀʀɢᴇᴛᴇᴅ")
+    
     if target_count == "∞":
         description_parts.append(language["whisper_inline_desc_everyone"])
     else:
@@ -348,6 +447,93 @@ def create_empty_query_keyboard() -> InlineKeyboardMarkup:
     ]
 
     return InlineKeyboardMarkup(buttons)
+
+def check_user_in_targets(user_id: int, username: Optional[str], targets_string: str) -> bool:
+    """Check if a user is in the targets string
+    
+    Args:
+        user_id: Telegram user ID
+        username: Telegram username (without @)
+        targets_string: Comma-separated targets like "@user1,@user2,123456789"
+    
+    Returns:
+        True if user is in targets, False otherwise
+    """
+    if not targets_string:
+        return False
+    
+    # Split targets by comma
+    target_tokens = [token.strip() for token in targets_string.split(",")]
+    
+    for token in target_tokens:
+        # Check for @all/@everyone
+        if token.lower() in ["@all", "@everyone"]:
+            return True
+        
+        # Check username match (case-insensitive)
+        if token.startswith("@") and username:
+            if token[1:].lower() == username.lower():
+                return True
+        
+        # Check user ID match
+        if token.isdigit() and 4 <= len(token) <= 15:
+            if int(token) == user_id:
+                return True
+    
+    return False
+
+def get_content_for_user(content: any, user_id: int, username: Optional[str], is_sender: bool, is_owner: bool) -> Optional[str]:
+    """Get the appropriate content for a user based on dual message logic
+    
+    Dual Message Logic:
+    - The | operator activates dual mode
+    - First part (before |): If has targets → for those targets only. If NO targets → PUBLIC
+    - Second part (after |): For specified targets only
+    - If user is in second part targets → sees second part (takes precedence)
+    - If user is in first part targets → sees first part
+    - If first part has NO targets AND user not in second part → sees first part (public)
+    - Otherwise → no access
+    
+    Args:
+        content: Either a string (single message) or dict (dual message)
+        user_id: User's Telegram ID
+        username: User's Telegram username (without @)
+        is_sender: Whether the user is the message sender
+        is_owner: Whether the user is the bot owner
+    
+    Returns:
+        The appropriate message content, or None if user shouldn't see any message
+    """
+    # Backward compatibility: single message (string)
+    if isinstance(content, str):
+        return content
+    
+    # Dual message: check which part the user should see
+    if isinstance(content, dict) and 'public' in content and 'private' in content:
+        public_targets = content.get('public_targets', '')
+        private_targets = content.get('private_targets', '')
+        
+        # Sender and owner can always see private content
+        if is_sender or is_owner:
+            return content.get('private', content.get('public', 'No message'))
+        
+        # Check if user is in private targets (second part - takes precedence)
+        if private_targets and check_user_in_targets(user_id, username, private_targets):
+            return content.get('private', 'No message')
+        
+        # Check if user is in public targets (first part)
+        if public_targets and check_user_in_targets(user_id, username, public_targets):
+            return content.get('public', 'No message')
+        
+        # If first part has NO targets (public), show it to unauthorized users
+        if not public_targets and content.get('public'):
+            return content.get('public', 'No message')
+        
+        # User not authorized for either part
+        return None
+    
+    # Fallback for unknown format
+    return str(content) if content else None
 
 def create_secret_revealed_text(content: str, sender_username: str, whisper_data: Dict) -> str:
     """Create text shown when secret is revealed"""
