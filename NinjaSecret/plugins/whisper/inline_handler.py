@@ -58,6 +58,40 @@ logger.info("Whisper inline_handler module loaded - on_chosen_inline_result hand
 logger.info("NOTE: ChosenInlineResult handler requires 'inline feedback' enabled in @BotFather")
 logger.info("To enable: Message @BotFather -> /mybots -> Select bot -> Bot Settings -> Inline Feedback -> Turn on")
 
+
+def validate_message_length(message_content, modifiers, lang: str = "en"):
+    """
+    Validate whisper message length for both single and dual-message content.
+    
+    Args:
+        message_content: Either a string (single message) or dict (dual message with 'public'/'private')
+        modifiers: Dict of modifiers that affect max length (style, burn_after_reading, timer)
+        lang: Language code for error response
+        
+    Returns:
+        A list containing the error response if message is too long, otherwise None.
+    """
+    max_content_length = get_max_whisper_content_length(modifiers)
+    
+    # Handle both single message (string) and dual message (dict)
+    if isinstance(message_content, dict):
+        # For dual messages, check both public and private content
+        public_content = message_content.get('public', '') or ''
+        private_content = message_content.get('private', '') or ''
+        public_len = char_length(public_content)
+        private_len = char_length(private_content)
+        
+        if public_len >= max_content_length or private_len >= max_content_length:
+            max_len = max(public_len, private_len)
+            return [create_message_too_long_response(max_len, max_content_length, lang)]
+    else:
+        # Single message (string)
+        content_length = char_length(message_content)
+        if content_length >= max_content_length:
+            return [create_message_too_long_response(content_length, max_content_length, lang)]
+    
+    return None
+
 def extract_message_and_target_with_modifiers(text: str):
     """Enhanced extraction that supports special features while maintaining compatibility"""
     # Use the advanced parser for special features - it always extracts modifiers correctly
@@ -187,27 +221,10 @@ async def handle_inline_query(client, query: InlineQuery):
         if message_content and not target_token:
             # Check message length BEFORE showing recent targets
             # This ensures users are warned about too-long messages before they can select a target
-            max_content_length = get_max_whisper_content_length(modifiers)
-            
-            # Handle both single message (string) and dual message (dict)
-            if isinstance(message_content, dict):
-                # For dual messages, check both public and private content
-                public_content = message_content.get('public', '') or ''
-                private_content = message_content.get('private', '') or ''
-                public_len = char_length(public_content)
-                private_len = char_length(private_content)
-                if public_len >= max_content_length or private_len >= max_content_length:
-                    max_len = max(public_len, private_len)
-                    results = [create_message_too_long_response(max_len, max_content_length, "en")]
-                    await query.answer(results, cache_time=1, is_personal=True)
-                    return
-            else:
-                # Single message (string)
-                content_length = char_length(message_content)
-                if content_length >= max_content_length:
-                    results = [create_message_too_long_response(content_length, max_content_length, "en")]
-                    await query.answer(results, cache_time=1, is_personal=True)
-                    return
+            validation_error = validate_message_length(message_content, modifiers, "en")
+            if validation_error is not None:
+                await query.answer(validation_error, cache_time=1, is_personal=True)
+                return
             
             user_id = query.from_user.id
             recent_targets = await get_recent_targets(user_id)
@@ -348,29 +365,11 @@ async def handle_inline_query(client, query: InlineQuery):
             await query.answer(results, cache_time=1, is_personal=True)
             return
 
-        # Check message length using UTF-16-LE encoding (Telegram's character counting method)
-        # The limit is strictly less than 200 characters, accounting for display overhead
-        max_content_length = get_max_whisper_content_length(modifiers)
-        
-        # Handle both single message (string) and dual message (dict)
-        if isinstance(message_content, dict):
-            # For dual messages, check both public and private content
-            public_content = message_content.get('public', '') or ''
-            private_content = message_content.get('private', '') or ''
-            public_len = char_length(public_content)
-            private_len = char_length(private_content)
-            if public_len >= max_content_length or private_len >= max_content_length:
-                max_len = max(public_len, private_len)
-                results = [create_message_too_long_response(max_len, max_content_length, "en")]
-                await query.answer(results, cache_time=1, is_personal=True)
-                return
-        else:
-            # Single message (string)
-            content_length = char_length(message_content)
-            if content_length >= max_content_length:
-                results = [create_message_too_long_response(content_length, max_content_length, "en")]
-                await query.answer(results, cache_time=1, is_personal=True)
-                return
+        # Check message length using the reusable validation helper
+        validation_error = validate_message_length(message_content, modifiers, "en")
+        if validation_error is not None:
+            await query.answer(validation_error, cache_time=1, is_personal=True)
+            return
 
         # Parse multiple targets
         target_tokens = [token.strip() for token in target_token.split(",")]
