@@ -185,6 +185,30 @@ async def handle_inline_query(client, query: InlineQuery):
 
         # If message but no target, show recent targets as quick-select options
         if message_content and not target_token:
+            # Check message length BEFORE showing recent targets
+            # This ensures users are warned about too-long messages before they can select a target
+            max_content_length = get_max_whisper_content_length(modifiers)
+            
+            # Handle both single message (string) and dual message (dict)
+            if isinstance(message_content, dict):
+                # For dual messages, check both public and private content
+                public_content = message_content.get('public', '') or ''
+                private_content = message_content.get('private', '') or ''
+                public_len = char_length(public_content)
+                private_len = char_length(private_content)
+                if public_len >= max_content_length or private_len >= max_content_length:
+                    max_len = max(public_len, private_len)
+                    results = [create_message_too_long_response(max_len, max_content_length, "en")]
+                    await query.answer(results, cache_time=1, is_personal=True)
+                    return
+            else:
+                # Single message (string)
+                content_length = char_length(message_content)
+                if content_length >= max_content_length:
+                    results = [create_message_too_long_response(content_length, max_content_length, "en")]
+                    await query.answer(results, cache_time=1, is_personal=True)
+                    return
+            
             user_id = query.from_user.id
             recent_targets = await get_recent_targets(user_id)
             
