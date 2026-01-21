@@ -133,7 +133,12 @@ VIP styling + 2 hour timer + burn after reading
 ## Important Notes
 
 ### Character Limits
-- Each message part has a 180 character limit
+- Telegram enforces a 200 character limit for callback alert text (UTF-16 encoding)
+- The bot automatically calculates available space based on modifiers:
+  - Without modifiers: ~199 characters
+  - With style modifiers (VIP/cute/burn): ~196 characters  
+  - With timer: ~183 characters
+  - With timer + style: ~180 characters
 - Plan your messages accordingly
 
 ### Precedence Rules
