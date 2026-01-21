@@ -541,7 +541,7 @@ def check_user_in_targets(user_id: int, username: Optional[str], targets_string:
     
     return False
 
-def get_content_for_user(content: any, user_id: int, username: Optional[str], is_sender: bool, is_owner: bool) -> Optional[str]:
+def get_content_for_user(content: any, user_id: int, username: Optional[str], is_sender: bool, is_owner: bool, is_sudo: bool = False) -> Optional[str]:
     """Get the appropriate content for a user based on dual message logic
     
     Dual Message Logic:
@@ -553,12 +553,17 @@ def get_content_for_user(content: any, user_id: int, username: Optional[str], is
     - If first part has NO targets AND user not in second part → sees first part (public)
     - Otherwise → no access
     
+    Privileged Access:
+    - Sender, owner, and sudo users can always see private content for moderation purposes
+    
     Args:
         content: Either a string (single message) or dict (dual message)
         user_id: User's Telegram ID
         username: User's Telegram username (without @)
         is_sender: Whether the user is the message sender
-        is_owner: Whether the user is the bot owner
+        is_owner: Whether the user is the bot owner (OWNER_ID from config)
+        is_sudo: Whether the user is a sudo user (member of SUDOERS list managed via /addsudo command).
+                 Sudo users have moderation privileges similar to the owner. Defaults to False for backward compatibility.
     
     Returns:
         The appropriate message content, or None if user shouldn't see any message
@@ -572,8 +577,8 @@ def get_content_for_user(content: any, user_id: int, username: Optional[str], is
         public_targets = content.get('public_targets', '')
         private_targets = content.get('private_targets', '')
         
-        # Sender and owner can always see private content
-        if is_sender or is_owner:
+        # Sender, owner, and sudo users can always see private content
+        if is_sender or is_owner or is_sudo:
             return content.get('private', content.get('public', 'No message'))
         
         # Check if user is in private targets (second part - takes precedence)
