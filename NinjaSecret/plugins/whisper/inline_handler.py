@@ -38,7 +38,9 @@ from NinjaSecret.utils.whisper_utils import (
     create_whisper_keyboard,
     parse_whisper_command,
     NINJA_EMOJIS,
-    get_style_emojis
+    get_style_emojis,
+    char_length,
+    get_max_whisper_content_length
 )
 
 # Get logger for this module
@@ -322,22 +324,27 @@ async def handle_inline_query(client, query: InlineQuery):
             await query.answer(results, cache_time=1, is_personal=True)
             return
 
-        # Check message length (Telegram callback answer limit is ~200 chars)
-        max_content_length = 180  # Leave buffer for safety
+        # Check message length using UTF-16-LE encoding (Telegram's character counting method)
+        # The limit is strictly less than 200 characters, accounting for display overhead
+        max_content_length = get_max_whisper_content_length(modifiers)
+        
         # Handle both single message (string) and dual message (dict)
         if isinstance(message_content, dict):
             # For dual messages, check both public and private content
-            public_len = len(message_content.get('public', ''))
-            private_len = len(message_content.get('private', ''))
-            if public_len > max_content_length or private_len > max_content_length:
+            public_content = message_content.get('public', '') or ''
+            private_content = message_content.get('private', '') or ''
+            public_len = char_length(public_content)
+            private_len = char_length(private_content)
+            if public_len >= max_content_length or private_len >= max_content_length:
                 max_len = max(public_len, private_len)
                 results = [create_message_too_long_response(max_len, max_content_length, "en")]
                 await query.answer(results, cache_time=1, is_personal=True)
                 return
         else:
             # Single message (string)
-            if len(message_content) > max_content_length:
-                results = [create_message_too_long_response(len(message_content), max_content_length, "en")]
+            content_length = char_length(message_content)
+            if content_length >= max_content_length:
+                results = [create_message_too_long_response(content_length, max_content_length, "en")]
                 await query.answer(results, cache_time=1, is_personal=True)
                 return
 
