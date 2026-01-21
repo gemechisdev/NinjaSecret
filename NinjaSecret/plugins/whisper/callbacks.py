@@ -30,6 +30,7 @@ from NinjaSecret.utils.whisper_utils import (
     NINJA_EMOJIS
 )
 from config import BANNED_USERS, OWNER_ID
+from NinjaSecret.misc import SUDOERS
 
 # Get logger for this module
 logger = LOGGER(__name__)
@@ -80,6 +81,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         is_sender = user_id == sender_id
         is_target = False
         is_owner = user_id == OWNER_ID
+        is_sudo = user_id in SUDOERS
 
         # Check if user is the target (support multiple targets)
         # First check the primary target fields for backward compatibility
@@ -136,8 +138,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                             is_target = True
                             break
 
-        # Allow owner to read any whisper for moderation purposes
-        if not (is_sender or is_target or is_owner):
+        # Allow owner and sudo users to read any whisper for moderation purposes
+        if not (is_sender or is_target or is_owner or is_sudo):
             await callback_query.answer(
                 create_unauthorized_access_text("en"),
                 show_alert=True
@@ -316,7 +318,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             user_id=user_id,
             username=callback_query.from_user.username,
             is_sender=is_sender,
-            is_owner=is_owner
+            is_owner=is_owner,
+            is_sudo=is_sudo
         )
         
         # If None returned, user has no access to either message
