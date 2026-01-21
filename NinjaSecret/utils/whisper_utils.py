@@ -35,6 +35,65 @@ def generate_whisper_id() -> str:
     """Generate unique whisper message ID"""
     return str(uuid.uuid4())
 
+
+def char_length(s: str) -> int:
+    """Calculate the character length as counted by Telegram.
+    
+    Telegram uses UTF-16-LE encoding for character counting in callback alerts.
+    This function correctly counts characters including emojis and special unicode.
+    
+    Args:
+        s: The string to measure
+        
+    Returns:
+        The character length as Telegram would count it
+    """
+    return len(s.encode("utf-16-le")) // 2
+
+
+# Telegram callback answer text limit
+TELEGRAM_CALLBACK_LIMIT = 200
+
+# Maximum overhead for prefixes/suffixes added during whisper display
+# - Prefix (burn/vip/cute): emoji + space = about 3 UTF-16 units (e.g., "💀 ")
+# - Timer suffix: "\n⏰ " + time text + " left" = up to ~25 UTF-16 units (e.g., "\n⏰ 23h 59m left")
+# Total max overhead: 3 + 25 = 28
+# Adding safety buffer: 30
+WHISPER_DISPLAY_OVERHEAD = 30
+
+# Maximum content length for whisper messages (strictly less than 200 minus overhead)
+MAX_WHISPER_CONTENT_LENGTH = TELEGRAM_CALLBACK_LIMIT - WHISPER_DISPLAY_OVERHEAD - 1  # -1 for "strictly less than"
+
+
+def get_max_whisper_content_length(modifiers: Dict = None) -> int:
+    """Get the maximum allowed content length based on modifiers.
+    
+    Calculates the available space for content after accounting for
+    prefixes and suffixes that will be added based on the modifiers.
+    
+    Args:
+        modifiers: Dictionary of modifiers (style, burn_after_reading, timer, etc.)
+        
+    Returns:
+        Maximum allowed content length in UTF-16 characters
+    """
+    if modifiers is None:
+        modifiers = {}
+    
+    overhead = 0
+    
+    # Account for style/burn prefix (emoji + space)
+    if modifiers.get('burn_after_reading') or modifiers.get('style') in ('vip', 'cute'):
+        overhead += 3  # emoji (2 UTF-16 units for most emojis) + space
+    
+    # Account for timer suffix
+    if modifiers.get('timer'):
+        # "\n⏰ 23h 59m left" = about 20 UTF-16 units max
+        overhead += 20
+    
+    # The limit must be strictly less than 200
+    return TELEGRAM_CALLBACK_LIMIT - overhead - 1
+
 def get_style_emojis() -> List[str]:
     """Get list of emojis used for different whisper styles
     
