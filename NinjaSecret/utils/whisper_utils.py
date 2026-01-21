@@ -54,15 +54,9 @@ def char_length(s: str) -> int:
 # Telegram callback answer text limit
 TELEGRAM_CALLBACK_LIMIT = 200
 
-# Maximum overhead for prefixes/suffixes added during whisper display
-# - Prefix (burn/vip/cute): emoji + space = about 3 UTF-16 units (e.g., "💀 ")
-# - Timer suffix: "\n⏰ " + time text + " left" = up to ~25 UTF-16 units (e.g., "\n⏰ 23h 59m left")
-# Total max overhead: 3 + 25 = 28
-# Adding safety buffer: 30
-WHISPER_DISPLAY_OVERHEAD = 30
-
-# Maximum content length for whisper messages (strictly less than 200 minus overhead)
-MAX_WHISPER_CONTENT_LENGTH = TELEGRAM_CALLBACK_LIMIT - WHISPER_DISPLAY_OVERHEAD - 1  # -1 for "strictly less than"
+# Maximum timer suffix format: "\n⏰ 999ᴅ 23ʜ left" (uses Unicode small caps from get_time_remaining_text)
+# Calculated using char_length() = 16 UTF-16 units
+MAX_TIMER_SUFFIX = "\n⏰ 999ᴅ 23ʜ left"
 
 
 def get_max_whisper_content_length(modifiers: Dict = None) -> int:
@@ -70,6 +64,10 @@ def get_max_whisper_content_length(modifiers: Dict = None) -> int:
     
     Calculates the available space for content after accounting for
     prefixes and suffixes that will be added based on the modifiers.
+    
+    Dynamic overhead calculation:
+    - Style/burn prefix ("💀 ", "👑 ", "💕 "): 3 UTF-16 units
+    - Timer suffix ("\n⏰ 999ᴅ 23ʜ left"): 16 UTF-16 units max
     
     Args:
         modifiers: Dictionary of modifiers (style, burn_after_reading, timer, etc.)
@@ -87,11 +85,11 @@ def get_max_whisper_content_length(modifiers: Dict = None) -> int:
     if modifiers.get('burn_after_reading') or modifiers.get('style') in ('vip', 'cute'):
         overhead += char_length("💀 ")  # = 3 UTF-16 units
     
-    # Account for timer suffix: "\n⏰ {time} left" where time can be like "23h 59m"
-    # Maximum timer suffix calculated: char_length("\n⏰ 23h 59m left") = 15 UTF-16 units
-    # Adding buffer for longer time formats: 18 UTF-16 units
+    # Account for timer suffix: "\n⏰ {time} left"
+    # Maximum format: "999ᴅ 23ʜ" (days + hours with Unicode small caps)
+    # Full max suffix: "\n⏰ 999ᴅ 23ʜ left" = 16 UTF-16 units
     if modifiers.get('timer'):
-        overhead += char_length("\n⏰ ") + 14  # Base (4) + max time text with buffer (14) = 18
+        overhead += char_length(MAX_TIMER_SUFFIX)  # = 16 UTF-16 units
     
     # The limit must be strictly less than 200
     return TELEGRAM_CALLBACK_LIMIT - overhead - 1

@@ -137,8 +137,8 @@ VIP styling + 2 hour timer + burn after reading
 - The bot automatically calculates available space based on modifiers:
   - Without modifiers: ~199 characters
   - With style modifiers (VIP/cute/burn): ~196 characters  
-  - With timer: ~179 characters
-  - With timer + style: ~176 characters
+  - With timer: ~183 characters
+  - With timer + style: ~180 characters
 - Plan your messages accordingly
 
 ### Precedence Rules
