@@ -82,14 +82,16 @@ def get_max_whisper_content_length(modifiers: Dict = None) -> int:
     
     overhead = 0
     
-    # Account for style/burn prefix (emoji + space)
+    # Account for style/burn prefix: emoji (2 UTF-16 units) + space (1 UTF-16 unit) = 3 total
+    # Examples: "💀 ", "👑 ", "💕 " - all are 3 UTF-16 units
     if modifiers.get('burn_after_reading') or modifiers.get('style') in ('vip', 'cute'):
-        overhead += 3  # emoji (2 UTF-16 units for most emojis) + space
+        overhead += char_length("💀 ")  # = 3 UTF-16 units
     
-    # Account for timer suffix
+    # Account for timer suffix: "\n⏰ {time} left" where time can be like "23h 59m"
+    # Maximum timer suffix calculated: char_length("\n⏰ 23h 59m left") = 15 UTF-16 units
+    # Adding buffer for longer time formats: 18 UTF-16 units
     if modifiers.get('timer'):
-        # "\n⏰ 23h 59m left" = about 20 UTF-16 units max
-        overhead += 20
+        overhead += char_length("\n⏰ ") + 14  # Base (4) + max time text with buffer (14) = 18
     
     # The limit must be strictly less than 200
     return TELEGRAM_CALLBACK_LIMIT - overhead - 1
