@@ -131,33 +131,40 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 
     modifiers = {}
 
-    # Extract modifiers first (before splitting by pipe)
-    timer_match = re.search(r'!timer:(\d+)', text)
+    # All modifier patterns use word boundaries to prevent false positives
+    # Word boundary pattern: (?<![a-zA-Z0-9])...(?![a-zA-Z0-9])
+    # This ensures modifiers like "!delete" don't match in "!deleteme" or "pre!delete"
+    
+    # Extract timer modifier first (before splitting by pipe)
+    TIMER_PATTERN = r'(?<![a-zA-Z0-9])!timer:(\d+)(?![a-zA-Z0-9])'
+    timer_match = re.search(TIMER_PATTERN, text)
     if timer_match:
         modifiers['timer'] = int(timer_match.group(1))
-        text = re.sub(r'!timer:\d+', '', text).strip()
-
-    if '!delete' in text:
+        text = re.sub(TIMER_PATTERN, '', text).strip()
+    
+    DELETE_PATTERN = r'(?<![a-zA-Z0-9])!delete(?![a-zA-Z0-9])'
+    if re.search(DELETE_PATTERN, text):
         modifiers['burn_after_reading'] = True
-        text = text.replace('!delete', '').strip()
+        text = re.sub(DELETE_PATTERN, '', text).strip()
 
     # Reveal-on-read modifier: !r or !reveal
     # When triggered, edits the visible message to show who read the secret
     # (similar to @psstrobot behavior)
-    # Uses regex with word boundaries to prevent false positives like "!revealme" or "!ready"
-    # The pattern matches both !reveal and !r (with !reveal having higher priority in the alternation)
+    # The pattern matches both !reveal and !r (the longer !reveal will be matched when present due to regex greediness)
     REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
     if re.search(REVEAL_PATTERN, text):
         modifiers['reveal_on_read'] = True
         text = re.sub(REVEAL_PATTERN, '', text).strip()
 
-    if '!vip' in text:
+    VIP_PATTERN = r'(?<![a-zA-Z0-9])!vip(?![a-zA-Z0-9])'
+    if re.search(VIP_PATTERN, text):
         modifiers['style'] = 'vip'
-        text = text.replace('!vip', '').strip()
+        text = re.sub(VIP_PATTERN, '', text).strip()
 
-    if '!cute' in text:
+    CUTE_PATTERN = r'(?<![a-zA-Z0-9])!cute(?![a-zA-Z0-9])'
+    if re.search(CUTE_PATTERN, text):
         modifiers['style'] = 'cute'
-        text = text.replace('!cute', '').strip()
+        text = re.sub(CUTE_PATTERN, '', text).strip()
 
     # Check for dual message format (pipe separator)
     # Split by pipe to separate public and private messages
