@@ -197,7 +197,6 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             except Exception as e:
                 # If we can't edit the message, that's okay - the DB is updated
                 print(f"Could not update inline message with resolved name: {e}")
-                pass
             
         elif is_target and target_id:
             # Target was already resolved, but update their display name if it changed
@@ -235,7 +234,6 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             except Exception as e:
                 # If we can't edit the message, that's okay - the DB is updated
                 print(f"Could not update inline message with updated name: {e}")
-                pass
 
         # Mark as read only if target is viewing (sender viewing doesn't count as "read")
         # Exception: if sender IS the target (self-whisper), then it counts as read
