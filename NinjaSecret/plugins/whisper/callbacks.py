@@ -302,16 +302,18 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
 
             # Handle reveal-on-read (!r modifier)
             # This edits the message to show who read it (like @psstrobot)
+            # Note: burn_after_reading takes precedence as it already shows who read it
             if settings.get("reveal_on_read") and not settings.get("burn_after_reading"):
                 if whisper.get("inline_message_id"):
                     try:
+                        import html
                         # Build clickable read status with user's full name
                         reader = callback_query.from_user
                         reader_name = reader.first_name
                         if reader.last_name:
                             reader_name += " " + reader.last_name
-                        # Escape HTML special characters
-                        reader_name = reader_name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        # Escape HTML special characters using standard library
+                        reader_name = html.escape(reader_name)
                         
                         # Create tappable name linking to profile
                         revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
