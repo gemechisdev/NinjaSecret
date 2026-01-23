@@ -21,7 +21,7 @@ answer.extend(
                 "• Multiple people: `@ninjasecretbot group news @bob,@charlie`\n"
                 "• Everyone: `@ninjasecretbot pizza time! @all`\n\n"
                 "🔥 **Special Features:**\n"
-                "• `!delete` - Burns after all read\n"
+                "• `!delete` or `!d` - Burns after all read\n"
                 "• `!timer:3600` - Expires in 1 hour\n"
                 "• `!vip` - VIP styling with crown\n"
                 "• `!cute` - Extra stealthy ninja styling\n\n"
@@ -38,7 +38,7 @@ answer.extend(
                 "`@ninjasecretbot pizza party tonight! @alice,@bob`\n\n"
                 "💡 **Pro Tips:**\n"
                 "• Use `@all` to message everyone\n"
-                "• Add `!delete` to burn after reading\n"
+                "• Add `!delete` or `!d` to burn after reading\n"
                 "• Add `!timer:3600` to expire in 1 hour\n\n"
                 "⭐ **Start typing your secret above!**"
             ),
