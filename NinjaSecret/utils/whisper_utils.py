@@ -139,15 +139,16 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
     if '!delete' in text:
         modifiers['burn_after_reading'] = True
         text = text.replace('!delete', '').strip()
-    
-    # Short alias for !delete: !d
-    # Uses regex to match !d as a standalone modifier (not part of another word)
-    # This ensures we don't accidentally match !d inside words like "!dual" or "good"
-    if not modifiers.get('burn_after_reading'):
-        new_text = re.sub(r'(?<![a-zA-Z0-9])!d(?![a-zA-Z0-9])', '', text)
-        if new_text != text:
-            modifiers['burn_after_reading'] = True
-            text = new_text.strip()
+
+    # Short reveal-on-read modifier: !r
+    # When triggered, edits the visible message to show who read the secret
+    # (similar to @psstrobot behavior)
+    if '!r' in text:
+        # Use regex to match !r as a standalone modifier (not part of another word)
+        # This ensures we don't accidentally match !r inside words like "!ready" or "!remove"
+        if re.search(r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])', text):
+            modifiers['reveal_on_read'] = True
+            text = re.sub(r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])', '', text).strip()
 
     if '!vip' in text:
         modifiers['style'] = 'vip'

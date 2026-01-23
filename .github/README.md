@@ -14,7 +14,7 @@ Send private, ninja-style secret messages to anyone in Telegram groups and chats
 - Sender and targets can read - everyone else gets blocked
 
 🔥 **Special Abilities**
-- 💀 **Burn After Reading** (`!delete` or `!d`) - Message self-destructs after all targets read it
+- 💀 **Burn After Reading** (`!delete`) - Message self-destructs after all targets read it
 - ⏰ **Timed Secrets** (`!timer:seconds`) - Auto-expires after specified time
 - 👑 **VIP Style** (`!vip`) - Golden shuriken with crown styling
 - 💕 **Cute Style** (`!cute`) - Playful hearts and love
