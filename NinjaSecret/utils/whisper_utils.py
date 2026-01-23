@@ -105,6 +105,7 @@ def get_style_emojis() -> List[str]:
         NINJA_EMOJIS['heart'],      # Cute style
         NINJA_EMOJIS['fire'],       # Burn style
         NINJA_EMOJIS['timer'],      # Timer style
+        NINJA_EMOJIS['eyes'],       # Reveal style
         '💀'                         # Burn style alternative
     ]
 
@@ -140,17 +141,15 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         modifiers['burn_after_reading'] = True
         text = text.replace('!delete', '').strip()
 
-    # Reveal-on-read modifier: !r
+    # Reveal-on-read modifier: !r or !reveal
     # When triggered, edits the visible message to show who read the secret
     # (similar to @psstrobot behavior)
-    # Note: Uses regex with word boundaries because !r is very short (2 chars)
-    # and could accidentally match in words like "!ready" or "!remove".
-    # Longer modifiers like !delete, !vip, !cute are less prone to false matches.
-    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])'
-    new_text = re.sub(REVEAL_PATTERN, '', text)
-    if new_text != text:
+    # Uses regex with word boundaries to prevent false positives like "!revealme" or "!ready"
+    # The pattern matches both !reveal and !r (with !reveal having higher priority in the alternation)
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
+    if re.search(REVEAL_PATTERN, text):
         modifiers['reveal_on_read'] = True
-        text = new_text.strip()
+        text = re.sub(REVEAL_PATTERN, '', text).strip()
 
     if '!vip' in text:
         modifiers['style'] = 'vip'
@@ -329,6 +328,8 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
     elif modifiers.get('burn_after_reading'):
         style_emoji = f"💀{NINJA_EMOJIS['fire']}"
+    elif modifiers.get('reveal_on_read'):
+        style_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
     elif modifiers.get('timer'):
         style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
 
@@ -350,6 +351,9 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
 
     if modifiers.get('burn_after_reading'):
         description_parts.append(language["whisper_inline_desc_burns"])
+
+    if modifiers.get('reveal_on_read'):
+        description_parts.append(language["whisper_inline_desc_reveals"])
 
     if modifiers.get('timer'):
         timer_text = format_timer_display(modifiers['timer'])
