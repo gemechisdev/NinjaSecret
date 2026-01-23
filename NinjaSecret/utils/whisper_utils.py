@@ -105,6 +105,7 @@ def get_style_emojis() -> List[str]:
         NINJA_EMOJIS['heart'],      # Cute style
         NINJA_EMOJIS['fire'],       # Burn style
         NINJA_EMOJIS['timer'],      # Timer style
+        NINJA_EMOJIS['eyes'],       # Reveal style
         '💀'                         # Burn style alternative
     ]
 
@@ -130,35 +131,40 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 
     modifiers = {}
 
-    # Extract modifiers first (before splitting by pipe)
-    timer_match = re.search(r'!timer:(\d+)', text)
+    # All modifier patterns use word boundaries to prevent false positives
+    # Word boundary pattern: (?<![a-zA-Z0-9])...(?![a-zA-Z0-9])
+    # This ensures modifiers like "!delete" don't match in "!deleteme" or "pre!delete"
+    
+    # Extract timer modifier first (before splitting by pipe)
+    TIMER_PATTERN = r'(?<![a-zA-Z0-9])!timer:(\d+)(?![a-zA-Z0-9])'
+    timer_match = re.search(TIMER_PATTERN, text)
     if timer_match:
         modifiers['timer'] = int(timer_match.group(1))
-        text = re.sub(r'!timer:\d+', '', text).strip()
-
-    if '!delete' in text:
+        text = re.sub(TIMER_PATTERN, '', text).strip()
+    
+    DELETE_PATTERN = r'(?<![a-zA-Z0-9])!delete(?![a-zA-Z0-9])'
+    if re.search(DELETE_PATTERN, text):
         modifiers['burn_after_reading'] = True
-        text = text.replace('!delete', '').strip()
+        text = re.sub(DELETE_PATTERN, '', text).strip()
 
-    # Reveal-on-read modifier: !r
+    # Reveal-on-read modifier: !r or !reveal
     # When triggered, edits the visible message to show who read the secret
     # (similar to @psstrobot behavior)
-    # Note: Uses regex with word boundaries because !r is very short (2 chars)
-    # and could accidentally match in words like "!ready" or "!remove".
-    # Longer modifiers like !delete, !vip, !cute are less prone to false matches.
-    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])'
-    new_text = re.sub(REVEAL_PATTERN, '', text)
-    if new_text != text:
+    # The pattern matches both !reveal and !r (the longer !reveal will be matched when present due to regex greediness)
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
+    if re.search(REVEAL_PATTERN, text):
         modifiers['reveal_on_read'] = True
-        text = new_text.strip()
+        text = re.sub(REVEAL_PATTERN, '', text).strip()
 
-    if '!vip' in text:
+    VIP_PATTERN = r'(?<![a-zA-Z0-9])!vip(?![a-zA-Z0-9])'
+    if re.search(VIP_PATTERN, text):
         modifiers['style'] = 'vip'
-        text = text.replace('!vip', '').strip()
+        text = re.sub(VIP_PATTERN, '', text).strip()
 
-    if '!cute' in text:
+    CUTE_PATTERN = r'(?<![a-zA-Z0-9])!cute(?![a-zA-Z0-9])'
+    if re.search(CUTE_PATTERN, text):
         modifiers['style'] = 'cute'
-        text = text.replace('!cute', '').strip()
+        text = re.sub(CUTE_PATTERN, '', text).strip()
 
     # Check for dual message format (pipe separator)
     # Split by pipe to separate public and private messages
@@ -329,6 +335,8 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
     elif modifiers.get('burn_after_reading'):
         style_emoji = f"💀{NINJA_EMOJIS['fire']}"
+    elif modifiers.get('reveal_on_read'):
+        style_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
     elif modifiers.get('timer'):
         style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
 
@@ -350,6 +358,9 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
 
     if modifiers.get('burn_after_reading'):
         description_parts.append(language["whisper_inline_desc_burns"])
+
+    if modifiers.get('reveal_on_read'):
+        description_parts.append(language["whisper_inline_desc_reveals"])
 
     if modifiers.get('timer'):
         timer_text = format_timer_display(modifiers['timer'])
