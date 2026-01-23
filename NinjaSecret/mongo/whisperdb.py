@@ -51,6 +51,10 @@ async def store_whisper(data: Dict) -> str:
         if modifiers.get("burn_after_reading"):
             settings["burn_after_reading"] = True
 
+        # Handle reveal on read
+        if modifiers.get("reveal_on_read"):
+            settings["reveal_on_read"] = True
+
         # Handle styling
         if modifiers.get("style"):
             settings["style"] = modifiers["style"]
