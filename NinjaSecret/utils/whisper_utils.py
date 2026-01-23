@@ -141,12 +141,13 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         text = text.replace('!delete', '').strip()
     
     # Short alias for !delete: !d
-    if '!d' in text and not modifiers.get('burn_after_reading'):
-        # Use regex to match !d as a standalone modifier (not part of another word)
-        # This ensures we don't accidentally match !d inside words like "!dual" or "good"
-        if re.search(r'(?<![a-zA-Z0-9])!d(?![a-zA-Z0-9])', text):
+    # Uses regex to match !d as a standalone modifier (not part of another word)
+    # This ensures we don't accidentally match !d inside words like "!dual" or "good"
+    if not modifiers.get('burn_after_reading'):
+        new_text = re.sub(r'(?<![a-zA-Z0-9])!d(?![a-zA-Z0-9])', '', text)
+        if new_text != text:
             modifiers['burn_after_reading'] = True
-            text = re.sub(r'(?<![a-zA-Z0-9])!d(?![a-zA-Z0-9])', '', text).strip()
+            text = new_text.strip()
 
     if '!vip' in text:
         modifiers['style'] = 'vip'
