@@ -306,26 +306,28 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             # Note: burn_after_reading takes precedence as it already shows who read it
             # Note: For multi-target whispers, only the first reader is revealed (message can only be edited once)
             if settings.get("reveal_on_read") and not settings.get("burn_after_reading"):
-                if whisper.get("inline_message_id"):
-                    try:
-                        # Build clickable read status with user's full name
-                        reader = callback_query.from_user
-                        reader_name = reader.first_name
-                        if reader.last_name:
-                            reader_name += " " + reader.last_name
-                        # Escape HTML special characters using standard library
-                        reader_name = html.escape(reader_name)
-                        
-                        # Create tappable name linking to profile
-                        revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
-                        
-                        await callback_query.edit_message_text(
-                            text=revealed_text,
-                            parse_mode=enums.ParseMode.HTML,
-                            reply_markup=None  # Remove the button to prevent re-click
-                        )
-                    except Exception as e:
-                        print(f"Failed to edit revealed message: {e}")
+                try:
+                    # Build clickable read status with user's full name
+                    reader = callback_query.from_user
+                    reader_name = reader.first_name
+                    if reader.last_name:
+                        reader_name += " " + reader.last_name
+                    # Escape HTML special characters using standard library
+                    reader_name = html.escape(reader_name)
+                    
+                    # Create tappable name linking to profile
+                    revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
+                    
+                    # Use callback_query.edit_message_text() which is a bound method that
+                    # automatically uses inline_message_id from the callback query for inline messages.
+                    # No need to manually pass inline_message_id - Pyrogram handles it internally.
+                    await callback_query.edit_message_text(
+                        text=revealed_text,
+                        parse_mode=enums.ParseMode.HTML,
+                        reply_markup=None  # Remove the button to prevent re-click
+                    )
+                except Exception as e:
+                    print(f"Failed to edit revealed message: {e}")
 
         # Get sender name for display
         try:
