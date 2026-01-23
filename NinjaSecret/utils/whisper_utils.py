@@ -143,12 +143,12 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
     # Short reveal-on-read modifier: !r
     # When triggered, edits the visible message to show who read the secret
     # (similar to @psstrobot behavior)
-    if '!r' in text:
-        # Use regex to match !r as a standalone modifier (not part of another word)
-        # This ensures we don't accidentally match !r inside words like "!ready" or "!remove"
-        if re.search(r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])', text):
-            modifiers['reveal_on_read'] = True
-            text = re.sub(r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])', '', text).strip()
+    # Note: Uses regex to match !r as a standalone modifier only
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])!r(?![a-zA-Z0-9])'
+    new_text = re.sub(REVEAL_PATTERN, '', text)
+    if new_text != text:
+        modifiers['reveal_on_read'] = True
+        text = new_text.strip()
 
     if '!vip' in text:
         modifiers['style'] = 'vip'
