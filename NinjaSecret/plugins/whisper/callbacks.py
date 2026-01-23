@@ -300,6 +300,31 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                         except Exception as e:
                             print(f"Failed to edit burned message: {e}")
 
+            # Handle reveal-on-read (!r modifier)
+            # This edits the message to show who read it (like @psstrobot)
+            if settings.get("reveal_on_read") and not settings.get("burn_after_reading"):
+                if whisper.get("inline_message_id"):
+                    try:
+                        # Build clickable read status with user's full name
+                        reader = callback_query.from_user
+                        reader_name = reader.first_name
+                        if reader.last_name:
+                            reader_name += " " + reader.last_name
+                        # Escape HTML special characters
+                        reader_name = reader_name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        
+                        # Create tappable name linking to profile
+                        revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
+                        
+                        await app.edit_inline_text(
+                            inline_message_id=whisper["inline_message_id"],
+                            text=revealed_text,
+                            parse_mode=enums.ParseMode.HTML,
+                            reply_markup=None  # Remove the button to prevent re-click
+                        )
+                    except Exception as e:
+                        print(f"Failed to edit revealed message: {e}")
+
         # Get sender name for display
         try:
             sender = await app.get_users(sender_id)
