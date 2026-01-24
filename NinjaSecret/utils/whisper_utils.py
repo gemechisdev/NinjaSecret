@@ -113,15 +113,28 @@ def get_style_emojis() -> List[str]:
 def get_modifier_type(modifiers: Dict) -> str:
     """Determine the type of modifier combination
     
+    Returns the primary modifier type based on priority order. When multiple modifiers
+    are present (e.g., !burn and !timer), returns the highest priority modifier type.
+    
+    Priority order (highest to lowest):
+        1. VIP style (!vip)
+        2. Cute style (!cute)
+        3. Burn (!burn, !b) - Both reveal_on_read and burn_after_reading
+        4. Delete (!delete, !del, !d) - Only burn_after_reading (silent deletion)
+        5. Reveal (!reveal, !r) - Only reveal_on_read (shows who read, no deletion)
+        6. Timer (!timer, !t)
+        7. Base - Default/no modifiers
+    
+    Args:
+        modifiers: Dictionary of modifier flags. Can be None or empty dict.
+    
     Returns:
-        'vip': VIP style
-        'cute': Cute style
-        'burn': Both reveal_on_read and burn_after_reading (shows who read AND burns)
-        'delete': Only burn_after_reading (silent deletion)
-        'reveal': Only reveal_on_read (shows who read, no deletion)
-        'timer': Timer modifier
-        'base': Default/no modifiers
+        String indicating the primary modifier type
     """
+    # Defensive check for None modifiers
+    if not modifiers:
+        return 'base'
+    
     if modifiers.get('style') == 'vip':
         return 'vip'
     elif modifiers.get('style') == 'cute':
@@ -374,19 +387,29 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
     
     # Determine modifier type and set appropriate style emoji
+    # If dual message, append modifier indicator to preserve both visual cues
     modifier_type = get_modifier_type(modifiers)
     if modifier_type == 'vip':
-        style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
+        modifier_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
     elif modifier_type == 'cute':
-        style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
+        modifier_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
     elif modifier_type == 'burn':
-        style_emoji = f"💀{NINJA_EMOJIS['fire']}"
+        modifier_emoji = f"💀{NINJA_EMOJIS['fire']}"
     elif modifier_type == 'delete':
-        style_emoji = f"🗑️💥"
+        modifier_emoji = f"🗑️💥"
     elif modifier_type == 'reveal':
-        style_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
+        modifier_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
     elif modifier_type == 'timer':
-        style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
+        modifier_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
+    else:
+        modifier_emoji = None
+    
+    # If we have both dual message and a modifier, combine them
+    # Otherwise use whichever one applies (prioritizing modifier for non-dual messages)
+    if is_dual_message and modifier_emoji:
+        style_emoji = f"{modifier_emoji}📢"  # Modifier + dual indicator
+    elif modifier_emoji:
+        style_emoji = modifier_emoji
 
     description_parts = []
     
