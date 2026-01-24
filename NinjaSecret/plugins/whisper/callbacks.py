@@ -287,9 +287,11 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                             else:
                                 target_for_display = original_target
 
-                        # Check if we should reveal who read it
-                        # !burn (!b) = reveal_on_read=True + burn_after_reading=True -> shows who read
-                        # !delete (!d, !del) = burn_after_reading=True only -> silent delete
+                        # Check if we should reveal who read it when burning
+                        # Three distinct behaviors:
+                        # !burn (!b) = reveal_on_read=True + burn_after_reading=True -> shows who read and burns
+                        # !delete (!d, !del) = burn_after_reading=True only -> silent delete (no reader shown)
+                        # !reveal (!r) = reveal_on_read=True only -> handled in elif below (shows reader, no burn)
                         if settings.get("reveal_on_read"):
                             # Show who read it (burn with reveal)
                             burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
@@ -308,9 +310,9 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                     except Exception as e:
                         print(f"Failed to edit burned message: {e}")
 
-            # Handle reveal-on-read (!r modifier)
+            # Handle reveal-on-read (!r modifier) when NOT burning
             # This edits the message to show who read it (like @psstrobot)
-            # Note: burn_after_reading takes precedence as it already shows who read it
+            # Note: When burn_after_reading is also set, it's handled above (to prevent double-edit)
             # Note: For multi-target whispers, only the first reader is revealed (message can only be edited once)
             elif settings.get("reveal_on_read"):
                 try:
