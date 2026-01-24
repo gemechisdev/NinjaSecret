@@ -34,13 +34,30 @@ def parse_whisper_command_test(text: str):
         modifiers['timer'] = int(timer_match.group(2))
         text = re.sub(TIMER_PATTERN, '', text).strip()
     
-    # Reveal-on-read / Burn after reading modifier
-    # Aliases: !reveal, !r, !delete, !del, !d, !burn, !b
-    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!delete|!burn|!del|!r|!d|!b)(?![a-zA-Z0-9])'
+    # Reveal-on-read modifier
+    # Aliases: !reveal, !r
+    # Shows who read the secret without destroying it
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
     if re.search(REVEAL_PATTERN, text):
         modifiers['reveal_on_read'] = True
-        modifiers['burn_after_reading'] = True
         text = re.sub(REVEAL_PATTERN, '', text).strip()
+    
+    # Delete/Burn after reading modifier  
+    # Aliases: !delete, !del, !d
+    # Burns after reading without revealing who read it
+    DELETE_PATTERN = r'(?<![a-zA-Z0-9])(!delete|!del|!d)(?![a-zA-Z0-9])'
+    if re.search(DELETE_PATTERN, text):
+        modifiers['burn_after_reading'] = True
+        text = re.sub(DELETE_PATTERN, '', text).strip()
+    
+    # Burn modifier (reveal + delete combined)
+    # Aliases: !burn, !b
+    # Shows who read AND burns after reading (maximum security)
+    BURN_PATTERN = r'(?<![a-zA-Z0-9])(!burn|!b)(?![a-zA-Z0-9])'
+    if re.search(BURN_PATTERN, text):
+        modifiers['reveal_on_read'] = True
+        modifiers['burn_after_reading'] = True
+        text = re.sub(BURN_PATTERN, '', text).strip()
 
     # VIP style modifier: !vip, !v
     VIP_PATTERN = r'(?<![a-zA-Z0-9])(!vip|!v)(?![a-zA-Z0-9])'
@@ -120,6 +137,9 @@ class TestModifierParsing:
         self.test_delete_detection()
         self.test_delete_false_positives()
         self.test_delete_content_removal()
+        self.test_burn_detection()
+        self.test_burn_false_positives()
+        self.test_burn_content_removal()
         self.test_vip_detection()
         self.test_vip_false_positives()
         self.test_cute_detection()
@@ -149,32 +169,32 @@ class TestModifierParsing:
     # ==================== !r / !reveal Tests ====================
     
     def test_reveal_r_detection(self):
-        """Test !r is correctly detected (now combined with burn_after_reading)."""
+        """Test !r is correctly detected (only sets reveal_on_read)."""
         print("\n--- Testing !r detection ---")
         
         msg, target, mods = parse_whisper_command_test("secret message @user !r")
         self.assert_true(mods.get('reveal_on_read') == True, "!r at end sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!r at end also sets burn_after_reading")
+        self.assert_false(mods.get('burn_after_reading'), "!r does NOT set burn_after_reading")
         
         msg, target, mods = parse_whisper_command_test("!r secret message @user")
         self.assert_true(mods.get('reveal_on_read') == True, "!r at start sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!r at start also sets burn_after_reading")
+        self.assert_false(mods.get('burn_after_reading'), "!r at start does NOT set burn_after_reading")
         
         msg, target, mods = parse_whisper_command_test("secret !r message @user")
         self.assert_true(mods.get('reveal_on_read') == True, "!r in middle sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!r in middle also sets burn_after_reading")
+        self.assert_false(mods.get('burn_after_reading'), "!r in middle does NOT set burn_after_reading")
 
     def test_reveal_long_form_detection(self):
-        """Test !reveal is correctly detected (now combined with burn_after_reading)."""
+        """Test !reveal is correctly detected (only sets reveal_on_read)."""
         print("\n--- Testing !reveal detection ---")
         
         msg, target, mods = parse_whisper_command_test("secret message @user !reveal")
         self.assert_true(mods.get('reveal_on_read') == True, "!reveal at end sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!reveal at end also sets burn_after_reading")
+        self.assert_false(mods.get('burn_after_reading'), "!reveal does NOT set burn_after_reading")
         
         msg, target, mods = parse_whisper_command_test("!reveal secret message @user")
         self.assert_true(mods.get('reveal_on_read') == True, "!reveal at start sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!reveal at start also sets burn_after_reading")
+        self.assert_false(mods.get('burn_after_reading'), "!reveal at start does NOT set burn_after_reading")
 
     def test_reveal_false_positives(self):
         """Test !r and !reveal don't match in other words."""
@@ -208,19 +228,19 @@ class TestModifierParsing:
         msg, target, mods = parse_whisper_command_test("secret !r message @user")
         self.assert_not_in("!r", msg or "", "!r in middle should be removed from content")
 
-    # ==================== !delete Tests (now alias for !reveal) ====================
+    # ==================== !delete Tests (burns without revealing) ====================
     
     def test_delete_detection(self):
-        """Test !delete is correctly detected (now alias for !reveal)."""
-        print("\n--- Testing !delete detection (alias for !reveal) ---")
+        """Test !delete is correctly detected (only sets burn_after_reading)."""
+        print("\n--- Testing !delete detection (burns without revealing) ---")
         
         msg, target, mods = parse_whisper_command_test("secret message @user !delete")
         self.assert_true(mods.get('burn_after_reading') == True, "!delete at end sets burn_after_reading")
-        self.assert_true(mods.get('reveal_on_read') == True, "!delete at end also sets reveal_on_read")
+        self.assert_false(mods.get('reveal_on_read'), "!delete does NOT set reveal_on_read")
         
         msg, target, mods = parse_whisper_command_test("!delete secret message @user")
         self.assert_true(mods.get('burn_after_reading') == True, "!delete at start sets burn_after_reading")
-        self.assert_true(mods.get('reveal_on_read') == True, "!delete at start also sets reveal_on_read")
+        self.assert_false(mods.get('reveal_on_read'), "!delete at start does NOT set reveal_on_read")
 
     def test_delete_false_positives(self):
         """Test !delete doesn't match in other words."""
@@ -241,6 +261,48 @@ class TestModifierParsing:
         
         msg, target, mods = parse_whisper_command_test("secret message @user !delete")
         self.assert_not_in("!delete", msg or "", "!delete should be removed from content")
+
+    # ==================== !burn Tests (reveal + delete combined) ====================
+    
+    def test_burn_detection(self):
+        """Test !burn is correctly detected (sets both reveal_on_read AND burn_after_reading)."""
+        print("\n--- Testing !burn detection (maximum security) ---")
+        
+        msg, target, mods = parse_whisper_command_test("secret message @user !burn")
+        self.assert_true(mods.get('burn_after_reading') == True, "!burn at end sets burn_after_reading")
+        self.assert_true(mods.get('reveal_on_read') == True, "!burn at end sets reveal_on_read")
+        
+        msg, target, mods = parse_whisper_command_test("!burn secret message @user")
+        self.assert_true(mods.get('burn_after_reading') == True, "!burn at start sets burn_after_reading")
+        self.assert_true(mods.get('reveal_on_read') == True, "!burn at start sets reveal_on_read")
+        
+        msg, target, mods = parse_whisper_command_test("secret message @user !b")
+        self.assert_true(mods.get('burn_after_reading') == True, "!b at end sets burn_after_reading")
+        self.assert_true(mods.get('reveal_on_read') == True, "!b at end sets reveal_on_read")
+
+    def test_burn_false_positives(self):
+        """Test !burn doesn't match in other words."""
+        print("\n--- Testing !burn false positives ---")
+        
+        msg, target, mods = parse_whisper_command_test("!burner phone @user")
+        self.assert_false(mods.get('burn_after_reading'), "!burner should NOT match !burn")
+        
+        msg, target, mods = parse_whisper_command_test("pre!burn post @user")
+        self.assert_false(mods.get('burn_after_reading'), "pre!burn should NOT match !burn")
+        
+        msg, target, mods = parse_whisper_command_test("!burning man @user")
+        self.assert_false(mods.get('burn_after_reading'), "!burning should NOT match !burn")
+
+    def test_burn_content_removal(self):
+        """Test !burn is removed from content."""
+        print("\n--- Testing !burn content removal ---")
+        
+        msg, target, mods = parse_whisper_command_test("secret message @user !burn")
+        self.assert_not_in("!burn", msg or "", "!burn should be removed from content")
+        
+        msg, target, mods = parse_whisper_command_test("secret message @user !b")
+        self.assert_not_in("!b", msg or "", "!b should be removed from content")
+
 
     # ==================== !vip Tests ====================
     
@@ -340,12 +402,12 @@ class TestModifierParsing:
         self.assert_true(mods.get('burn_after_reading') == True, "!b also sets burn_after_reading")
         
         msg, target, mods = parse_whisper_command_test("secret message @user !d")
-        self.assert_true(mods.get('reveal_on_read') == True, "!d sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!d also sets burn_after_reading")
+        self.assert_true(mods.get('burn_after_reading') == True, "!d sets burn_after_reading")
+        self.assert_false(mods.get('reveal_on_read'), "!d does NOT set reveal_on_read")
         
         msg, target, mods = parse_whisper_command_test("secret message @user !del")
-        self.assert_true(mods.get('reveal_on_read') == True, "!del sets reveal_on_read")
-        self.assert_true(mods.get('burn_after_reading') == True, "!del also sets burn_after_reading")
+        self.assert_true(mods.get('burn_after_reading') == True, "!del sets burn_after_reading")
+        self.assert_false(mods.get('reveal_on_read'), "!del does NOT set reveal_on_read")
         
         msg, target, mods = parse_whisper_command_test("secret message @user !burn")
         self.assert_true(mods.get('reveal_on_read') == True, "!burn sets reveal_on_read")
@@ -385,7 +447,7 @@ class TestModifierParsing:
         
         # !d should not match in other words
         msg, target, mods = parse_whisper_command_test("!done message @user")
-        self.assert_false(mods.get('reveal_on_read'), "!done should NOT match !d")
+        self.assert_false(mods.get('burn_after_reading'), "!done should NOT match !d")
         
         # !t should not match in timer without proper format
         msg, target, mods = parse_whisper_command_test("pre!t:60 post @user")
@@ -405,7 +467,7 @@ class TestModifierParsing:
         self.assert_equal(mods.get('style'), 'vip', "!vip works with !r")
         
         msg, target, mods = parse_whisper_command_test("secret @user !reveal !timer:3600")
-        self.assert_true(mods.get('burn_after_reading') == True, "!reveal works with !timer")
+        self.assert_true(mods.get('reveal_on_read') == True, "!reveal works with !timer")
         self.assert_equal(mods.get('timer'), 3600, "!timer works with !reveal")
         
         msg, target, mods = parse_whisper_command_test("secret @user !reveal !cute !timer:60")

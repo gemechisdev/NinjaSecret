@@ -14,7 +14,9 @@ Send private, ninja-style secret messages to anyone in Telegram groups and chats
 - Sender and targets can read - everyone else gets blocked
 
 🔥 **Special Abilities**
-- 💀 **Reveal & Burn** (`!reveal`, `!r`, `!burn`, `!b`, `!d`, `!del`, `!delete`) - Shows who read and self-destructs
+- 👀 **Reveal** (`!reveal`, `!r`) - Shows who read the secret
+- 💀 **Delete** (`!delete`, `!d`, `!del`) - Burns after reading
+- 🔥 **Burn** (`!burn`, `!b`) - Shows who read AND self-destructs (maximum security)
 - ⏰ **Timed Secrets** (`!timer:seconds` or `!t:seconds`) - Auto-expires after specified time
 - 👑 **VIP Style** (`!vip` or `!v`) - Golden shuriken with crown styling
 - 💕 **Cute Style** (`!cute`, `!c`, `!love`, `!l`) - Playful hearts and love
@@ -61,13 +63,23 @@ Send different messages to different users with flexible targeting:
 - Users not in any target list cannot read
 
 **Features:**
-- Works with all modifiers (!cute, !timer, !reveal, etc.)
+- Works with all modifiers (!cute, !timer, !reveal, !delete, !burn, etc.)
 - Sender and bot owner can always see the private (second) message
 - Flexible: use whichever format fits your needs
 
-**Reveal & Burn:**
+**Reveal Who Read:**
 ```
 @ninjasecretbot confidential info @boss !reveal
+```
+
+**Delete After Reading:**
+```
+@ninjasecretbot temporary message @friend !delete
+```
+
+**Maximum Security (Reveal + Burn):**
+```
+@ninjasecretbot top secret @agent !burn
 ```
 
 **Timed Secrets:**
@@ -83,7 +95,7 @@ Send different messages to different users with flexible targeting:
 
 **Mix & Match:**
 ```
-@ninjasecretbot top secret @user1,@user2 !reveal !t:1800
+@ninjasecretbot top secret @user1,@user2 !burn !t:1800
 @ninjasecretbot Public msg | Private msg @user !c !t:600
 ```
 
