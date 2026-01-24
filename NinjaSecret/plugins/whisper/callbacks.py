@@ -363,9 +363,17 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 display_content += f"\n⏰ {time_left} left"
 
         # Add style emoji based on settings
-        if settings.get("burn_after_reading"):
-            # For burn after reading, just prefix with skull emoji (no text)
-            display_content = f"💀 {display_content}"
+        # Add emoji prefix based on modifier type to show in popup
+        # Use the same logic as get_modifier_type() to determine prefix
+        if settings.get("burn_after_reading") and settings.get("reveal_on_read"):
+            # !burn or !b - both flags set
+            display_content = f"💀🔥 {display_content}"
+        elif settings.get("burn_after_reading"):
+            # !delete, !del, or !d - only burn flag
+            display_content = f"🗑️💥 {display_content}"
+        elif settings.get("reveal_on_read"):
+            # !reveal or !r - only reveal flag
+            display_content = f"👀 {display_content}"
         elif settings.get("style") == "vip":
             display_content = f"👑 {display_content}"
         elif settings.get("style") == "cute":
