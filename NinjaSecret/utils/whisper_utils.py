@@ -528,7 +528,7 @@ def create_timer_countdown_message(whisper_data: Dict, lang: str = "en") -> str:
         lang: Language code
         
     Returns:
-        Formatted message string with time remaining
+        Formatted message string with time remaining, or None if expired
     """
     language = get_string(lang)
     settings = whisper_data.get("settings", {})
@@ -547,17 +547,46 @@ def create_timer_countdown_message(whisper_data: Dict, lang: str = "en") -> str:
     
     message_parts = [header, ""]
     
-    # Get target display
+    # Get target display - use target_mentions, then try targets array, then original_token
     target_mentions = whisper_data.get("target_mentions", "")
     original_token = whisper_data.get("original_target_token", "")
+    targets = whisper_data.get("targets", [])
+    all_targets = whisper_data.get("all_targets", [])
     
-    if original_token.lower() in ["@all", "@everyone"]:
+    # Check for @all/@everyone whispers
+    is_everyone = False
+    if isinstance(original_token, str) and original_token.lower() in ["@all", "@everyone"]:
+        is_everyone = True
+    elif targets and any(t.get("type") == "all" for t in targets):
+        is_everyone = True
+    
+    if is_everyone:
         message_parts.append(language["whisper_for_everyone"])
     else:
-        message_parts.append(language["whisper_for_target"].format(target_mentions or original_token))
+        # Prefer precomputed mentions, then reconstruct from targets, then fall back to original token
+        if target_mentions:
+            target_display = target_mentions
+        elif targets:
+            # Use the same formatting logic as the initial whisper message
+            target_display = format_targets_display(targets)
+        elif all_targets:
+            # Fallback to all_targets if available
+            target_display = ", ".join([t[2] if len(t) > 2 else str(t[0]) for t in all_targets if t])
+        else:
+            target_display = original_token
+        message_parts.append(language["whisper_for_target"].format(target_display))
     
     # Add time remaining line (the key update)
     message_parts.append(language["whisper_time_left"].format(time_remaining))
+    
+    # Add burn after reading info if set (to maintain consistency with original message)
+    if settings.get("burn_after_reading"):
+        if is_everyone:
+            message_parts.append(language["whisper_burns_all"])
+        else:
+            # Count targets for burn message
+            target_count = len(targets) if targets else len(all_targets) if all_targets else 1
+            message_parts.append(language["whisper_burns_count"].format(target_count))
     
     message_parts.extend([
         language["whisper_encrypted"],

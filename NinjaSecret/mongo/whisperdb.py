@@ -295,7 +295,7 @@ async def get_active_timed_whispers() -> List[Dict]:
     cursor = whisperdb.find({
         "status": "active",
         "settings.expires_at": {"$gt": current_time},  # Not expired yet
-        "inline_message_id": {"$ne": None}  # Has inline_message_id attached
+        "inline_message_id": {"$exists": True, "$ne": None}  # Has inline_message_id attached
     })
     
     whispers = []
