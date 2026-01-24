@@ -241,6 +241,7 @@ whisper_delivery_timer: "⏰ **ᴛɪᴍᴇᴅ sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ
 whisper_for_target: "💌 **ғᴏʀ:** {0}"
 whisper_for_everyone: "💌 **ғᴏʀ:** ᴇᴠᴇʀʏᴏɴᴇ!"
 whisper_expires: "⏰ **ᴇxᴘɪʀᴇs:** {0}"
+whisper_time_left: "⏰ **ᴛɪᴍᴇ ʟᴇғᴛ:** {0}"
 whisper_burns_all: "💀 **ʙᴜʀɴs ᴡʜᴇɴ ᴀʟʟ ʀᴇᴀᴅ!**"
 whisper_burns_count: "💀 **sᴇʟғ-ᴅᴇsᴛʀᴜᴄᴛs ᴡʜᴇɴ ᴀʟʟ {0} ʀᴇᴀᴅ**"
 whisper_encrypted: ""

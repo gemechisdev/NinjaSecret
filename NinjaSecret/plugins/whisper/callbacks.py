@@ -357,21 +357,13 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Add special features info if present
         settings = whisper.get("settings", {})
 
-        # Add timer info if present
-        if settings.get("expires_at"):
-            time_left = get_time_remaining_text(settings["expires_at"])
-            if time_left != "Expired":
-                display_content += f"\n⏰ {time_left} left"
+        # Timer info is now displayed on the inline message itself (updated every 5 seconds)
+        # so we don't need to show it in the callback alert anymore
 
         # Add emoji prefix based on modifier type to show in popup
+        # Only !cute and !vip display emoji prefix in callback alert
         modifier_type = get_modifier_type(settings)
-        if modifier_type == 'burn':
-            display_content = f"💀🔥 {display_content}"
-        elif modifier_type == 'delete':
-            display_content = f"🗑️💥 {display_content}"
-        elif modifier_type == 'reveal':
-            display_content = f"👀 {display_content}"
-        elif modifier_type == 'vip':
+        if modifier_type == 'vip':
             display_content = f"👑 {display_content}"
         elif modifier_type == 'cute':
             display_content = f"💕 {display_content}"
@@ -432,10 +424,8 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery, _):
         if settings.get('burn_after_reading'):
             info_text += f"{_['whisper_burns_all_read']}\n"
 
-        if settings.get('expires_at'):
-            time_left = get_time_remaining_text(settings['expires_at'])
-            if time_left != "Expired":
-                info_text += f"{_['whisper_expires_in'].format(time_left)}\n"
+        # Timer info is now displayed on the inline message itself (updated every 5 seconds)
+        # so we don't need to show it in the callback alert anymore
 
         info_text += f"\n{_['whisper_monkey_secured']}"
 

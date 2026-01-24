@@ -5,11 +5,15 @@ Handles periodic cleanup of expired whispers and maintenance tasks
 
 import asyncio
 from datetime import datetime, timedelta
-from NinjaSecret.mongo.whisperdb import cleanup_expired_whispers
+from pyrogram import enums
+from NinjaSecret.mongo.whisperdb import cleanup_expired_whispers, get_active_timed_whispers
 from NinjaSecret.logging import LOGGER
 
 # Cache cleanup configuration
 PENDING_WHISPER_MAX_AGE_SECONDS = 300  # 5 minutes - whispers not sent after this time are removed
+
+# Timer countdown update interval (5 seconds as requested)
+TIMER_UPDATE_INTERVAL_SECONDS = 5
 
 async def cleanup_pending_whispers_cache():
     """
@@ -66,11 +70,87 @@ async def whisper_cleanup_task():
             # Wait 5 minutes before retrying on error
             await asyncio.sleep(300)
 
+
+async def timer_countdown_update_task():
+    """Background task to update timed whisper messages with current countdown.
+    
+    This task runs every 5 seconds and updates the inline message text
+    for all active timed whispers to show the remaining time.
+    This is similar to how !reveal edits the message when someone reads it.
+    """
+    # Import here to avoid circular imports
+    from NinjaSecret import app
+    from NinjaSecret.utils.whisper_utils import create_timer_countdown_message, create_whisper_keyboard
+    
+    logger = LOGGER(__name__)
+    
+    while True:
+        try:
+            # Get all active timed whispers with inline_message_id
+            timed_whispers = await get_active_timed_whispers()
+            
+            if timed_whispers:
+                updated_count = 0
+                error_count = 0
+                
+                for whisper in timed_whispers:
+                    try:
+                        inline_message_id = whisper.get("inline_message_id")
+                        whisper_id = whisper.get("whisper_id")
+                        
+                        if not inline_message_id:
+                            continue
+                        
+                        # Create the updated message with current time remaining
+                        updated_message = create_timer_countdown_message(whisper)
+                        
+                        if updated_message:
+                            # Edit the inline message to show updated countdown
+                            # Using app.edit_inline_text similar to how !reveal uses
+                            # callback_query.edit_message_text()
+                            await app.edit_inline_text(
+                                inline_message_id=inline_message_id,
+                                text=updated_message,
+                                parse_mode=enums.ParseMode.MARKDOWN,
+                                reply_markup=create_whisper_keyboard(whisper_id)
+                            )
+                            updated_count += 1
+                            
+                    except Exception as e:
+                        # Silently handle individual whisper update errors
+                        # Common errors: message not modified, message deleted, etc.
+                        error_count += 1
+                        # Only log if it's not a common "message not modified" error
+                        error_str = str(e).lower()
+                        if "not modified" not in error_str and "message is not modified" not in error_str:
+                            logger.debug(f"Timer update failed for whisper {whisper.get('whisper_id', 'unknown')}: {e}")
+                
+                if updated_count > 0:
+                    logger.debug(f"Updated {updated_count} timed whisper messages")
+            
+            # Wait 5 seconds before next update cycle
+            await asyncio.sleep(TIMER_UPDATE_INTERVAL_SECONDS)
+            
+        except Exception as e:
+            logger.error(f"Timer countdown update task error: {e}")
+            # Wait 5 seconds before retrying on error
+            await asyncio.sleep(TIMER_UPDATE_INTERVAL_SECONDS)
+
+
 # Start the cleanup task when this module is imported
 def start_cleanup_task():
     """Start the whisper cleanup background task"""
     asyncio.create_task(whisper_cleanup_task())
     LOGGER(__name__).info("Whisper cleanup task started")
 
+
+def start_timer_countdown_task():
+    """Start the timer countdown update background task"""
+    asyncio.create_task(timer_countdown_update_task())
+    LOGGER(__name__).info("Timer countdown update task started (updates every 5 seconds)")
+
 # Auto-start the cleanup task
 start_cleanup_task()
+
+# Auto-start the timer countdown task
+start_timer_countdown_task()

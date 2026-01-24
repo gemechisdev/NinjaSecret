@@ -277,6 +277,34 @@ async def cleanup_expired_whispers():
 
     return count
 
+
+async def get_active_timed_whispers() -> List[Dict]:
+    """Get all active whispers with timers that have inline_message_id attached.
+    
+    Returns whispers that:
+    - Have status = "active"
+    - Have settings.expires_at set (timer feature)
+    - Have inline_message_id attached (so we can edit the message)
+    - Have not expired yet
+    
+    Returns:
+        List of whisper documents with timer information
+    """
+    current_time = datetime.utcnow()
+    
+    cursor = whisperdb.find({
+        "status": "active",
+        "settings.expires_at": {"$gt": current_time},  # Not expired yet
+        "inline_message_id": {"$ne": None}  # Has inline_message_id attached
+    })
+    
+    whispers = []
+    async for whisper in cursor:
+        whispers.append(whisper)
+    
+    return whispers
+
+
 # User Statistics Functions
 async def get_user_whisper_stats(user_id: int) -> Dict:
     """Get user's whisper statistics by counting directly from the database in real-time"""
