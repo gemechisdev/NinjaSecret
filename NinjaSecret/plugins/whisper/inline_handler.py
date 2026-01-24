@@ -161,7 +161,7 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
     
     This function replaces the old create_simple_whisper_inline_result and create_enhanced_whisper_inline_result
     to provide a single, consistent way to create inline results that properly handles all cases including
-    tags (!cute, !delete, !timer) with recent targets.
+    tags (!cute, !reveal, !timer) with recent targets.
     
     Args:
         whisper_id: Unique identifier for the whisper
@@ -169,7 +169,8 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
         targets: List of tuples (target_id, target_username, original_token)
         modifiers: Dict containing styling/behavior modifiers:
             - 'style': 'cute'|'vip' - Visual styling
-            - 'burn_after_reading': True - Delete after all targets read
+            - 'burn_after_reading': True - Burn after all targets read
+            - 'reveal_on_read': True - Show who read the secret
             - 'timer': int - Seconds until auto-deletion
         target_display: Human-readable display name(s) for target(s)
         target_mentions: Optional Markdown mention string(s) for target(s)

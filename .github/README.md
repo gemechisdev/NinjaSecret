@@ -14,10 +14,10 @@ Send private, ninja-style secret messages to anyone in Telegram groups and chats
 - Sender and targets can read - everyone else gets blocked
 
 🔥 **Special Abilities**
-- 💀 **Burn After Reading** (`!delete`) - Message self-destructs after all targets read it
-- ⏰ **Timed Secrets** (`!timer:seconds`) - Auto-expires after specified time
-- 👑 **VIP Style** (`!vip`) - Golden shuriken with crown styling
-- 💕 **Cute Style** (`!cute`) - Playful hearts and love
+- 💀 **Reveal & Burn** (`!reveal` or `!r`) - Shows who read and self-destructs after all targets read it
+- ⏰ **Timed Secrets** (`!timer:seconds` or `!t:seconds`) - Auto-expires after specified time
+- 👑 **VIP Style** (`!vip` or `!v`) - Golden shuriken with crown styling
+- 💕 **Cute Style** (`!cute` or `!c`, `!love`, `!l`) - Playful hearts and love
 
 📊 **Ninja Stats & Achievements**
 - Track your secret-sending statistics
@@ -39,25 +39,25 @@ Send private, ninja-style secret messages to anyone in Telegram groups and chats
 
 ### Advanced Features
 
-**Burn After Reading:**
+**Reveal & Burn:**
 ```
-@ninjasecretbot confidential info @boss !delete
+@ninjasecretbot confidential info @boss !reveal
 ```
 
 **Timed Secrets:**
 ```
-@ninjasecretbot party at 8pm @friends !timer:3600
+@ninjasecretbot party at 8pm @friends !t:3600
 ```
 (Timer uses seconds: 3600 = 1 hour, 7200 = 2 hours)
 
 **VIP Styling:**
 ```
-@ninjasecretbot special announcement @all !vip
+@ninjasecretbot special announcement @all !v
 ```
 
 **Mix & Match:**
 ```
-@ninjasecretbot top secret @user1,@user2 !delete !timer:1800
+@ninjasecretbot top secret @user1,@user2 !reveal !t:1800
 ```
 
 ## Target Options
