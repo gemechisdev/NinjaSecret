@@ -319,6 +319,7 @@ whisper_settings_coming: "🔮 ᴄᴏᴍɪɴɢ sᴏᴏɴ:\n• ᴄᴜsᴛᴏᴍ 
 whisper_settings_expanded: "⭐ sᴇᴛᴛɪɴɢs ᴡɪʟʟ ʙᴇ ᴇxᴘᴀɴᴅᴇᴅ ɪɴ ғᴜᴛᴜʀᴇ ᴜᴘᴅᴀᴛᴇs!"
 
 whisper_burn_message: "💀🔥 ʙᴜʀɴ ᴀғᴛᴇʀ ʀᴇᴀᴅɪɴɢ sʜᴜʀɪᴋᴇɴ\n\n💌 ғᴏʀ: {0}\n✅ {1} ʀᴇᴀᴅ ᴛʜᴇ ᴡʜɪsᴘᴇʀ"
+whisper_delete_message: "🔥💨 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ʜᴀs ᴠᴀɴɪsʜᴇᴅ\n\n💌 ғᴏʀ: {0}\n✅ ᴡʜɪsᴘᴇʀ ᴅᴇsᴛʀᴏʏᴇᴅ ᴀғᴛᴇʀ ʀᴇᴀᴅɪɴɢ"
 whisper_reveal_message: '🤫 <a href="tg://user?id={1}">{0}</a> ʀᴇᴀᴅ ᴛʜᴇ sᴇᴄʀᴇᴛ 👀'
 
 # Inline Handler Messages
