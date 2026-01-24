@@ -178,25 +178,10 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 }}
             )
             
-            # Try to update the inline message to show the resolved name
-            try:
-                from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                from strings import get_string
-                language = get_string("en")
-                
-                # Create the updated message text
-                message_text = language['whisper_simple_message'].format(target_mention)
-                
-                # Use callback_query.edit_message_text() which is a bound method that
-                # automatically uses inline_message_id from the callback query for inline messages.
-                await callback_query.edit_message_text(
-                    text=message_text,
-                    parse_mode=enums.ParseMode.MARKDOWN,
-                    reply_markup=create_whisper_keyboard(whisper_id)
-                )
-            except Exception as e:
-                # If we can't edit the message, that's okay - the DB is updated
-                print(f"Could not update inline message with resolved name: {e}")
+            # Don't edit the message for default whispers to preserve original delivery header
+            # Only edit for special modifiers where we want to show the resolved name
+            # This prevents changing "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ᴅᴇʟɪᴠᴇʀʏ 🥷" to "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ 🥷"
+            # The original header is preserved and looks better for default whispers
             
         elif is_target and target_id:
             # Target was already resolved, but update their display name if it changed

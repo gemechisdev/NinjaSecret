@@ -346,9 +346,14 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
         style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
     elif modifiers.get('style') == 'cute':
         style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
-    elif modifiers.get('burn_after_reading'):
+    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
+        # !burn or !b - shows who read AND burns (both flags set)
         style_emoji = f"💀{NINJA_EMOJIS['fire']}"
+    elif modifiers.get('burn_after_reading'):
+        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+        style_emoji = f"🗑️💥"
     elif modifiers.get('reveal_on_read'):
+        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
         style_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
     elif modifiers.get('timer'):
         style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
@@ -419,8 +424,15 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
         header = language["whisper_delivery_vip"]
     elif modifiers.get('style') == 'cute':
         header = language["whisper_delivery_cute"]
-    elif modifiers.get('burn_after_reading'):
+    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
+        # !burn or !b - shows who read AND burns (both flags set)
         header = language["whisper_delivery_burn"]
+    elif modifiers.get('burn_after_reading'):
+        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+        header = language["whisper_delivery_delete"]
+    elif modifiers.get('reveal_on_read'):
+        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
+        header = language["whisper_delivery_reveal"]
     elif modifiers.get('timer'):
         header = language["whisper_delivery_timer"]
     else:
