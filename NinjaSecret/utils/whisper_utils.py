@@ -28,7 +28,8 @@ NINJA_EMOJIS = {
     "speak_no_evil": "🙊",
     "lightning": "⚡",
     "eyes": "👀",
-    "sparkles": "✨"
+    "sparkles": "✨",
+    "broadcast": "📢"  # Dual message / public indicator
 }
 
 def generate_whisper_id() -> str:
@@ -106,8 +107,52 @@ def get_style_emojis() -> List[str]:
         NINJA_EMOJIS['fire'],       # Burn style
         NINJA_EMOJIS['timer'],      # Timer style
         NINJA_EMOJIS['eyes'],       # Reveal style
-        '💀'                         # Burn style alternative
+        '💀',                        # Burn style alternative
+        '🗑️'                         # Delete style
     ]
+
+def get_modifier_type(modifiers: Optional[Dict]) -> str:
+    """Determine the type of modifier combination
+    
+    Returns the primary modifier type based on priority order. When multiple modifiers
+    are present (e.g., !burn and !timer), returns the highest priority modifier type.
+    
+    Priority order (highest to lowest):
+        1. VIP style (!vip)
+        2. Cute style (!cute)
+        3. Burn (!burn, !b) - Both reveal_on_read and burn_after_reading
+        4. Delete (!delete, !del, !d) - Only burn_after_reading (silent deletion)
+        5. Reveal (!reveal, !r) - Only reveal_on_read (shows who read, no deletion)
+        6. Timer (!timer, !t)
+        7. Base - Default/no modifiers
+    
+    Args:
+        modifiers: Dictionary of modifier flags. Can be None or empty dict.
+    
+    Returns:
+        String indicating the primary modifier type
+    """
+    # Defensive check for None modifiers
+    if not modifiers:
+        return 'base'
+    
+    if modifiers.get('style') == 'vip':
+        return 'vip'
+    elif modifiers.get('style') == 'cute':
+        return 'cute'
+    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
+        # !burn or !b - shows who read AND burns (both flags set)
+        return 'burn'
+    elif modifiers.get('burn_after_reading'):
+        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+        return 'delete'
+    elif modifiers.get('reveal_on_read'):
+        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
+        return 'reveal'
+    elif modifiers.get('timer'):
+        return 'timer'
+    else:
+        return 'base'
 
 def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict[str, any]]:
     """
@@ -340,18 +385,32 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     # Add dual message indicator to style emoji if applicable
     style_emoji = f"{NINJA_EMOJIS['whisper']}{NINJA_EMOJIS['thought']}"
     if is_dual_message:
-        style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
+        style_emoji = f"{NINJA_EMOJIS['broadcast']}{NINJA_EMOJIS['thought']}"  # Public/Private indicator
     
-    if modifiers.get('style') == 'vip':
-        style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
-    elif modifiers.get('style') == 'cute':
-        style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
-    elif modifiers.get('burn_after_reading'):
-        style_emoji = f"💀{NINJA_EMOJIS['fire']}"
-    elif modifiers.get('reveal_on_read'):
-        style_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
-    elif modifiers.get('timer'):
-        style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
+    # Determine modifier type and set appropriate style emoji
+    # If dual message, append modifier indicator to preserve both visual cues
+    modifier_type = get_modifier_type(modifiers)
+    if modifier_type == 'vip':
+        modifier_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
+    elif modifier_type == 'cute':
+        modifier_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
+    elif modifier_type == 'burn':
+        modifier_emoji = f"💀{NINJA_EMOJIS['fire']}"
+    elif modifier_type == 'delete':
+        modifier_emoji = f"🗑️💥"
+    elif modifier_type == 'reveal':
+        modifier_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
+    elif modifier_type == 'timer':
+        modifier_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
+    else:
+        modifier_emoji = None
+    
+    # If we have both dual message and a modifier, combine them
+    # Otherwise use whichever one applies (prioritizing modifier for non-dual messages)
+    if is_dual_message and modifier_emoji:
+        style_emoji = f"{modifier_emoji}{NINJA_EMOJIS['broadcast']}"  # Modifier + dual indicator
+    elif modifier_emoji:
+        style_emoji = modifier_emoji
 
     description_parts = []
     
@@ -415,13 +474,19 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
     target_display = format_targets_display(targets)
     language = get_string(lang)
 
-    if modifiers.get('style') == 'vip':
+    # Determine modifier type and set appropriate header
+    modifier_type = get_modifier_type(modifiers)
+    if modifier_type == 'vip':
         header = language["whisper_delivery_vip"]
-    elif modifiers.get('style') == 'cute':
+    elif modifier_type == 'cute':
         header = language["whisper_delivery_cute"]
-    elif modifiers.get('burn_after_reading'):
+    elif modifier_type == 'burn':
         header = language["whisper_delivery_burn"]
-    elif modifiers.get('timer'):
+    elif modifier_type == 'delete':
+        header = language["whisper_delivery_delete"]
+    elif modifier_type == 'reveal':
+        header = language["whisper_delivery_reveal"]
+    elif modifier_type == 'timer':
         header = language["whisper_delivery_timer"]
     else:
         header = language["whisper_delivery_base"]
