@@ -14,10 +14,10 @@ Send private, ninja-style secret messages to anyone in Telegram groups and chats
 - Sender and targets can read - everyone else gets blocked
 
 🔥 **Special Abilities**
-- 💀 **Reveal & Burn** (`!reveal` or `!r`) - Shows who read and self-destructs after all targets read it
+- 💀 **Reveal & Burn** (`!reveal`, `!r`, `!burn`, `!b`, `!d`, `!del`, `!delete`) - Shows who read and self-destructs
 - ⏰ **Timed Secrets** (`!timer:seconds` or `!t:seconds`) - Auto-expires after specified time
 - 👑 **VIP Style** (`!vip` or `!v`) - Golden shuriken with crown styling
-- 💕 **Cute Style** (`!cute` or `!c`, `!love`, `!l`) - Playful hearts and love
+- 💕 **Cute Style** (`!cute`, `!c`, `!love`, `!l`) - Playful hearts and love
 
 📊 **Ninja Stats & Achievements**
 - Track your secret-sending statistics

@@ -127,6 +127,7 @@ class TestModifierParsing:
         self.test_timer_detection()
         self.test_timer_false_positives()
         self.test_short_aliases()
+        self.test_short_alias_false_positives()
         self.test_combined_modifiers()
         self.test_modifier_positions()
         self.test_edge_cases()
@@ -349,6 +350,49 @@ class TestModifierParsing:
         msg, target, mods = parse_whisper_command_test("secret message @user !burn")
         self.assert_true(mods.get('reveal_on_read') == True, "!burn sets reveal_on_read")
         self.assert_true(mods.get('burn_after_reading') == True, "!burn also sets burn_after_reading")
+
+    def test_short_alias_false_positives(self):
+        """Test short aliases don't cause false positives with word boundaries."""
+        print("\n--- Testing short alias false positives ---")
+        
+        # !v should not match in other words
+        msg, target, mods = parse_whisper_command_test("!very important message @user")
+        self.assert_false(mods.get('style') == 'vip', "!very should NOT match !v")
+        
+        msg, target, mods = parse_whisper_command_test("pre!v post @user")
+        self.assert_false(mods.get('style') == 'vip', "pre!v should NOT match !v")
+        
+        msg, target, mods = parse_whisper_command_test("message !vibe @user")
+        self.assert_false(mods.get('style') == 'vip', "!vibe should NOT match !v")
+        
+        # !c should not match in other words
+        msg, target, mods = parse_whisper_command_test("!cool message @user")
+        self.assert_false(mods.get('style') == 'cute', "!cool should NOT match !c")
+        
+        msg, target, mods = parse_whisper_command_test("pre!c post @user")
+        self.assert_false(mods.get('style') == 'cute', "pre!c should NOT match !c")
+        
+        # !l should not match in other words
+        msg, target, mods = parse_whisper_command_test("!later message @user")
+        self.assert_false(mods.get('style') == 'cute', "!later should NOT match !l")
+        
+        # !b should not match in other words
+        msg, target, mods = parse_whisper_command_test("!burn123 message @user")
+        self.assert_false(mods.get('reveal_on_read'), "!burn123 should NOT match !b or !burn")
+        
+        msg, target, mods = parse_whisper_command_test("pre!b post @user")
+        self.assert_false(mods.get('reveal_on_read'), "pre!b should NOT match !b")
+        
+        # !d should not match in other words
+        msg, target, mods = parse_whisper_command_test("!done message @user")
+        self.assert_false(mods.get('reveal_on_read'), "!done should NOT match !d")
+        
+        # !t should not match in timer without proper format
+        msg, target, mods = parse_whisper_command_test("pre!t:60 post @user")
+        self.assert_false(mods.get('timer'), "pre!t:60 should NOT match !t")
+        
+        msg, target, mods = parse_whisper_command_test("!t:60extra @user")
+        self.assert_false(mods.get('timer'), "!t:60extra should NOT match !t")
 
     # ==================== Combined Modifiers Tests ====================
     
