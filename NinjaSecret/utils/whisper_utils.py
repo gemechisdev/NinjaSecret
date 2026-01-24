@@ -142,15 +142,30 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
         modifiers['timer'] = int(timer_match.group(2))
         text = re.sub(TIMER_PATTERN, '', text).strip()
     
-    # Reveal-on-read / Burn after reading modifier
-    # Aliases: !reveal, !r, !delete, !del, !d, !burn, !b
-    # When triggered, burns after reading and edits the visible message to show who read the secret
-    # (similar to @psstrobot behavior)
-    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!delete|!burn|!del|!r|!d|!b)(?![a-zA-Z0-9])'
+    # Reveal-on-read modifier
+    # Aliases: !reveal, !r
+    # Shows who read the secret without destroying it
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
     if re.search(REVEAL_PATTERN, text):
         modifiers['reveal_on_read'] = True
-        modifiers['burn_after_reading'] = True
         text = re.sub(REVEAL_PATTERN, '', text).strip()
+    
+    # Delete/Burn after reading modifier  
+    # Aliases: !delete, !del, !d
+    # Burns after reading without revealing who read it
+    DELETE_PATTERN = r'(?<![a-zA-Z0-9])(!delete|!del|!d)(?![a-zA-Z0-9])'
+    if re.search(DELETE_PATTERN, text):
+        modifiers['burn_after_reading'] = True
+        text = re.sub(DELETE_PATTERN, '', text).strip()
+    
+    # Burn modifier (reveal + delete combined)
+    # Aliases: !burn, !b
+    # Shows who read AND burns after reading (maximum security)
+    BURN_PATTERN = r'(?<![a-zA-Z0-9])(!burn|!b)(?![a-zA-Z0-9])'
+    if re.search(BURN_PATTERN, text):
+        modifiers['reveal_on_read'] = True
+        modifiers['burn_after_reading'] = True
+        text = re.sub(BURN_PATTERN, '', text).strip()
 
     # VIP style modifier: !vip, !v
     VIP_PATTERN = r'(?<![a-zA-Z0-9])(!vip|!v)(?![a-zA-Z0-9])'
