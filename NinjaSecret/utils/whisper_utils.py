@@ -106,8 +106,39 @@ def get_style_emojis() -> List[str]:
         NINJA_EMOJIS['fire'],       # Burn style
         NINJA_EMOJIS['timer'],      # Timer style
         NINJA_EMOJIS['eyes'],       # Reveal style
-        '💀'                         # Burn style alternative
+        '💀',                        # Burn style alternative
+        '🗑️'                         # Delete style
     ]
+
+def get_modifier_type(modifiers: Dict) -> str:
+    """Determine the type of modifier combination
+    
+    Returns:
+        'vip': VIP style
+        'cute': Cute style
+        'burn': Both reveal_on_read and burn_after_reading (shows who read AND burns)
+        'delete': Only burn_after_reading (silent deletion)
+        'reveal': Only reveal_on_read (shows who read, no deletion)
+        'timer': Timer modifier
+        'base': Default/no modifiers
+    """
+    if modifiers.get('style') == 'vip':
+        return 'vip'
+    elif modifiers.get('style') == 'cute':
+        return 'cute'
+    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
+        # !burn or !b - shows who read AND burns (both flags set)
+        return 'burn'
+    elif modifiers.get('burn_after_reading'):
+        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+        return 'delete'
+    elif modifiers.get('reveal_on_read'):
+        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
+        return 'reveal'
+    elif modifiers.get('timer'):
+        return 'timer'
+    else:
+        return 'base'
 
 def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict[str, any]]:
     """
@@ -342,20 +373,19 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     if is_dual_message:
         style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
     
-    if modifiers.get('style') == 'vip':
+    # Determine modifier type and set appropriate style emoji
+    modifier_type = get_modifier_type(modifiers)
+    if modifier_type == 'vip':
         style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
-    elif modifiers.get('style') == 'cute':
+    elif modifier_type == 'cute':
         style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
-    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
-        # !burn or !b - shows who read AND burns (both flags set)
+    elif modifier_type == 'burn':
         style_emoji = f"💀{NINJA_EMOJIS['fire']}"
-    elif modifiers.get('burn_after_reading'):
-        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+    elif modifier_type == 'delete':
         style_emoji = f"🗑️💥"
-    elif modifiers.get('reveal_on_read'):
-        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
+    elif modifier_type == 'reveal':
         style_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
-    elif modifiers.get('timer'):
+    elif modifier_type == 'timer':
         style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
 
     description_parts = []
@@ -420,20 +450,19 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
     target_display = format_targets_display(targets)
     language = get_string(lang)
 
-    if modifiers.get('style') == 'vip':
+    # Determine modifier type and set appropriate header
+    modifier_type = get_modifier_type(modifiers)
+    if modifier_type == 'vip':
         header = language["whisper_delivery_vip"]
-    elif modifiers.get('style') == 'cute':
+    elif modifier_type == 'cute':
         header = language["whisper_delivery_cute"]
-    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
-        # !burn or !b - shows who read AND burns (both flags set)
+    elif modifier_type == 'burn':
         header = language["whisper_delivery_burn"]
-    elif modifiers.get('burn_after_reading'):
-        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+    elif modifier_type == 'delete':
         header = language["whisper_delivery_delete"]
-    elif modifiers.get('reveal_on_read'):
-        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
+    elif modifier_type == 'reveal':
         header = language["whisper_delivery_reveal"]
-    elif modifiers.get('timer'):
+    elif modifier_type == 'timer':
         header = language["whisper_delivery_timer"]
     else:
         header = language["whisper_delivery_base"]
