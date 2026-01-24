@@ -133,35 +133,33 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 
     # All modifier patterns use word boundaries to prevent false positives
     # Word boundary pattern: (?<![a-zA-Z0-9])...(?![a-zA-Z0-9])
-    # This ensures modifiers like "!delete" don't match in "!deleteme" or "pre!delete"
+    # This ensures modifiers like "!reveal" don't match in "!revealme" or "pre!reveal"
     
-    # Extract timer modifier first (before splitting by pipe)
-    TIMER_PATTERN = r'(?<![a-zA-Z0-9])!timer:(\d+)(?![a-zA-Z0-9])'
+    # Timer modifier: !timer:N or !t:N (extract first before splitting by pipe)
+    TIMER_PATTERN = r'(?<![a-zA-Z0-9])(!timer|!t):(\d+)(?![a-zA-Z0-9])'
     timer_match = re.search(TIMER_PATTERN, text)
     if timer_match:
-        modifiers['timer'] = int(timer_match.group(1))
+        modifiers['timer'] = int(timer_match.group(2))
         text = re.sub(TIMER_PATTERN, '', text).strip()
     
-    DELETE_PATTERN = r'(?<![a-zA-Z0-9])!delete(?![a-zA-Z0-9])'
-    if re.search(DELETE_PATTERN, text):
-        modifiers['burn_after_reading'] = True
-        text = re.sub(DELETE_PATTERN, '', text).strip()
-
-    # Reveal-on-read modifier: !r or !reveal
-    # When triggered, edits the visible message to show who read the secret
+    # Reveal-on-read / Burn after reading modifier
+    # Aliases: !reveal, !r, !delete, !del, !d, !burn, !b
+    # When triggered, burns after reading and edits the visible message to show who read the secret
     # (similar to @psstrobot behavior)
-    # The pattern matches both !reveal and !r (the longer !reveal will be matched when present due to regex greediness)
-    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!delete|!burn|!del|!r|!d|!b)(?![a-zA-Z0-9])'
     if re.search(REVEAL_PATTERN, text):
         modifiers['reveal_on_read'] = True
+        modifiers['burn_after_reading'] = True
         text = re.sub(REVEAL_PATTERN, '', text).strip()
 
-    VIP_PATTERN = r'(?<![a-zA-Z0-9])!vip(?![a-zA-Z0-9])'
+    # VIP style modifier: !vip, !v
+    VIP_PATTERN = r'(?<![a-zA-Z0-9])(!vip|!v)(?![a-zA-Z0-9])'
     if re.search(VIP_PATTERN, text):
         modifiers['style'] = 'vip'
         text = re.sub(VIP_PATTERN, '', text).strip()
 
-    CUTE_PATTERN = r'(?<![a-zA-Z0-9])!cute(?![a-zA-Z0-9])'
+    # Cute style modifier: !cute, !c, !love, !l
+    CUTE_PATTERN = r'(?<![a-zA-Z0-9])(!cute|!love|!c|!l)(?![a-zA-Z0-9])'
     if re.search(CUTE_PATTERN, text):
         modifiers['style'] = 'cute'
         text = re.sub(CUTE_PATTERN, '', text).strip()
