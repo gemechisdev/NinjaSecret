@@ -163,7 +163,7 @@ Ready to strike into action? 📜
 - ✅ **Graceful Username Resolution**: Handles non-existent users intelligently
 - ✅ **Real-time Updates**: Live timer countdowns and read status
 - ✅ **Flexible Targeting**: Mixed username/ID support in single message
-- ✅ **Advanced Modifiers**: Stackable effects (`!reveal !t:3600 !v`, `!burn !delete`)
+- ✅ **Advanced Modifiers**: Stackable effects (`!reveal !t:3600 !v`, `!burn`)
 
 ---
 
