@@ -179,25 +179,24 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             )
             
             # Try to update the inline message to show the resolved name
-            if whisper.get("inline_message_id"):
-                try:
-                    from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                    from strings import get_string
-                    language = get_string("en")
-                    
-                    # Create the updated message text
-                    message_text = language['whisper_simple_message'].format(target_mention)
-                    
-                    await app.edit_inline_text(
-                        inline_message_id=whisper["inline_message_id"],
-                        text=message_text,
-                        parse_mode=enums.ParseMode.MARKDOWN,
-                        reply_markup=create_whisper_keyboard(whisper_id)
-                    )
-                except Exception as e:
-                    # If we can't edit the message, that's okay - the DB is updated
-                    print(f"Could not update inline message with resolved name: {e}")
-                    pass
+            try:
+                from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
+                from strings import get_string
+                language = get_string("en")
+                
+                # Create the updated message text
+                message_text = language['whisper_simple_message'].format(target_mention)
+                
+                # Use callback_query.edit_message_text() which is a bound method that
+                # automatically uses inline_message_id from the callback query for inline messages.
+                await callback_query.edit_message_text(
+                    text=message_text,
+                    parse_mode=enums.ParseMode.MARKDOWN,
+                    reply_markup=create_whisper_keyboard(whisper_id)
+                )
+            except Exception as e:
+                # If we can't edit the message, that's okay - the DB is updated
+                print(f"Could not update inline message with resolved name: {e}")
             
         elif is_target and target_id:
             # Target was already resolved, but update their display name if it changed
@@ -217,25 +216,24 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             )
             
             # Try to update the inline message to show the updated name
-            if whisper.get("inline_message_id"):
-                try:
-                    from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                    from strings import get_string
-                    language = get_string("en")
-                    
-                    # Create the updated message text
-                    message_text = language['whisper_simple_message'].format(target_mention)
-                    
-                    await app.edit_inline_text(
-                        inline_message_id=whisper["inline_message_id"],
-                        text=message_text,
-                        parse_mode=enums.ParseMode.MARKDOWN,
-                        reply_markup=create_whisper_keyboard(whisper_id)
-                    )
-                except Exception as e:
-                    # If we can't edit the message, that's okay - the DB is updated
-                    print(f"Could not update inline message with updated name: {e}")
-                    pass
+            try:
+                from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
+                from strings import get_string
+                language = get_string("en")
+                
+                # Create the updated message text
+                message_text = language['whisper_simple_message'].format(target_mention)
+                
+                # Use callback_query.edit_message_text() which is a bound method that
+                # automatically uses inline_message_id from the callback query for inline messages.
+                await callback_query.edit_message_text(
+                    text=message_text,
+                    parse_mode=enums.ParseMode.MARKDOWN,
+                    reply_markup=create_whisper_keyboard(whisper_id)
+                )
+            except Exception as e:
+                # If we can't edit the message, that's okay - the DB is updated
+                print(f"Could not update inline message with updated name: {e}")
 
         # Mark as read only if target is viewing (sender viewing doesn't count as "read")
         # Exception: if sender IS the target (self-whisper), then it counts as read
@@ -273,59 +271,62 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                     )
 
                     # Edit the message to show it was read and remove button
-                    if whisper.get("inline_message_id"):
-                        try:
-                            # Get target's display name
-                            target_display_name = callback_query.from_user.first_name
-                            if callback_query.from_user.username:
-                                target_display_name = f"@{callback_query.from_user.username}"
+                    try:
+                        # Get target's display name
+                        target_display_name = callback_query.from_user.first_name
+                        if callback_query.from_user.username:
+                            target_display_name = f"@{callback_query.from_user.username}"
 
-                            # Get original target display for the message (with mentions if available)
-                            target_for_display = whisper.get("target_mentions")
-                            if not target_for_display:
-                                # Fallback to original token
-                                original_target = whisper.get("original_target_token", "Target")
-                                if original_target.lower() in ["@all", "@everyone"]:
-                                    target_for_display = "Everyone"
-                                else:
-                                    target_for_display = original_target
+                        # Get original target display for the message (with mentions if available)
+                        target_for_display = whisper.get("target_mentions")
+                        if not target_for_display:
+                            # Fallback to original token
+                            original_target = whisper.get("original_target_token", "Target")
+                            if original_target.lower() in ["@all", "@everyone"]:
+                                target_for_display = "Everyone"
+                            else:
+                                target_for_display = original_target
 
-                            burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
+                        burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
 
-                            await app.edit_inline_text(
-                                inline_message_id=whisper["inline_message_id"],
-                                text=burned_message,
-                                parse_mode=enums.ParseMode.MARKDOWN,
-                                reply_markup=None  # Remove the button
-                            )
-                        except Exception as e:
-                            print(f"Failed to edit burned message: {e}")
+                        # Use callback_query.edit_message_text() which is a bound method that
+                        # automatically uses inline_message_id from the callback query for inline messages.
+                        # No need to manually pass inline_message_id - Pyrogram handles it internally.
+                        await callback_query.edit_message_text(
+                            text=burned_message,
+                            parse_mode=enums.ParseMode.MARKDOWN,
+                            reply_markup=None  # Remove the button
+                        )
+                    except Exception as e:
+                        print(f"Failed to edit burned message: {e}")
 
             # Handle reveal-on-read (!r modifier)
             # This edits the message to show who read it (like @psstrobot)
             # Note: burn_after_reading takes precedence as it already shows who read it
             # Note: For multi-target whispers, only the first reader is revealed (message can only be edited once)
             if settings.get("reveal_on_read") and not settings.get("burn_after_reading"):
-                if whisper.get("inline_message_id"):
-                    try:
-                        # Build clickable read status with user's full name
-                        reader = callback_query.from_user
-                        reader_name = reader.first_name
-                        if reader.last_name:
-                            reader_name += " " + reader.last_name
-                        # Escape HTML special characters using standard library
-                        reader_name = html.escape(reader_name)
-                        
-                        # Create tappable name linking to profile
-                        revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
-                        
-                        await callback_query.edit_message_text(
-                            text=revealed_text,
-                            parse_mode=enums.ParseMode.HTML,
-                            reply_markup=None  # Remove the button to prevent re-click
-                        )
-                    except Exception as e:
-                        print(f"Failed to edit revealed message: {e}")
+                try:
+                    # Build clickable read status with user's full name
+                    reader = callback_query.from_user
+                    reader_name = reader.first_name
+                    if reader.last_name:
+                        reader_name += " " + reader.last_name
+                    # Escape HTML special characters using standard library
+                    reader_name = html.escape(reader_name)
+                    
+                    # Create tappable name linking to profile
+                    revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
+                    
+                    # Use callback_query.edit_message_text() which is a bound method that
+                    # automatically uses inline_message_id from the callback query for inline messages.
+                    # No need to manually pass inline_message_id - Pyrogram handles it internally.
+                    await callback_query.edit_message_text(
+                        text=revealed_text,
+                        parse_mode=enums.ParseMode.HTML,
+                        reply_markup=None  # Remove the button to prevent re-click
+                    )
+                except Exception as e:
+                    print(f"Failed to edit revealed message: {e}")
 
         # Get sender name for display
         try:
