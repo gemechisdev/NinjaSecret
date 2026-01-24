@@ -28,7 +28,8 @@ NINJA_EMOJIS = {
     "speak_no_evil": "🙊",
     "lightning": "⚡",
     "eyes": "👀",
-    "sparkles": "✨"
+    "sparkles": "✨",
+    "broadcast": "📢"  # Dual message / public indicator
 }
 
 def generate_whisper_id() -> str:
@@ -105,8 +106,53 @@ def get_style_emojis() -> List[str]:
         NINJA_EMOJIS['heart'],      # Cute style
         NINJA_EMOJIS['fire'],       # Burn style
         NINJA_EMOJIS['timer'],      # Timer style
-        '💀'                         # Burn style alternative
+        NINJA_EMOJIS['eyes'],       # Reveal style
+        '💀',                        # Burn style alternative
+        '🗑️'                         # Delete style
     ]
+
+def get_modifier_type(modifiers: Optional[Dict]) -> str:
+    """Determine the type of modifier combination
+    
+    Returns the primary modifier type based on priority order. When multiple modifiers
+    are present (e.g., !burn and !timer), returns the highest priority modifier type.
+    
+    Priority order (highest to lowest):
+        1. VIP style (!vip)
+        2. Cute style (!cute)
+        3. Burn (!burn, !b) - Both reveal_on_read and burn_after_reading
+        4. Delete (!delete, !del, !d) - Only burn_after_reading (silent deletion)
+        5. Reveal (!reveal, !r) - Only reveal_on_read (shows who read, no deletion)
+        6. Timer (!timer, !t)
+        7. Base - Default/no modifiers
+    
+    Args:
+        modifiers: Dictionary of modifier flags. Can be None or empty dict.
+    
+    Returns:
+        String indicating the primary modifier type
+    """
+    # Defensive check for None modifiers
+    if not modifiers:
+        return 'base'
+    
+    if modifiers.get('style') == 'vip':
+        return 'vip'
+    elif modifiers.get('style') == 'cute':
+        return 'cute'
+    elif modifiers.get('burn_after_reading') and modifiers.get('reveal_on_read'):
+        # !burn or !b - shows who read AND burns (both flags set)
+        return 'burn'
+    elif modifiers.get('burn_after_reading'):
+        # !delete, !del, or !d - silent burn (only burn_after_reading flag)
+        return 'delete'
+    elif modifiers.get('reveal_on_read'):
+        # !reveal or !r - shows who read without burning (only reveal_on_read flag)
+        return 'reveal'
+    elif modifiers.get('timer'):
+        return 'timer'
+    else:
+        return 'base'
 
 def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict[str, any]]:
     """
@@ -130,23 +176,53 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
 
     modifiers = {}
 
-    # Extract modifiers first (before splitting by pipe)
-    timer_match = re.search(r'!timer:(\d+)', text)
+    # All modifier patterns use word boundaries to prevent false positives
+    # Word boundary pattern: (?<![a-zA-Z0-9])...(?![a-zA-Z0-9])
+    # This ensures modifiers like "!reveal" don't match in "!revealme" or "pre!reveal"
+    
+    # Timer modifier: !timer:N or !t:N (extract first before splitting by pipe)
+    TIMER_PATTERN = r'(?<![a-zA-Z0-9])(!timer|!t):(\d+)(?![a-zA-Z0-9])'
+    timer_match = re.search(TIMER_PATTERN, text)
     if timer_match:
-        modifiers['timer'] = int(timer_match.group(1))
-        text = re.sub(r'!timer:\d+', '', text).strip()
-
-    if '!delete' in text:
+        modifiers['timer'] = int(timer_match.group(2))
+        text = re.sub(TIMER_PATTERN, '', text).strip()
+    
+    # Reveal-on-read modifier
+    # Aliases: !reveal, !r
+    # Shows who read the secret without destroying it
+    REVEAL_PATTERN = r'(?<![a-zA-Z0-9])(!reveal|!r)(?![a-zA-Z0-9])'
+    if re.search(REVEAL_PATTERN, text):
+        modifiers['reveal_on_read'] = True
+        text = re.sub(REVEAL_PATTERN, '', text).strip()
+    
+    # Delete/Burn after reading modifier  
+    # Aliases: !delete, !del, !d
+    # Burns after reading without revealing who read it
+    DELETE_PATTERN = r'(?<![a-zA-Z0-9])(!delete|!del|!d)(?![a-zA-Z0-9])'
+    if re.search(DELETE_PATTERN, text):
         modifiers['burn_after_reading'] = True
-        text = text.replace('!delete', '').strip()
+        text = re.sub(DELETE_PATTERN, '', text).strip()
+    
+    # Burn modifier (reveal + delete combined)
+    # Aliases: !burn, !b
+    # Shows who read AND burns after reading (maximum security)
+    BURN_PATTERN = r'(?<![a-zA-Z0-9])(!burn|!b)(?![a-zA-Z0-9])'
+    if re.search(BURN_PATTERN, text):
+        modifiers['reveal_on_read'] = True
+        modifiers['burn_after_reading'] = True
+        text = re.sub(BURN_PATTERN, '', text).strip()
 
-    if '!vip' in text:
+    # VIP style modifier: !vip, !v
+    VIP_PATTERN = r'(?<![a-zA-Z0-9])(!vip|!v)(?![a-zA-Z0-9])'
+    if re.search(VIP_PATTERN, text):
         modifiers['style'] = 'vip'
-        text = text.replace('!vip', '').strip()
+        text = re.sub(VIP_PATTERN, '', text).strip()
 
-    if '!cute' in text:
+    # Cute style modifier: !cute, !c, !love, !l
+    CUTE_PATTERN = r'(?<![a-zA-Z0-9])(!cute|!love|!c|!l)(?![a-zA-Z0-9])'
+    if re.search(CUTE_PATTERN, text):
         modifiers['style'] = 'cute'
-        text = text.replace('!cute', '').strip()
+        text = re.sub(CUTE_PATTERN, '', text).strip()
 
     # Check for dual message format (pipe separator)
     # Split by pipe to separate public and private messages
@@ -309,16 +385,32 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     # Add dual message indicator to style emoji if applicable
     style_emoji = f"{NINJA_EMOJIS['whisper']}{NINJA_EMOJIS['thought']}"
     if is_dual_message:
-        style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
+        style_emoji = f"{NINJA_EMOJIS['broadcast']}{NINJA_EMOJIS['thought']}"  # Public/Private indicator
     
-    if modifiers.get('style') == 'vip':
-        style_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
-    elif modifiers.get('style') == 'cute':
-        style_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
-    elif modifiers.get('burn_after_reading'):
-        style_emoji = f"💀{NINJA_EMOJIS['fire']}"
-    elif modifiers.get('timer'):
-        style_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
+    # Determine modifier type and set appropriate style emoji
+    # If dual message, append modifier indicator to preserve both visual cues
+    modifier_type = get_modifier_type(modifiers)
+    if modifier_type == 'vip':
+        modifier_emoji = f"{NINJA_EMOJIS['crown']}{NINJA_EMOJIS['shuriken']}"
+    elif modifier_type == 'cute':
+        modifier_emoji = f"{NINJA_EMOJIS['ninja']}{NINJA_EMOJIS['heart']}"
+    elif modifier_type == 'burn':
+        modifier_emoji = f"💀{NINJA_EMOJIS['fire']}"
+    elif modifier_type == 'delete':
+        modifier_emoji = f"🗑️💥"
+    elif modifier_type == 'reveal':
+        modifier_emoji = f"{NINJA_EMOJIS['eyes']}{NINJA_EMOJIS['whisper']}"
+    elif modifier_type == 'timer':
+        modifier_emoji = f"{NINJA_EMOJIS['timer']}{NINJA_EMOJIS['ninja']}"
+    else:
+        modifier_emoji = None
+    
+    # If we have both dual message and a modifier, combine them
+    # Otherwise use whichever one applies (prioritizing modifier for non-dual messages)
+    if is_dual_message and modifier_emoji:
+        style_emoji = f"{modifier_emoji}{NINJA_EMOJIS['broadcast']}"  # Modifier + dual indicator
+    elif modifier_emoji:
+        style_emoji = modifier_emoji
 
     description_parts = []
     
@@ -338,6 +430,9 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
 
     if modifiers.get('burn_after_reading'):
         description_parts.append(language["whisper_inline_desc_burns"])
+
+    if modifiers.get('reveal_on_read'):
+        description_parts.append(language["whisper_inline_desc_reveals"])
 
     if modifiers.get('timer'):
         timer_text = format_timer_display(modifiers['timer'])
@@ -379,13 +474,19 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
     target_display = format_targets_display(targets)
     language = get_string(lang)
 
-    if modifiers.get('style') == 'vip':
+    # Determine modifier type and set appropriate header
+    modifier_type = get_modifier_type(modifiers)
+    if modifier_type == 'vip':
         header = language["whisper_delivery_vip"]
-    elif modifiers.get('style') == 'cute':
+    elif modifier_type == 'cute':
         header = language["whisper_delivery_cute"]
-    elif modifiers.get('burn_after_reading'):
+    elif modifier_type == 'burn':
         header = language["whisper_delivery_burn"]
-    elif modifiers.get('timer'):
+    elif modifier_type == 'delete':
+        header = language["whisper_delivery_delete"]
+    elif modifier_type == 'reveal':
+        header = language["whisper_delivery_reveal"]
+    elif modifier_type == 'timer':
         header = language["whisper_delivery_timer"]
     else:
         header = language["whisper_delivery_base"]
@@ -414,6 +515,86 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
     ])
 
     return "\n".join(message_parts)
+
+
+def create_timer_countdown_message(whisper_data: Dict, lang: str = "en") -> str:
+    """Create timer message with current time remaining for inline message update.
+    
+    This is used by the background task to update timed whisper messages
+    with the current countdown, similar to how !reveal edits the message.
+    
+    Args:
+        whisper_data: Whisper document from database containing settings and target info
+        lang: Language code
+        
+    Returns:
+        Formatted message string with time remaining, or None if expired
+    """
+    language = get_string(lang)
+    settings = whisper_data.get("settings", {})
+    
+    # Get time remaining
+    expires_at = settings.get("expires_at")
+    if not expires_at:
+        return None
+    
+    time_remaining = get_time_remaining_text(expires_at)
+    if time_remaining == "ᴇxᴘɪʀᴇᴅ":
+        return None  # Let cleanup task handle expired whispers
+    
+    # Build message using the same format as create_whisper_posted_message
+    header = language["whisper_delivery_timer"]
+    
+    message_parts = [header, ""]
+    
+    # Get target display - use target_mentions, then try targets array, then original_token
+    target_mentions = whisper_data.get("target_mentions", "")
+    original_token = whisper_data.get("original_target_token", "")
+    targets = whisper_data.get("targets", [])
+    all_targets = whisper_data.get("all_targets", [])
+    
+    # Check for @all/@everyone whispers
+    is_everyone = False
+    if isinstance(original_token, str) and original_token.lower() in ["@all", "@everyone"]:
+        is_everyone = True
+    elif targets and any(t.get("type") == "all" for t in targets):
+        is_everyone = True
+    
+    if is_everyone:
+        message_parts.append(language["whisper_for_everyone"])
+    else:
+        # Prefer precomputed mentions, then reconstruct from targets, then fall back to original token
+        if target_mentions:
+            target_display = target_mentions
+        elif targets:
+            # Use the same formatting logic as the initial whisper message
+            target_display = format_targets_display(targets)
+        elif all_targets:
+            # Fallback to all_targets if available
+            target_display = ", ".join([t[2] if len(t) > 2 else str(t[0]) for t in all_targets if t])
+        else:
+            target_display = original_token
+        message_parts.append(language["whisper_for_target"].format(target_display))
+    
+    # Add time remaining line (the key update)
+    message_parts.append(language["whisper_time_left"].format(time_remaining))
+    
+    # Add burn after reading info if set (to maintain consistency with original message)
+    if settings.get("burn_after_reading"):
+        if is_everyone:
+            message_parts.append(language["whisper_burns_all"])
+        else:
+            # Count targets for burn message
+            target_count = len(targets) if targets else len(all_targets) if all_targets else 1
+            message_parts.append(language["whisper_burns_count"].format(target_count))
+    
+    message_parts.extend([
+        language["whisper_encrypted"],
+        ""
+    ])
+    
+    return "\n".join(message_parts)
+
 
 def create_whisper_keyboard(whisper_id: str) -> InlineKeyboardMarkup:
     """Create inline keyboard for whisper message"""

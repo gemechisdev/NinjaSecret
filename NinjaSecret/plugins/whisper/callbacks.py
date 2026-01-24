@@ -3,6 +3,7 @@ Ninja Secret🥷 Callback Handlers
 Handles secret viewing, stats, dashboard, and other callback interactions
 """
 
+import html
 from datetime import datetime
 from pyrogram import filters, enums
 from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -27,6 +28,7 @@ from NinjaSecret.utils.whisper_utils import (
     create_dashboard_keyboard,
     format_targets_display,
     get_time_remaining_text,
+    get_modifier_type,
     NINJA_EMOJIS
 )
 from config import BANNED_USERS, OWNER_ID
@@ -177,26 +179,10 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 }}
             )
             
-            # Try to update the inline message to show the resolved name
-            if whisper.get("inline_message_id"):
-                try:
-                    from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                    from strings import get_string
-                    language = get_string("en")
-                    
-                    # Create the updated message text
-                    message_text = language['whisper_simple_message'].format(target_mention)
-                    
-                    await app.edit_inline_text(
-                        inline_message_id=whisper["inline_message_id"],
-                        text=message_text,
-                        parse_mode=enums.ParseMode.MARKDOWN,
-                        reply_markup=create_whisper_keyboard(whisper_id)
-                    )
-                except Exception as e:
-                    # If we can't edit the message, that's okay - the DB is updated
-                    print(f"Could not update inline message with resolved name: {e}")
-                    pass
+            # Don't edit the message for default whispers to preserve original delivery header
+            # Only edit for special modifiers where we want to show the resolved name
+            # This prevents changing "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ᴅᴇʟɪᴠᴇʀʏ 🥷" to "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ 🥷"
+            # The original header is preserved and looks better for default whispers
             
         elif is_target and target_id:
             # Target was already resolved, but update their display name if it changed
@@ -216,25 +202,24 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             )
             
             # Try to update the inline message to show the updated name
-            if whisper.get("inline_message_id"):
-                try:
-                    from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                    from strings import get_string
-                    language = get_string("en")
-                    
-                    # Create the updated message text
-                    message_text = language['whisper_simple_message'].format(target_mention)
-                    
-                    await app.edit_inline_text(
-                        inline_message_id=whisper["inline_message_id"],
-                        text=message_text,
-                        parse_mode=enums.ParseMode.MARKDOWN,
-                        reply_markup=create_whisper_keyboard(whisper_id)
-                    )
-                except Exception as e:
-                    # If we can't edit the message, that's okay - the DB is updated
-                    print(f"Could not update inline message with updated name: {e}")
-                    pass
+            try:
+                from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
+                from strings import get_string
+                language = get_string("en")
+                
+                # Create the updated message text
+                message_text = language['whisper_simple_message'].format(target_mention)
+                
+                # Use callback_query.edit_message_text() which is a bound method that
+                # automatically uses inline_message_id from the callback query for inline messages.
+                await callback_query.edit_message_text(
+                    text=message_text,
+                    parse_mode=enums.ParseMode.MARKDOWN,
+                    reply_markup=create_whisper_keyboard(whisper_id)
+                )
+            except Exception as e:
+                # If we can't edit the message, that's okay - the DB is updated
+                print(f"Could not update inline message with updated name: {e}")
 
         # Mark as read only if target is viewing (sender viewing doesn't count as "read")
         # Exception: if sender IS the target (self-whisper), then it counts as read
@@ -272,33 +257,72 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                     )
 
                     # Edit the message to show it was read and remove button
-                    if whisper.get("inline_message_id"):
-                        try:
-                            # Get target's display name
-                            target_display_name = callback_query.from_user.first_name
-                            if callback_query.from_user.username:
-                                target_display_name = f"@{callback_query.from_user.username}"
+                    try:
+                        # Get target's display name
+                        target_display_name = callback_query.from_user.first_name
+                        if callback_query.from_user.username:
+                            target_display_name = f"@{callback_query.from_user.username}"
 
-                            # Get original target display for the message (with mentions if available)
-                            target_for_display = whisper.get("target_mentions")
-                            if not target_for_display:
-                                # Fallback to original token
-                                original_target = whisper.get("original_target_token", "Target")
-                                if original_target.lower() in ["@all", "@everyone"]:
-                                    target_for_display = "Everyone"
-                                else:
-                                    target_for_display = original_target
+                        # Get original target display for the message (with mentions if available)
+                        target_for_display = whisper.get("target_mentions")
+                        if not target_for_display:
+                            # Fallback to original token
+                            original_target = whisper.get("original_target_token", "Target")
+                            if original_target.lower() in ["@all", "@everyone"]:
+                                target_for_display = "Everyone"
+                            else:
+                                target_for_display = original_target
 
+                        # Check if we should reveal who read it when burning
+                        # Three distinct behaviors:
+                        # !burn (!b) = reveal_on_read=True + burn_after_reading=True -> shows who read and burns
+                        # !delete (!d, !del) = burn_after_reading=True only -> silent delete (no reader shown)
+                        # !reveal (!r) = reveal_on_read=True only -> handled in elif below (shows reader, no burn)
+                        if settings.get("reveal_on_read"):
+                            # Show who read it (burn with reveal)
                             burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
+                        else:
+                            # Silent delete (burn without revealing)
+                            burned_message = _['whisper_delete_message'].format(target_for_display)
 
-                            await app.edit_inline_text(
-                                inline_message_id=whisper["inline_message_id"],
-                                text=burned_message,
-                                parse_mode=enums.ParseMode.MARKDOWN,
-                                reply_markup=None  # Remove the button
-                            )
-                        except Exception as e:
-                            print(f"Failed to edit burned message: {e}")
+                        # Use callback_query.edit_message_text() which is a bound method that
+                        # automatically uses inline_message_id from the callback query for inline messages.
+                        # No need to manually pass inline_message_id - Pyrogram handles it internally.
+                        await callback_query.edit_message_text(
+                            text=burned_message,
+                            parse_mode=enums.ParseMode.MARKDOWN,
+                            reply_markup=None  # Remove the button
+                        )
+                    except Exception as e:
+                        print(f"Failed to edit burned message: {e}")
+
+            # Handle reveal-on-read (!r modifier) when NOT burning
+            # This edits the message to show who read it (like @psstrobot)
+            # Note: When burn_after_reading is also set, it's handled above (to prevent double-edit)
+            # Note: For multi-target whispers, only the first reader is revealed (message can only be edited once)
+            elif settings.get("reveal_on_read"):
+                try:
+                    # Build clickable read status with user's full name
+                    reader = callback_query.from_user
+                    reader_name = reader.first_name
+                    if reader.last_name:
+                        reader_name += " " + reader.last_name
+                    # Escape HTML special characters using standard library
+                    reader_name = html.escape(reader_name)
+                    
+                    # Create tappable name linking to profile
+                    revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
+                    
+                    # Use callback_query.edit_message_text() which is a bound method that
+                    # automatically uses inline_message_id from the callback query for inline messages.
+                    # No need to manually pass inline_message_id - Pyrogram handles it internally.
+                    await callback_query.edit_message_text(
+                        text=revealed_text,
+                        parse_mode=enums.ParseMode.HTML,
+                        reply_markup=None  # Remove the button to prevent re-click
+                    )
+                except Exception as e:
+                    print(f"Failed to edit revealed message: {e}")
 
         # Get sender name for display
         try:
@@ -333,19 +357,15 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Add special features info if present
         settings = whisper.get("settings", {})
 
-        # Add timer info if present
-        if settings.get("expires_at"):
-            time_left = get_time_remaining_text(settings["expires_at"])
-            if time_left != "Expired":
-                display_content += f"\n⏰ {time_left} left"
+        # Timer info is now displayed on the inline message itself (updated every 5 seconds)
+        # so we don't need to show it in the callback alert anymore
 
-        # Add style emoji based on settings
-        if settings.get("burn_after_reading"):
-            # For burn after reading, just prefix with skull emoji (no text)
-            display_content = f"💀 {display_content}"
-        elif settings.get("style") == "vip":
+        # Add emoji prefix based on modifier type to show in popup
+        # Only !cute and !vip display emoji prefix in callback alert
+        modifier_type = get_modifier_type(settings)
+        if modifier_type == 'vip':
             display_content = f"👑 {display_content}"
-        elif settings.get("style") == "cute":
+        elif modifier_type == 'cute':
             display_content = f"💕 {display_content}"
 
         # Show as alert (popup) with enhanced content
@@ -404,10 +424,8 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery, _):
         if settings.get('burn_after_reading'):
             info_text += f"{_['whisper_burns_all_read']}\n"
 
-        if settings.get('expires_at'):
-            time_left = get_time_remaining_text(settings['expires_at'])
-            if time_left != "Expired":
-                info_text += f"{_['whisper_expires_in'].format(time_left)}\n"
+        # Timer info is now displayed on the inline message itself (updated every 5 seconds)
+        # so we don't need to show it in the callback alert anymore
 
         info_text += f"\n{_['whisper_monkey_secured']}"
 
@@ -547,6 +565,10 @@ async def handle_styles(client, callback_query: CallbackQuery, _):
 {_['whisper_styles_vip']}
 
 {_['whisper_styles_cute']}
+
+{_['whisper_styles_reveal']}
+
+{_['whisper_styles_delete']}
 
 {_['whisper_styles_burn']}
 

@@ -105,17 +105,17 @@ Both formats work with all modifiers:
 ```
 Expires in 1 hour
 
-### With Burn After Reading (Advanced Format)
+### With Reveal & Burn (Advanced Format)
 ```
-@ninjasecretbot For Alice @alice | For Bob @bob !delete
+@ninjasecretbot For Alice @alice | For Bob @bob !reveal
 ```
-Burns after all targets read
+Shows who read & burns after all targets read
 
 ### Multiple Modifiers
 ```
-@ninjasecretbot Public | Private @vip !vip !timer:7200 !delete
+@ninjasecretbot Public | Private @vip !v !t:7200 !r
 ```
-VIP styling + 2 hour timer + burn after reading
+VIP styling + 2 hour timer + reveal & burn after reading
 
 ## How It Works
 

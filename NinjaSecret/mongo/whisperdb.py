@@ -51,6 +51,10 @@ async def store_whisper(data: Dict) -> str:
         if modifiers.get("burn_after_reading"):
             settings["burn_after_reading"] = True
 
+        # Handle reveal on read
+        if modifiers.get("reveal_on_read"):
+            settings["reveal_on_read"] = True
+
         # Handle styling
         if modifiers.get("style"):
             settings["style"] = modifiers["style"]
@@ -272,6 +276,34 @@ async def cleanup_expired_whispers():
         count += 1
 
     return count
+
+
+async def get_active_timed_whispers() -> List[Dict]:
+    """Get all active whispers with timers that have inline_message_id attached.
+    
+    Returns whispers that:
+    - Have status = "active"
+    - Have settings.expires_at set (timer feature)
+    - Have inline_message_id attached (so we can edit the message)
+    - Have not expired yet
+    
+    Returns:
+        List of whisper documents with timer information
+    """
+    current_time = datetime.utcnow()
+    
+    cursor = whisperdb.find({
+        "status": "active",
+        "settings.expires_at": {"$gt": current_time},  # Not expired yet
+        "inline_message_id": {"$exists": True, "$ne": None}  # Has inline_message_id attached
+    })
+    
+    whispers = []
+    async for whisper in cursor:
+        whispers.append(whisper)
+    
+    return whispers
+
 
 # User Statistics Functions
 async def get_user_whisper_stats(user_id: int) -> Dict:

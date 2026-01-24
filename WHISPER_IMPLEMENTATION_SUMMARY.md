@@ -15,10 +15,12 @@ All features from the Ninja Secret🥷 documentation have been successfully impl
 - ✅ **Flexible Resolution**: Handles non-existent users gracefully
 
 ### 🔥 **Advanced Secret Modes**
-- ✅ **💀 Burn After Reading**: `!delete` - Self-destructs after all targets read
-- ✅ **⏰ Timed Secrets**: `!timer:seconds` - Auto-expires after specified time
-- ✅ **🎨 Themed Messages**: `!cute` - Special ninja-themed formatting
-- ✅ **🌟 VIP Secrets**: `!vip` - Premium styling for important messages
+- ✅ **👀 Reveal**: `!reveal` (or `!r`) - Shows who read the secret
+- ✅ **💀 Delete**: `!delete` (or `!d`, `!del`) - Burns after reading  
+- ✅ **🔥 Burn**: `!burn` (or `!b`) - Shows who read & burns (maximum security)
+- ✅ **⏰ Timed Secrets**: `!timer:seconds` (or `!t:seconds`) - Auto-expires after specified time
+- ✅ **🎨 Themed Messages**: `!cute` (or `!c`, `!l`, `!love`) - Special ninja-themed formatting
+- ✅ **🌟 VIP Secrets**: `!vip` (or `!v`) - Premium styling for important messages
 
 ### 🌙 **Ninja-Themed Experience**
 - ✅ 🥷 Playful ninja mascot throughout interface
@@ -161,7 +163,7 @@ Ready to strike into action? 📜
 - ✅ **Graceful Username Resolution**: Handles non-existent users intelligently
 - ✅ **Real-time Updates**: Live timer countdowns and read status
 - ✅ **Flexible Targeting**: Mixed username/ID support in single message
-- ✅ **Advanced Modifiers**: Stackable effects (`!delete !timer:3600 !vip`)
+- ✅ **Advanced Modifiers**: Stackable effects (`!reveal !t:3600 !v`, `!burn`)
 
 ---
 
@@ -176,16 +178,18 @@ Ready to strike into action? 📜
 
 ### **Advanced Features**
 ```
-@ninjasecretbot confidential info @boss !delete
-@ninjasecretbot party at 8pm @friends !timer:7200
-@ninjasecretbot special announcement @all !vip
-@ninjasecretbot cute message @bestie !cute !timer:3600
+@ninjasecretbot confidential info @boss !reveal
+@ninjasecretbot temporary note @friend !delete
+@ninjasecretbot top secret @agent !burn
+@ninjasecretbot party at 8pm @friends !t:7200
+@ninjasecretbot special announcement @all !v
+@ninjasecretbot cute message @bestie !c !t:3600
 ```
 
 ### **Business Examples**
 ```
-@ninjasecretbot quarterly results ready @management !timer:7200
-@ninjasecretbot client feedback needed @designers,@developers !delete
+@ninjasecretbot quarterly results ready @management !t:7200
+@ninjasecretbot client feedback needed @designers,@developers !burn
 @ninjasecretbot lunch meeting moved to 2pm @alice,@bob,@charlie
 ```
 
