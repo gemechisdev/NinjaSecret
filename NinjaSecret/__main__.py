@@ -209,6 +209,12 @@ async def init():
     asyncio.create_task(memory_cleanup_task())
     LOGGER(__name__).info("Memory cleanup task started")
 
+    # Start whisper cleanup and timer countdown tasks
+    # These are started explicitly here after the bot is running and event loop is active
+    from NinjaSecret.plugins.whisper.cleanup_task import start_cleanup_task, start_timer_countdown_task
+    start_cleanup_task()
+    start_timer_countdown_task()
+
     # Start health server for deployment platforms like Render
     try:
         await start_health_server()
