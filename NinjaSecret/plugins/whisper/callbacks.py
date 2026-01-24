@@ -28,6 +28,7 @@ from NinjaSecret.utils.whisper_utils import (
     create_dashboard_keyboard,
     format_targets_display,
     get_time_remaining_text,
+    get_modifier_type,
     NINJA_EMOJIS
 )
 from config import BANNED_USERS, OWNER_ID
@@ -178,25 +179,10 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 }}
             )
             
-            # Try to update the inline message to show the resolved name
-            try:
-                from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                from strings import get_string
-                language = get_string("en")
-                
-                # Create the updated message text
-                message_text = language['whisper_simple_message'].format(target_mention)
-                
-                # Use callback_query.edit_message_text() which is a bound method that
-                # automatically uses inline_message_id from the callback query for inline messages.
-                await callback_query.edit_message_text(
-                    text=message_text,
-                    parse_mode=enums.ParseMode.MARKDOWN,
-                    reply_markup=create_whisper_keyboard(whisper_id)
-                )
-            except Exception as e:
-                # If we can't edit the message, that's okay - the DB is updated
-                print(f"Could not update inline message with resolved name: {e}")
+            # Don't edit the message for default whispers to preserve original delivery header
+            # Only edit for special modifiers where we want to show the resolved name
+            # This prevents changing "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ᴅᴇʟɪᴠᴇʀʏ 🥷" to "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ 🥷"
+            # The original header is preserved and looks better for default whispers
             
         elif is_target and target_id:
             # Target was already resolved, but update their display name if it changed
@@ -377,13 +363,17 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             if time_left != "Expired":
                 display_content += f"\n⏰ {time_left} left"
 
-        # Add style emoji based on settings
-        if settings.get("burn_after_reading"):
-            # For burn after reading, just prefix with skull emoji (no text)
-            display_content = f"💀 {display_content}"
-        elif settings.get("style") == "vip":
+        # Add emoji prefix based on modifier type to show in popup
+        modifier_type = get_modifier_type(settings)
+        if modifier_type == 'burn':
+            display_content = f"💀🔥 {display_content}"
+        elif modifier_type == 'delete':
+            display_content = f"🗑️💥 {display_content}"
+        elif modifier_type == 'reveal':
+            display_content = f"👀 {display_content}"
+        elif modifier_type == 'vip':
             display_content = f"👑 {display_content}"
-        elif settings.get("style") == "cute":
+        elif modifier_type == 'cute':
             display_content = f"💕 {display_content}"
 
         # Show as alert (popup) with enhanced content
