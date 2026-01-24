@@ -15,7 +15,9 @@ All features from the Ninja Secret🥷 documentation have been successfully impl
 - ✅ **Flexible Resolution**: Handles non-existent users gracefully
 
 ### 🔥 **Advanced Secret Modes**
-- ✅ **💀 Reveal & Burn**: `!reveal` (or `!r`, `!b`, `!burn`, `!d`, `!del`, `!delete`) - Shows who read & burns on first read
+- ✅ **👀 Reveal**: `!reveal` (or `!r`) - Shows who read the secret
+- ✅ **💀 Delete**: `!delete` (or `!d`, `!del`) - Burns after reading  
+- ✅ **🔥 Burn**: `!burn` (or `!b`) - Shows who read & burns (maximum security)
 - ✅ **⏰ Timed Secrets**: `!timer:seconds` (or `!t:seconds`) - Auto-expires after specified time
 - ✅ **🎨 Themed Messages**: `!cute` (or `!c`, `!l`, `!love`) - Special ninja-themed formatting
 - ✅ **🌟 VIP Secrets**: `!vip` (or `!v`) - Premium styling for important messages
@@ -161,7 +163,7 @@ Ready to strike into action? 📜
 - ✅ **Graceful Username Resolution**: Handles non-existent users intelligently
 - ✅ **Real-time Updates**: Live timer countdowns and read status
 - ✅ **Flexible Targeting**: Mixed username/ID support in single message
-- ✅ **Advanced Modifiers**: Stackable effects (`!reveal !t:3600 !v`)
+- ✅ **Advanced Modifiers**: Stackable effects (`!reveal !t:3600 !v`, `!burn !delete`)
 
 ---
 
@@ -177,6 +179,8 @@ Ready to strike into action? 📜
 ### **Advanced Features**
 ```
 @ninjasecretbot confidential info @boss !reveal
+@ninjasecretbot temporary note @friend !delete
+@ninjasecretbot top secret @agent !burn
 @ninjasecretbot party at 8pm @friends !t:7200
 @ninjasecretbot special announcement @all !v
 @ninjasecretbot cute message @bestie !c !t:3600
@@ -185,7 +189,7 @@ Ready to strike into action? 📜
 ### **Business Examples**
 ```
 @ninjasecretbot quarterly results ready @management !t:7200
-@ninjasecretbot client feedback needed @designers,@developers !reveal
+@ninjasecretbot client feedback needed @designers,@developers !burn
 @ninjasecretbot lunch meeting moved to 2pm @alice,@bob,@charlie
 ```
 
