@@ -11,9 +11,9 @@
 After a comprehensive review of the NinjaSecret codebase, I've identified **several critical issues**, **moderate concerns**, and **improvement opportunities**. The codebase implements a Telegram bot for sending secret/whisper messages with various features like burn-after-reading, timers, and reveal functionality.
 
 ### Issue Categories:
-- 🔴 **Critical Issues** (4): Bugs that cause incorrect behavior or failures
-- 🟡 **Moderate Issues** (8): Code quality, potential problems, improvements needed
-- 🟢 **Minor/Style** (5): Code style, documentation, and minor improvements
+- 🔴 **Critical Issues** (5): Bugs that cause incorrect behavior or failures
+- 🟡 **Moderate Issues** (12): Code quality, potential problems, improvements needed
+- 🟢 **Minor/Style** (8): Code style, documentation, and minor improvements
 
 ---
 
@@ -428,6 +428,187 @@ async def cleanup_expired_whispers():  # ❌ Missing return type
 
 ---
 
+### 18. Missing `app` and `SUPPORT_CHAT` Imports in `language.py` Decorator
+
+**File:** `NinjaSecret/utils/decorators/language.py` (Lines 10-13)
+
+**Issue:** The decorator uses `app.mention` and `SUPPORT_CHAT` but they are not imported:
+
+```python
+def language(mystic):
+    async def wrapper(_, message, **kwargs):
+        if await is_maintenance() is False:
+            if message.from_user.id not in SUDOERS:
+                return await message.reply_text(
+                    text=f"{app.mention} ɪs ᴜɴᴅᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ, ᴠɪsɪᴛ <a href={SUPPORT_CHAT}>sᴜᴘᴘᴏʀᴛ ᴄʜᴀᴛ</a>...",
+```
+
+**Problem:** This will raise `NameError: name 'app' is not defined` at runtime.
+
+**Fix:** Add the missing imports at the top:
+```python
+from NinjaSecret import app
+from config import SUPPORT_CHAT
+```
+
+---
+
+### 19. Race Condition in Broadcast Module
+
+**File:** `NinjaSecret/plugins/misc/broadcast.py` (Lines 44-114)
+
+**Issue:** Global `IS_BROADCASTING` variable is modified without proper locking:
+
+```python
+IS_BROADCASTING = False
+
+@app.on_message(filters.command("broadcast") & SUDOERS)
+@language
+async def braodcast_message(client, message, _):
+    global IS_BROADCASTING
+    ...
+    IS_BROADCASTING = True
+    ...
+    IS_BROADCASTING = False
+```
+
+**Problem:** If multiple sudo users start broadcasts simultaneously, this can cause race conditions.
+
+**Suggestion:** Use an asyncio Lock or check state before proceeding:
+```python
+if IS_BROADCASTING:
+    return await message.reply_text("A broadcast is already in progress.")
+```
+
+---
+
+### 20. Typo in Function Name
+
+**File:** `NinjaSecret/plugins/misc/broadcast.py` (Line 24)
+
+**Issue:** Function name has a typo `braodcast_message` should be `broadcast_message`:
+
+```python
+async def braodcast_message(client, message, _):
+```
+
+---
+
+### 21. Missing `get_authuser_names` Import in Decorator
+
+**File:** `NinjaSecret/utils/decorators/admins.py` (Line 197)
+
+**Issue:** Uses `get_authuser_names` but it's not in the imports:
+
+```python
+token = await int_to_alpha(CallbackQuery.from_user.id)
+_check = await get_authuser_names(CallbackQuery.from_user.id)  # ❌ Not imported
+```
+
+The function should be imported from database:
+```python
+from NinjaSecret.utils.database import (
+    ...
+    get_authuser_names,  # Missing!
+)
+```
+
+---
+
+### 22. `should_delete_command` Function Missing from Database
+
+**File:** `NinjaSecret/utils/decorators/language.py` (Line 3)
+
+**Issue:** The import includes `should_delete_command` but this function is not defined in `database.py`:
+
+```python
+from NinjaSecret.utils.database import (get_lang, is_maintenance, should_delete_command)
+```
+
+This will cause an `ImportError` on startup.
+
+**Fix:** Either implement `should_delete_command` in `database.py` or remove it from imports and usages.
+
+---
+
+### 23. NINJA_EMOJIS Missing 'monkey' Key
+
+**File:** `NinjaSecret/utils/whisper_utils.py` (Line 803)
+
+**Issue:** The code references `NINJA_EMOJIS["monkey"]` but this key is not defined in the dictionary at lines 15-33:
+
+```python
+return f'"{content}"{burn_info}{timer_info}\n\n{NINJA_EMOJIS["monkey"]} ᴋᴇᴇᴘ ɪᴛ ʙᴇᴛᴡᴇᴇɴ ᴜs ᴍᴏɴᴋᴇʏs!'
+```
+
+**Fix:** Add the 'monkey' key to `NINJA_EMOJIS`:
+```python
+NINJA_EMOJIS = {
+    ...
+    "monkey": "🐒",  # Add this
+}
+```
+
+---
+
+### 24. Logging Issues with Debug Statements
+
+**File:** `NinjaSecret/plugins/admins/chat_control.py` (Lines 356, 361, 404, 409)
+
+**Issue:** Uses `print()` for debug logging in production code:
+
+```python
+print(f"🔗 Link detected in message from user {user_id} in chat {chat_id}: {message.text[:100]}...")
+print(f"❌ Global links blocked, deleting message from user {user_id}")
+```
+
+**Problem:** Debug statements should be removed or converted to proper logging in production.
+
+---
+
+### 25. Error Handler References Incorrect Module
+
+**File:** `NinjaSecret/utils/errors.py` (Line 53)
+
+**Issue:** Sends error messages to `LOGGER` which is the logger function, not a chat ID:
+
+```python
+for x in error_feedback:
+    await app.send_message(LOGGER, x)  # ❌ LOGGER is a function, not a chat_id
+```
+
+**Fix:** Use `config.LOGGER_ID` instead:
+```python
+from config import LOGGER_ID
+...
+await app.send_message(LOGGER_ID, x)
+```
+
+---
+
+## Additional Issues Found in Extended Analysis
+
+### 🔴 Critical Issue 5: Maintenance Mode Logic Inverted
+
+**File:** `NinjaSecret/utils/decorators/language.py` and `admins.py`
+
+**Issue:** The maintenance check logic appears inverted:
+
+```python
+if await is_maintenance() is False:
+    if message.from_user.id not in SUDOERS:
+        return await message.reply_text("... under maintenance ...")
+```
+
+This means the "under maintenance" message is shown when maintenance is **NOT** active. The condition should likely be:
+```python
+if await is_maintenance() is True:
+    if message.from_user.id not in SUDOERS:
+        return await message.reply_text("... under maintenance ...")
+```
+
+---
+
 ## Architecture Observations
 
 ### Positive Aspects:
@@ -450,15 +631,21 @@ async def cleanup_expired_whispers():  # ❌ Missing return type
 
 ### Immediate Actions (Priority 1):
 1. **CRITICAL:** Rotate all exposed credentials immediately
-2. Fix `is_heroku` function call
+2. Fix `is_heroku` function call (add parentheses)
 3. Fix potential `None` handling in `cleanup_expired_whispers`
 4. Rename duplicate `Hotty` class
+5. Fix inverted maintenance mode logic
+6. Add missing `app` and `SUPPORT_CHAT` imports in decorators
+7. Fix missing `should_delete_command` function or import
 
 ### Short-term (Priority 2):
 1. Replace bare `except` clauses with specific exception handling
 2. Replace `print()` statements with proper logging
 3. Fix undefined variable `START_IMG_URL` in start.py
 4. Add proper error messages for missing environment variables
+5. Fix `NINJA_EMOJIS` missing 'monkey' key
+6. Fix error handler to use `LOGGER_ID` instead of `LOGGER` function
+7. Add missing `get_authuser_names` import in admins.py decorator
 
 ### Long-term (Priority 3):
 1. Add comprehensive type hints
@@ -466,6 +653,9 @@ async def cleanup_expired_whispers():  # ❌ Missing return type
 3. Consider using asyncio.run() instead of deprecated get_event_loop()
 4. Add unit tests for critical paths
 5. Document the dual-message feature more thoroughly
+6. Remove debug print statements from production code
+7. Fix broadcast race condition with proper locking
+8. Fix typo in function name `braodcast_message`
 
 ---
 
