@@ -28,6 +28,7 @@ from NinjaSecret.utils.whisper_utils import (
     create_dashboard_keyboard,
     format_targets_display,
     get_time_remaining_text,
+    get_modifier_type,
     NINJA_EMOJIS
 )
 from config import BANNED_USERS, OWNER_ID
@@ -362,21 +363,17 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             if time_left != "Expired":
                 display_content += f"\n⏰ {time_left} left"
 
-        # Add style emoji based on settings
         # Add emoji prefix based on modifier type to show in popup
-        # Use the same logic as get_modifier_type() to determine prefix
-        if settings.get("burn_after_reading") and settings.get("reveal_on_read"):
-            # !burn or !b - both flags set
+        modifier_type = get_modifier_type(settings)
+        if modifier_type == 'burn':
             display_content = f"💀🔥 {display_content}"
-        elif settings.get("burn_after_reading"):
-            # !delete, !del, or !d - only burn flag
+        elif modifier_type == 'delete':
             display_content = f"🗑️💥 {display_content}"
-        elif settings.get("reveal_on_read"):
-            # !reveal or !r - only reveal flag
+        elif modifier_type == 'reveal':
             display_content = f"👀 {display_content}"
-        elif settings.get("style") == "vip":
+        elif modifier_type == 'vip':
             display_content = f"👑 {display_content}"
-        elif settings.get("style") == "cute":
+        elif modifier_type == 'cute':
             display_content = f"💕 {display_content}"
 
         # Show as alert (popup) with enhanced content
