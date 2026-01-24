@@ -15,9 +15,9 @@ All features from the Ninja Secret🥷 documentation have been successfully impl
 - ✅ **Flexible Resolution**: Handles non-existent users gracefully
 
 ### 🔥 **Advanced Secret Modes**
-- ✅ **💀 Reveal & Burn**: `!reveal` (or `!r`, `!b`) - Shows who read & self-destructs after all read
+- ✅ **💀 Reveal & Burn**: `!reveal` (or `!r`, `!b`, `!burn`, `!d`, `!del`, `!delete`) - Shows who read & burns on first read
 - ✅ **⏰ Timed Secrets**: `!timer:seconds` (or `!t:seconds`) - Auto-expires after specified time
-- ✅ **🎨 Themed Messages**: `!cute` (or `!c`, `!l`) - Special ninja-themed formatting
+- ✅ **🎨 Themed Messages**: `!cute` (or `!c`, `!l`, `!love`) - Special ninja-themed formatting
 - ✅ **🌟 VIP Secrets**: `!vip` (or `!v`) - Premium styling for important messages
 
 ### 🌙 **Ninja-Themed Experience**

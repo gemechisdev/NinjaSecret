@@ -21,10 +21,10 @@ answer.extend(
                 "• Multiple people: `@ninjasecretbot group news @bob,@charlie`\n"
                 "• Everyone: `@ninjasecretbot pizza time! @all`\n\n"
                 "🔥 **Special Features:**\n"
-                "• `!reveal` (`!r`, `!b`) - Reveals who read & burns after\n"
+                "• `!reveal` (`!r`, `!b`, `!burn`, `!d`, `!del`, `!delete`) - Reveals who read & burns after\n"
                 "• `!timer:3600` (`!t:3600`) - Expires in 1 hour\n"
                 "• `!vip` (`!v`) - VIP styling with crown\n"
-                "• `!cute` (`!c`, `!l`) - Extra cute ninja styling\n\n"
+                "• `!cute` (`!c`, `!l`, `!love`) - Extra cute ninja styling\n\n"
                 "⭐ **Ready to strike in stealth?**"
             ),
         ),
