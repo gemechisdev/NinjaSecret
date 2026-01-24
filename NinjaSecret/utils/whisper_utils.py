@@ -28,7 +28,8 @@ NINJA_EMOJIS = {
     "speak_no_evil": "🙊",
     "lightning": "⚡",
     "eyes": "👀",
-    "sparkles": "✨"
+    "sparkles": "✨",
+    "broadcast": "📢"  # Dual message / public indicator
 }
 
 def generate_whisper_id() -> str:
@@ -110,7 +111,7 @@ def get_style_emojis() -> List[str]:
         '🗑️'                         # Delete style
     ]
 
-def get_modifier_type(modifiers: Dict) -> str:
+def get_modifier_type(modifiers: Optional[Dict]) -> str:
     """Determine the type of modifier combination
     
     Returns the primary modifier type based on priority order. When multiple modifiers
@@ -384,7 +385,7 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     # Add dual message indicator to style emoji if applicable
     style_emoji = f"{NINJA_EMOJIS['whisper']}{NINJA_EMOJIS['thought']}"
     if is_dual_message:
-        style_emoji = f"📢{NINJA_EMOJIS['thought']}"  # Public/Private indicator
+        style_emoji = f"{NINJA_EMOJIS['broadcast']}{NINJA_EMOJIS['thought']}"  # Public/Private indicator
     
     # Determine modifier type and set appropriate style emoji
     # If dual message, append modifier indicator to preserve both visual cues
@@ -407,7 +408,7 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
     # If we have both dual message and a modifier, combine them
     # Otherwise use whichever one applies (prioritizing modifier for non-dual messages)
     if is_dual_message and modifier_emoji:
-        style_emoji = f"{modifier_emoji}📢"  # Modifier + dual indicator
+        style_emoji = f"{modifier_emoji}{NINJA_EMOJIS['broadcast']}"  # Modifier + dual indicator
     elif modifier_emoji:
         style_emoji = modifier_emoji
 
