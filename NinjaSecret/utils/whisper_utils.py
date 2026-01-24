@@ -516,6 +516,57 @@ def create_whisper_posted_message(content: str, targets: List[Dict], modifiers: 
 
     return "\n".join(message_parts)
 
+
+def create_timer_countdown_message(whisper_data: Dict, lang: str = "en") -> str:
+    """Create timer message with current time remaining for inline message update.
+    
+    This is used by the background task to update timed whisper messages
+    with the current countdown, similar to how !reveal edits the message.
+    
+    Args:
+        whisper_data: Whisper document from database containing settings and target info
+        lang: Language code
+        
+    Returns:
+        Formatted message string with time remaining
+    """
+    language = get_string(lang)
+    settings = whisper_data.get("settings", {})
+    
+    # Get time remaining
+    expires_at = settings.get("expires_at")
+    if not expires_at:
+        return None
+    
+    time_remaining = get_time_remaining_text(expires_at)
+    if time_remaining == "ᴇxᴘɪʀᴇᴅ":
+        return None  # Let cleanup task handle expired whispers
+    
+    # Build message using the same format as create_whisper_posted_message
+    header = language["whisper_delivery_timer"]
+    
+    message_parts = [header, ""]
+    
+    # Get target display
+    target_mentions = whisper_data.get("target_mentions", "")
+    original_token = whisper_data.get("original_target_token", "")
+    
+    if original_token.lower() in ["@all", "@everyone"]:
+        message_parts.append(language["whisper_for_everyone"])
+    else:
+        message_parts.append(language["whisper_for_target"].format(target_mentions or original_token))
+    
+    # Add time remaining line (the key update)
+    message_parts.append(language["whisper_time_left"].format(time_remaining))
+    
+    message_parts.extend([
+        language["whisper_encrypted"],
+        ""
+    ])
+    
+    return "\n".join(message_parts)
+
+
 def create_whisper_keyboard(whisper_id: str) -> InlineKeyboardMarkup:
     """Create inline keyboard for whisper message"""
     buttons = [
