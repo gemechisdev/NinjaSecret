@@ -84,6 +84,10 @@ async def timer_countdown_update_task():
     
     logger = LOGGER(__name__)
     
+    # Small delay between individual message updates to avoid hitting rate limits
+    # Telegram allows ~30 messages per second for bots
+    UPDATE_DELAY_SECONDS = 0.1
+    
     while True:
         try:
             # Get all active timed whispers with inline_message_id
@@ -116,13 +120,16 @@ async def timer_countdown_update_task():
                             )
                             updated_count += 1
                             
+                            # Small delay between updates to avoid rate limiting
+                            await asyncio.sleep(UPDATE_DELAY_SECONDS)
+                            
                     except Exception as e:
                         # Silently handle individual whisper update errors
                         # Common errors: message not modified, message deleted, etc.
                         error_count += 1
                         # Only log if it's not a common "message not modified" error
                         error_str = str(e).lower()
-                        if "not modified" not in error_str and "message is not modified" not in error_str:
+                        if "not modified" not in error_str:
                             logger.debug(f"Timer update failed for whisper {whisper.get('whisper_id', 'unknown')}: {e}")
                 
                 if updated_count > 0:
