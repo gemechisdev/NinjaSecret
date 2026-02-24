@@ -150,7 +150,7 @@ def audio_quality_markup(
         [
             InlineKeyboardButton(
                 text=_["BACK_BUTTON"],
-                callback_data="settingsback_helper",
+                callback_data="settings_back_helper",
             ),
             InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close"),
         ],
@@ -198,7 +198,7 @@ def video_quality_markup(
         [
             InlineKeyboardButton(
                 text=_["BACK_BUTTON"],
-                callback_data="settingsback_helper",
+                callback_data="settings_back_helper",
             ),
             InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close"),
         ],
