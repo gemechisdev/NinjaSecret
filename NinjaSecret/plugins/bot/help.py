@@ -230,3 +230,11 @@ async def mb_plugin_button(client, CallbackQuery):
                 await CallbackQuery.edit_message_text(error_msg, reply_markup=keyboard)
             except MessageNotModified:
                 logger.debug("Error message content unchanged, skipping edit")
+
+
+@app.on_callback_query(filters.regex("^close$") & ~BANNED_USERS)
+async def close_cb(client, CallbackQuery):
+    try:
+        await CallbackQuery.message.delete()
+    except Exception as e:
+        logger.error(f"Error closing message: {str(e)}")

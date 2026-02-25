@@ -833,3 +833,87 @@ Use inline mode to send secrets:
             f"{NINJA_EMOJIS['see_no_evil']} Error clearing targets!",
             show_alert=True
         )
+
+
+@app.on_callback_query(filters.regex(r"whisper_full_stats_(\d+)") & ~BANNED_USERS)
+@languageCB
+async def handle_full_stats(client, callback_query: CallbackQuery, _):
+    """Show full stats for a user"""
+    try:
+        await callback_query.answer()
+
+        user_id = callback_query.from_user.id
+        stats = await get_user_whisper_stats(user_id)
+
+        stats_text = format_user_stats(stats, "en")
+
+        stats_text += f"\n\n{_['whisper_detailed_analytics']}"
+        stats_text += f"\n{_['whisper_total_sent'].format(stats.get('secrets_sent', 0))}"
+        stats_text += f"\n{_['whisper_total_received'].format(stats.get('secrets_received', 0))}"
+        stats_text += f"\n{_['whisper_burn_used'].format(stats.get('secrets_burned', 0))}"
+        stats_text += f"\n{_['whisper_timed_sent'].format(stats.get('secrets_timed', 0))}"
+        stats_text += f"\n{_['whisper_monkeys_reached'].format(stats.get('total_targets_reached', 0))}"
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    f"🏠 ʜᴏᴍᴇ ᴛʀᴇᴇ {NINJA_EMOJIS['shuriken']}",
+                    callback_data="whisper_dashboard"
+                )
+            ]
+        ])
+
+        await callback_query.edit_message_text(
+            stats_text,
+            reply_markup=keyboard
+        )
+
+    except Exception as e:
+        logger.exception("Error in handle_full_stats")
+        await callback_query.answer(
+            f"{NINJA_EMOJIS['see_no_evil']} Error loading full stats!",
+            show_alert=True
+        )
+
+
+@app.on_callback_query(filters.regex("whisper_clean_history") & ~BANNED_USERS)
+async def handle_clean_history(client, callback_query: CallbackQuery):
+    """Clean user's whisper history"""
+    try:
+        from NinjaSecret.mongo.whisperdb import whisperdb as whisper_collection
+
+        user_id = callback_query.from_user.id
+
+        # Delete whispers sent by the user that have been read or expired
+        result = await whisper_collection.delete_many({
+            "sender_id": user_id,
+            "$or": [
+                {"status": "read"},
+                {"status": "burned"},
+                {"status": "expired"}
+            ]
+        })
+
+        deleted_count = result.deleted_count
+
+        await callback_query.answer(
+            f"{NINJA_EMOJIS['sparkles']} Cleaned {deleted_count} old secrets!",
+            show_alert=True
+        )
+
+        # Refresh stats view
+        stats = await get_user_whisper_stats(user_id)
+        keyboard = create_stats_keyboard(user_id)
+        stats_text = format_user_stats(stats, "en")
+
+        await callback_query.edit_message_text(
+            stats_text,
+            reply_markup=keyboard
+        )
+
+    except Exception:
+        logger.exception("Error in handle_clean_history")
+        await callback_query.answer(
+            f"{NINJA_EMOJIS['see_no_evil']} Error cleaning history!",
+            show_alert=True
+        )
