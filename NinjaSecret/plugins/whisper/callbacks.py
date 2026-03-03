@@ -281,18 +281,26 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                         if settings.get("reveal_on_read"):
                             # Show who read it (burn with reveal)
                             burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
+                            await callback_query.edit_message_text(
+                                text=burned_message,
+                                parse_mode=enums.ParseMode.MARKDOWN,
+                                reply_markup=None  # Remove the button
+                            )
                         else:
-                            # Silent delete (burn without revealing)
-                            burned_message = _['whisper_delete_message'].format(target_for_display)
-
-                        # Use callback_query.edit_message_text() which is a bound method that
-                        # automatically uses inline_message_id from the callback query for inline messages.
-                        # No need to manually pass inline_message_id - Pyrogram handles it internally.
-                        await callback_query.edit_message_text(
-                            text=burned_message,
-                            parse_mode=enums.ParseMode.MARKDOWN,
-                            reply_markup=None  # Remove the button
-                        )
+                            # Silent delete (!d/!delete) - try to delete the message entirely,
+                            # fall back to replacing with short funny text if deletion is not possible
+                            deleted = False
+                            try:
+                                if callback_query.message:
+                                    await callback_query.message.delete()
+                                    deleted = True
+                            except Exception:
+                                pass
+                            if not deleted:
+                                await callback_query.edit_message_text(
+                                    text=_['whisper_delete_message'],
+                                    reply_markup=None  # Remove the button
+                                )
                     except Exception as e:
                         print(f"Failed to edit burned message: {e}")
 
