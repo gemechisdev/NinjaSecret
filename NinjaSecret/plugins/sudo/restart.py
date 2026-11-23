@@ -31,40 +31,6 @@ async def update_(client, message, _):
     # Git update functionality commented out to avoid authentication errors
     await message.reply_text("Git update functionality has been disabled to prevent authentication errors.")
     return
-    #         return await message.reply_text(_["server_2"])
-    # response = await message.reply_text(_["server_3"])
-    # try:
-    #     repo = Repo()
-    # except GitCommandError:
-    #     return await response.edit(_["server_4"])
-    # except InvalidGitRepositoryError:
-    #     return await response.edit(_["server_5"])
-    # to_exc = f"git fetch origin {config.UPSTREAM_BRANCH} &> /dev/null"
-    # os.system(to_exc)
-    # await asyncio.sleep(7)
-    # verification = ""
-    # REPO_ = repo.remotes.origin.url.split(".git")[0]
-    # for checks in repo.iter_commits(f"HEAD..origin/{config.UPSTREAM_BRANCH}"):
-    #     verification = str(checks.count())
-    # if verification == "":
-    #         return await response.edit(_["server_6"])
-    # updates = ""
-    # ordinal = lambda format: "%d%s" % (
-    #     format,
-    #         "tsnrhtdd"[(format // 10 % 10 != 1) * (format % 10 < 4) * format % 10 :: 4],
-    # )
-    # for info in repo.iter_commits(f"HEAD..origin/{config.UPSTREAM_BRANCH}"):
-    #         updates += f"<b>➣ #{info.count()}: <a href={REPO_}/commit/{info}>{info.summary}</a> ʙʏ -> {info.author}</b>\n\t\t\t\t<b>➥ ᴄᴏᴍᴍɪᴛᴇᴅ ᴏɴ :</b> {ordinal(int(datetime.fromtimestamp(info.committed_date).strftime('%d')))} {datetime.fromtimestamp(info.committed_date).strftime('%b')}, {datetime.fromtimestamp(info.committed_date).strftime('%b')}, {datetime.fromtimestamp(info.committed_date).strftime('%Y')}\n\n"
-    # _update_response_ = "<b>ᴀ ɴᴇᴡ ᴜᴩᴅᴀᴛᴇ ɪs ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛʜᴇ ʙᴏᴛ !</b>\n\n➣ ᴩᴜsʜɪɴɢ ᴜᴩᴅᴀᴛᴇs ɴᴏᴡ\n\n<b><u>ᴜᴩᴅᴀᴛᴇs:</u></b>\n\n"
-    # _final_updates_ = _update_response_ + updates
-    # if len(_final_updates_) > 4096:
-    #         url = await DAXXBin(updates)
-    #         nrs = await response.edit(
-    #             f"<b>ᴀ ɴᴇᴡ ᴜᴩᴅᴀᴛᴇ ɪs ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴛʜᴇ ʙᴏᴛ !</b>\n\n➣ ᴩᴜsʜɪɴɢ ᴜᴩᴅᴀᴛᴇs ɴᴏᴡ\n\n<u><b>ᴜᴩᴅᴀᴛᴇs :</b></u>\n\n<a href={url}>ᴄʜᴇᴄᴋ ᴜᴩᴅᴀᴛᴇs</a>"
-    # )
-    # else:
-    #         nrs = await response.edit(_final_updates_, disable_web_page_preview=True)
-    # os.system("git stash &> /dev/null && git pull")
 
     try:
         served_chats = await get_active_chats()
