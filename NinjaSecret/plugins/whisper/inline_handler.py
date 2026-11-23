@@ -507,27 +507,18 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
         whisper_data = pending_whispers.get(whisper_id)
         if not whisper_data:
             logger.error(f"Whisper data not found in cache: {whisper_id}")
-            # Fallback: Try to get from database for backward compatibility
-            # This handles edge cases like:
-            # 1. Bot restart between inline query and chosen result (cache lost)
-            # 2. Old whispers created before this change
-            # 3. Whispers created by other instances in multi-instance setup
-            whisper = await get_whisper(whisper_id)
-            if not whisper:
-                logger.error(f"Whisper not found in database either: {whisper_id}")
-                return
-            logger.info(f"Retrieved whisper from database (fallback): {whisper_id}")
-        else:
-            # Store the whisper to database now that it's actually sent
-            logger.info(f"Storing whisper {whisper_id} to database (user sent it)")
-            await store_whisper(whisper_data)
-            
-            # Remove from pending cache
-            del pending_whispers[whisper_id]
-            logger.info(f"Removed whisper {whisper_id} from pending cache")
-            
-            # Retrieve the stored whisper for further processing
-            whisper = await get_whisper(whisper_id)
+            return
+
+        # Store the whisper to database now that it's actually sent
+        logger.info(f"Storing whisper {whisper_id} to database (user sent it)")
+        await store_whisper(whisper_data)
+        
+        # Remove from pending cache
+        del pending_whispers[whisper_id]
+        logger.info(f"Removed whisper {whisper_id} from pending cache")
+        
+        # Retrieve the stored whisper for further processing
+        whisper = await get_whisper(whisper_id)
         
         # Attach the inline_message_id to the whisper (only if available)
         if chosen_result.inline_message_id:

@@ -161,6 +161,6 @@ All fixes completed:
 
 **No active bugs found** — the bot is running in production with all core features working.
 
-### Remaining observation (not a bug):
+### Remaining observation (not a bug) — ✅ RESOLVED
 
-- `pending_whispers` memory cache lost on restart — whispers created in inline mode but not yet sent are lost if the bot restarts. Not critical since they were never actually sent. There is a fallback to `get_whisper(whisper_id)` for DB-stored whispers, but pending whispers aren't saved to DB until `chosen_inline_result` fires.
+Removed the DB fallback from `pending_whispers` cache lookup in `inline_handler.py`. If the bot restarts between inline query and "Send", the draft whisper is now cleanly dropped with an error log instead of silently falling back to DB (which would never have the data anyway since whispers are only saved on send).
