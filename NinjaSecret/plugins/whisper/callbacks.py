@@ -175,7 +175,6 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 {"$set": {
                     "target_id": user_id,
                     "target_username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
-                    "target_mentions": target_mention
                 }}
             )
             
@@ -185,19 +184,16 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             # The original header is preserved and looks better for default whispers
             
         elif is_target and target_id:
-            # Target was already resolved, but update their display name if it changed
+            # Target was already resolved, update their display name if changed
             display_name = callback_query.from_user.first_name
             if callback_query.from_user.last_name:
                 display_name += f" {callback_query.from_user.last_name}"
             
-            # Update target mention with fresh name
-            target_mention = f"[{display_name}](tg://user?id={user_id})"
-            
+            # Update target username only, keep target_mentions as-is (combined list for all targets)
             await mongodb.whispers.update_one(
                 {"whisper_id": whisper_id},
                 {"$set": {
                     "target_username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
-                    "target_mentions": target_mention
                 }}
             )
             
@@ -207,8 +203,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 from strings import get_string
                 language = get_string("en")
                 
-                # Create the updated message text
-                message_text = language['whisper_simple_message'].format(target_mention)
+                # Use the existing combined target_mentions from the whisper data
+                message_text = language['whisper_simple_message'].format(whisper.get("target_mentions", target_mention))
                 
                 # Use callback_query.edit_message_text() which is a bound method that
                 # automatically uses inline_message_id from the callback query for inline messages.

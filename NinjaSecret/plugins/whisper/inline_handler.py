@@ -188,12 +188,13 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
             if original_token.lower() in ["@all", "@everyone"]:
                 targets_dict.append({"display_name": language['whisper_everyone'], "type": "all"})
             else:
-                # For single targets, use the provided mention/display
-                # For multiple targets, target_mentions contains combined string so we use target_display
-                if target_id and target_mentions:
-                    display_name = target_mentions
+                # Each target shows its OWN individual display name, not the combined string
+                if target_username:
+                    display_name = f"@{target_username}"
+                elif target_id:
+                    display_name = str(target_id)
                 else:
-                    display_name = target_display
+                    display_name = original_token
                 targets_dict.append({"display_name": display_name, "type": "user"})
     
     # Always use create_whisper_inline_result which handles both styled and plain whispers
