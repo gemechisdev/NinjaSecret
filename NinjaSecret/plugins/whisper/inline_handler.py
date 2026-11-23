@@ -184,12 +184,14 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
     # Create proper target dictionaries for the formatter
     targets_dict = []
     if targets:
-        for target_id, target_username, original_token in targets:
+        for target_id, target_username, original_token, target_display_name in targets:
             if original_token.lower() in ["@all", "@everyone"]:
                 targets_dict.append({"display_name": language['whisper_everyone'], "type": "all"})
             else:
-                # Each target shows its OWN individual display name, not the combined string
-                if target_username:
+                # Priority: display_name (first_name + last_name) → username (@username) → user_id → original_token
+                if target_display_name:
+                    display_name = target_display_name
+                elif target_username:
                     display_name = f"@{target_username}"
                 elif target_id:
                     display_name = str(target_id)
@@ -303,7 +305,7 @@ async def handle_inline_query(client, query: InlineQuery):
                         "target_username": target_username,
                         "target_id": target_user_id,
                         "original_target_token": target_ref,
-                        "all_targets": [(target_user_id, target_username, target_ref)],
+                        "all_targets": [(target_user_id, target_username, target_ref, display_name)],
                         "target_mentions": target_mention,
                         "created_at": datetime.utcnow()  # Track when cached for cleanup
                     }
@@ -318,7 +320,7 @@ async def handle_inline_query(client, query: InlineQuery):
                     result_data = create_unified_whisper_inline_result(
                         whisper_id,
                         message_content,
-                        [(target_user_id, target_username, target_ref)],
+                        [(target_user_id, target_username, target_ref, display_name)],
                         modifiers,
                         display_name,
                         target_mention,
@@ -382,14 +384,15 @@ async def handle_inline_query(client, query: InlineQuery):
         for token in target_tokens:
             # Handle special @all/@everyone cases
             if token.lower() in ["@all", "@everyone"]:
-                resolved_targets.append((None, None, token))
+                resolved_targets.append((None, None, token, language['whisper_everyone']))
                 language = get_string("en")  # Default language for now
                 everyone_text = language['whisper_everyone']
                 display_names.append(everyone_text)
                 target_mentions.append(everyone_text)
             else:
                 target_id, target_username, display_name = await resolve_target(token, app)
-                resolved_targets.append((target_id, target_username, token))
+                # Store all 4 elements: target_id, target_username, token, display_name
+                resolved_targets.append((target_id, target_username, token, display_name))
                 
                 # When display_name is None but we have target_id, use user ID as placeholder
                 if display_name:
@@ -538,7 +541,7 @@ async def handle_chosen_inline_result(client, chosen_result: ChosenInlineResult)
         logger.info(f"Processing {len(all_targets)} targets for recent targets list")
         
         # Add each target to the sender's recent targets list
-        for target_id, target_username, original_token in all_targets:
+        for target_id, target_username, original_token, target_display_name in all_targets:
             # Skip @all and @everyone
             if original_token.lower() in ["@all", "@everyone"]:
                 logger.info(f"Skipping @all/@everyone target")

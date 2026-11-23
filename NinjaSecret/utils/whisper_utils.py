@@ -571,7 +571,10 @@ def create_timer_countdown_message(whisper_data: Dict, lang: str = "en") -> str:
             target_display = format_targets_display(targets)
         elif all_targets:
             # Fallback to all_targets if available
-            target_display = ", ".join([t[2] if len(t) > 2 else str(t[0]) for t in all_targets if t])
+            target_display = ", ".join([
+                t[3] if len(t) > 3 else (t[2] if len(t) > 2 else str(t[0]))
+                for t in all_targets if t
+            ])
         else:
             target_display = original_token
         message_parts.append(language["whisper_for_target"].format(target_display))

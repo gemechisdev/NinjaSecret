@@ -98,9 +98,9 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         # Check all_targets array if not already authorized
         if not is_target and all_targets:
             for target_tuple in all_targets:
-                # all_targets format: [(target_id, target_username, original_token), ...]
-                if len(target_tuple) == 3:
-                    t_id, t_username, t_token = target_tuple
+                # all_targets format: [(target_id, target_username, original_token, target_display_name), ...]
+                if len(target_tuple) >= 3:
+                    t_id, t_username, t_token = target_tuple[:3]
                     
                     # Check for @all/@everyone
                     if t_token and t_token.lower() in ["@all", "@everyone"]:
