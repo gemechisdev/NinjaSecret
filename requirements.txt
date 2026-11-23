@@ -3,7 +3,6 @@ aiofiles
 aiohttp==3.9.3
 dnspython==2.3.0
 fastapi
-heroku3
 motor
 pillow>=10.0.0
 psutil

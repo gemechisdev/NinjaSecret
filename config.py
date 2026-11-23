@@ -120,9 +120,6 @@ OWNER_ID = get_int(
     required=True,
 )
 
-HEROKU_APP_NAME = get_env("HEROKU_APP_NAME")
-HEROKU_API_KEY = get_env("HEROKU_API_KEY")
-
 UPSTREAM_REPO = get_env(
     "UPSTREAM_REPO",
     "https://github.com/gemechisdev/ninjasecretbot",

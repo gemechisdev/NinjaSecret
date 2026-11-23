@@ -1,29 +1,19 @@
 import asyncio
 import os
 import shutil
-import socket
 from datetime import datetime
 
-import urllib3
-# from git import Repo
-# from git.exc import GitCommandError, InvalidGitRepositoryError
 from pyrogram import filters
 
 import config
 from NinjaSecret import app
-from NinjaSecret.misc import HAPP, SUDOERS, XCB
+from NinjaSecret.misc import SUDOERS
 from NinjaSecret.utils.database import (
     get_active_chats,
     remove_active_chat,
     remove_active_video_chat,
 )
 from NinjaSecret.utils.decorators.language import language
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-async def is_heroku():
-    return "heroku" in socket.getfqdn()
 
 
 @app.on_message(filters.command(["getlog", "logs", "getlogs"], prefixes=["/", "!", "%", ",", "", ".", "@", "#"]) & SUDOERS)
@@ -41,8 +31,6 @@ async def update_(client, message, _):
     # Git update functionality commented out to avoid authentication errors
     await message.reply_text("Git update functionality has been disabled to prevent authentication errors.")
     return
-    # if await is_heroku():
-    #     if HAPP is None:
     #         return await message.reply_text(_["server_2"])
     # response = await message.reply_text(_["server_3"])
     # try:
@@ -90,26 +78,12 @@ async def update_(client, message, _):
                 await remove_active_video_chat(x)
             except:
                 pass
-        await response.edit(f"{nrs.text}\n\n{_['server_7']}")
     except:
         pass
 
-    if await is_heroku():
-        try:
-            os.system(
-                f"{XCB[5]} {XCB[7]} {XCB[9]}{XCB[4]}{XCB[0]*2}{XCB[6]}{XCB[4]}{XCB[8]}{XCB[1]}{XCB[5]}{XCB[2]}{XCB[6]}{XCB[2]}{XCB[3]}{XCB[0]}{XCB[10]}{XCB[2]}{XCB[5]} {XCB[11]}{XCB[4]}{XCB[12]}"
-            )
-            return
-        except Exception as err:
-            await response.edit(f"{nrs.text}\n\n{_['server_9']}")
-            return await app.send_message(
-                chat_id=config.LOGGER_ID,
-                text=_["server_10"].format(err),
-            )
-    else:
-        os.system("pip3 install -r requirements.txt")
-        os.system(f"kill -9 {os.getpid()} && bash start")
-        exit()
+    os.system("pip3 install -r requirements.txt")
+    os.system(f"kill -9 {os.getpid()} && bash start")
+    exit()
 
 
 @app.on_message(filters.command(["restart"]) & SUDOERS)

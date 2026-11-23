@@ -1,7 +1,6 @@
 import socket
 import time
 
-import heroku3
 from pyrogram import filters
 
 import config
@@ -11,29 +10,8 @@ from .logging import LOGGER
 
 SUDOERS = filters.user()
 
-HAPP = None
+db = {}
 _boot_ = time.time()
-
-
-def is_heroku():
-    return "heroku" in socket.getfqdn()
-
-
-XCB = [
-    "/",
-    "@",
-    ".",
-    "com",
-    ":",
-    "git",
-    "heroku",
-    "push",
-    str(config.HEROKU_API_KEY),
-    "https",
-    str(config.HEROKU_APP_NAME),
-    "HEAD",
-    "master",
-]
 
 
 def dbb():
@@ -59,17 +37,3 @@ async def sudo():
         for user_id in sudoers:
             SUDOERS.add(user_id)
     LOGGER(__name__).info(f"Sudo users loaded...")
-
-
-def heroku():
-    global HAPP
-    if is_heroku:
-        if config.HEROKU_API_KEY and config.HEROKU_APP_NAME:
-            try:
-                Heroku = heroku3.from_key(config.HEROKU_API_KEY)
-                HAPP = Heroku.app(config.HEROKU_APP_NAME)
-                LOGGER(__name__).info(f"Heroku App Configured")
-            except BaseException:
-                LOGGER(__name__).warning(
-                    f"Please make sure your Heroku API Key and Your App name are configured correctly in the heroku."
-                )
