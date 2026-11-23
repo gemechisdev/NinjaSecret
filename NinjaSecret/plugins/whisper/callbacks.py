@@ -406,9 +406,28 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery, _):
             )
             return
 
-        # Format targets info
-        targets = whisper.get('targets', [])
-        target_display = format_targets_display(targets, max_display=10)
+        # Format targets info - all_targets is stored as tuples (target_id, target_username, original_token, target_display_name)
+        # Convert to dict format expected by format_targets_display
+        raw_targets = whisper.get('targets') or whisper.get('all_targets', [])
+        targets = []
+        if raw_targets:
+            for t in raw_targets:
+                if isinstance(t, dict):
+                    targets.append(t)
+                elif isinstance(t, (list, tuple)) and len(t) >= 4:
+                    target_id, target_username, original_token, target_display_name = t
+                    if original_token.lower() in ["@all", "@everyone"]:
+                        targets.append({
+                            "display_name": target_display_name,
+                            "type": "all",
+                            "resolved_id": None,
+                        })
+                    else:
+                        targets.append({
+                            "display_name": target_display_name,
+                            "type": "user",
+                            "resolved_id": target_id,
+                        })
 
         # Create info text
         info_text = f"{_['whisper_target_info']}\n\n"

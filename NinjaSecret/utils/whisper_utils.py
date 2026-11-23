@@ -322,7 +322,15 @@ def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
     target_names = []
     for target in targets[:max_display]:
         display_name = target.get("display_name", target.get("value", "ᴜɴᴋɴᴏᴡɴ"))
-        resolved_id = target.get("resolved_id")
+
+        # Check multiple possible ID fields for clickable mention
+        # Priority: resolved_id → target_id → user_id → id
+        resolved_id = (
+            target.get("resolved_id")
+            or target.get("target_id")
+            or target.get("user_id")
+            or target.get("id")
+        )
 
         # Create clickable mention using resolved_id if available
         if resolved_id:

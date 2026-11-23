@@ -21,6 +21,29 @@ whisper_achievements = mongodb.whisper_achievements
 
 async def store_whisper(data: Dict) -> str:
     """Store a new whisper message with optional special features support"""
+    # Convert all_targets tuples to targets dicts for clickable mentions in display
+    raw_targets = data.get("all_targets") or []
+    targets_list = []
+    if raw_targets:
+        for t in raw_targets:
+            if isinstance(t, dict):
+                targets_list.append(t)
+            elif isinstance(t, (list, tuple)) and len(t) >= 4:
+                target_id, target_username, original_token, target_display_name = t
+                if original_token.lower() in ["@all", "@everyone"]:
+                    targets_list.append({
+                        "display_name": target_display_name,
+                        "type": "all",
+                        "resolved_id": None,
+                    })
+                else:
+                    targets_list.append({
+                        "display_name": target_display_name,
+                        "type": "user",
+                        "resolved_id": target_id,
+                        "target_id": target_id,
+                    })
+
     whisper_data = {
         "whisper_id": data["whisper_id"],
         "inline_message_id": data.get("inline_message_id"),
@@ -29,7 +52,8 @@ async def store_whisper(data: Dict) -> str:
         "target_username": data.get("target_username"),
         "target_id": data.get("target_id"),
         "original_target_token": data.get("original_target_token"),
-        "all_targets": data.get("all_targets"),  # Store all targets for recent targets history
+        "all_targets": data.get("all_targets"),  # Store all targets as tuples for recent targets history
+        "targets": targets_list,  # Store targets as dicts for clickable mentions in display
         "target_mentions": data.get("target_mentions"),  # Store formatted mentions
         "created_at": datetime.utcnow(),
         "read_at": None,
