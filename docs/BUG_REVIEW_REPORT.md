@@ -18,11 +18,24 @@ All Heroku-related code has been removed:
 | `config.py` | Removed `HEROKU_APP_NAME`, `HEROKU_API_KEY` env vars |
 | `requirements.txt` | Removed `heroku3` |
 
+### Fix #1: `print()` → `LOGGER` (Complete)
+
+All `print()` statements replaced with proper `LOGGER` calls:
+
+| File | Change |
+|------|--------|
+| `NinjaSecret/mongo/whisperdb.py` | `logger.error()` instead of `print()` |
+| `NinjaSecret/plugins/admins/chat_control.py` | `logger.debug()` instead of `print()` (6 instances, added LOGGER import) |
+| `NinjaSecret/plugins/whisper/callbacks.py` | `logger.error()` instead of `print()` (12 instances) |
+| `NinjaSecret/plugins/whisper/inline_handler.py` | `logger.error()` instead of `print()` |
+| `NinjaSecret/plugins/whisper/start_integration.py` | `logger.error()` instead of `print()` (added LOGGER import) |
+
 **Verification:**
+- ✅ Zero `print()` statements remain in `NinjaSecret/`
 - ✅ Zero Heroku references remain (`grep` returns nothing)
 - ✅ All Python files pass `ast.parse` (no syntax errors)
 - ✅ `db = {}` kept in `misc.py` since `utils/decorators/admins.py` imports it
-- ✅ Pushed to `github.com/gemechisdev/NinjaSecret`
+- ✅ All changes committed and pushed to `github.com/gemechisdev/NinjaSecret`
 
 ---
 
@@ -30,17 +43,16 @@ All Heroku-related code has been removed:
 
 These are not necessarily bugs — the bot is working in production. These are areas where code quality could be improved:
 
-### 1. `print()` statements instead of logging
+### 1. `print()` statements instead of logging — ✅ FIXED
 
-Several files use `print()` for error output instead of the configured `LOGGER` instance:
+All `print()` statements have been replaced with proper `LOGGER` calls. Errors now go to the configured log file (`log.txt`) and log group instead of stdout.
 
-- `NinjaSecret/mongo/whisperdb.py:557` — `print(f"Bot get_users failed for {ref}: {e}")`
-- `NinjaSecret/plugins/admins/chat_control.py` — 5 `print()` statements for link detection
-- `NinjaSecret/plugins/whisper/callbacks.py` — 12 `print()` statements for various errors
-- `NinjaSecret/plugins/whisper/inline_handler.py:480` — `print(f"Inline query error: {e}")`
-- `NinjaSecret/plugins/whisper/start_integration.py:62` — `print(f"Whisper start error: {e}")`
-
-**Impact:** Errors go to stdout instead of the configured log file (`log.txt`) and log group. Not a bug, but makes debugging harder.
+**Files fixed:**
+- `NinjaSecret/mongo/whisperdb.py` — `logger.error()` (1 instance)
+- `NinjaSecret/plugins/admins/chat_control.py` — `logger.debug()` (6 instances)
+- `NinjaSecret/plugins/whisper/callbacks.py` — `logger.error()` (12 instances)
+- `NinjaSecret/plugins/whisper/inline_handler.py` — `logger.error()` (1 instance)
+- `NinjaSecret/plugins/whisper/start_integration.py` — `logger.error()` (1 instance)
 
 ### 2. Dead code in `utils/database.py` and `utils/database/database.py`
 
@@ -124,10 +136,9 @@ This is working correctly.
 | Whisper burn/reveal mutually exclusive | Logic is correct |
 | `all_targets` tuple/list mismatch causes issues | Working correctly |
 
-**No active bugs found** — the bot is running in production with all core features working. The only items are optional code quality improvements:
+**Optional remaining improvements:**
 
-1. Replace `print()` statements with `LOGGER` calls in whisper files and chat_control
-2. Remove dead leaderboard functions from `utils/database.py` and `utils/database/database.py`
-3. Clean up commented-out git code in `restart.py`
+1. Remove dead leaderboard functions from `utils/database.py` and `utils/database/database.py` (functions reference `chattopdb` which is never defined — but nothing calls them)
+2. Clean up commented-out git code in `restart.py` (~40 lines of commented-out update logic)
 
-Would you like me to proceed with any of these optional improvements?
+Would you like me to proceed with either of these?
