@@ -311,7 +311,7 @@ def parse_whisper_command(text: str) -> Tuple[Optional[str], Optional[str], Dict
     return message_content if message_content else None, targets_string, modifiers
 
 def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
-    """Format targets for display in messages"""
+    """Format targets for display in messages with clickable mentions"""
     if not targets:
         return "ɴᴏ ᴛᴀʀɢᴇᴛs"
 
@@ -322,15 +322,12 @@ def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
     target_names = []
     for target in targets[:max_display]:
         display_name = target.get("display_name", target.get("value", "ᴜɴᴋɴᴏᴡɴ"))
+        resolved_id = target.get("resolved_id")
 
-        if target.get("resolved_id"):
-            if target.get("type") == "username":
-                if not display_name.startswith("@"):
-                    display_name = f"@{display_name}"
-            target_names.append(display_name)
+        # Create clickable mention using resolved_id if available
+        if resolved_id:
+            target_names.append(f"[{display_name}](tg://user?id={resolved_id})")
         else:
-            if not display_name.startswith("@"):
-                display_name = f"{display_name}"
             target_names.append(display_name)
 
     if len(targets) > max_display:

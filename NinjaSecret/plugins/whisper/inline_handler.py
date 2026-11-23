@@ -186,9 +186,13 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
     if targets:
         for target_id, target_username, original_token, target_display_name in targets:
             if original_token.lower() in ["@all", "@everyone"]:
-                targets_dict.append({"display_name": language['whisper_everyone'], "type": "all"})
+                targets_dict.append({
+                    "display_name": language['whisper_everyone'],
+                    "type": "all",
+                    "resolved_id": None,
+                })
             else:
-                # Priority: display_name (first_name + last_name) → username (@username) → user_id → original_token
+                # Priority: display_name (first_name + last_name) → @username → user_id → original_token
                 if target_display_name:
                     display_name = target_display_name
                 elif target_username:
@@ -197,7 +201,11 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
                     display_name = str(target_id)
                 else:
                     display_name = original_token
-                targets_dict.append({"display_name": display_name, "type": "user"})
+                targets_dict.append({
+                    "display_name": display_name,
+                    "type": "user",
+                    "resolved_id": target_id,
+                })
     
     # Always use create_whisper_inline_result which handles both styled and plain whispers
     # When modifiers is empty dict {}, it creates a plain whisper with classic ninja styling
