@@ -332,9 +332,15 @@ def format_targets_display(targets: List[Dict], max_display: int = 3) -> str:
             or target.get("id")
         )
 
-        # Create clickable mention using resolved_id if available
+        # Fallback: username for t.me link when no user ID available
+        username = target.get("username")
+
+        # Create clickable mention using user ID if available
         if resolved_id:
             target_names.append(f"[{display_name}](tg://user?id={resolved_id})")
+        elif username:
+            # Clickable Telegram profile link via username (no user ID needed)
+            target_names.append(f"[{display_name}](https://t.me/{username})")
         else:
             target_names.append(display_name)
 

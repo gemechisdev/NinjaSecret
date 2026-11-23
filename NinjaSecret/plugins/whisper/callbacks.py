@@ -427,6 +427,8 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery, _):
                             "display_name": target_display_name,
                             "type": "user",
                             "resolved_id": target_id,
+                            "target_id": target_id,
+                            "username": target_username,
                         })
 
         # Create info text

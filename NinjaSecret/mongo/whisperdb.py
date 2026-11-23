@@ -42,6 +42,7 @@ async def store_whisper(data: Dict) -> str:
                         "type": "user",
                         "resolved_id": target_id,
                         "target_id": target_id,
+                        "username": target_username,
                     })
 
     whisper_data = {

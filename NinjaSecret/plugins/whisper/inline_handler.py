@@ -206,6 +206,7 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
                     "type": "user",
                     "resolved_id": target_id,
                     "target_id": target_id,
+                    "username": target_username,
                 })
     
     # Always use create_whisper_inline_result which handles both styled and plain whispers
