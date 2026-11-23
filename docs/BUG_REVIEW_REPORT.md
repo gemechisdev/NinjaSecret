@@ -54,18 +54,25 @@ All `print()` statements have been replaced with proper `LOGGER` calls. Errors n
 - `NinjaSecret/plugins/whisper/inline_handler.py` — `logger.error()` (1 instance)
 - `NinjaSecret/plugins/whisper/start_integration.py` — `logger.error()` (1 instance)
 
-### 2. Dead code in `utils/database.py` and `utils/database/database.py`
+### 2. Dead code in `utils/database.py` and `utils/database/database.py` — ✅ FIXED
 
-Both copies contain leaderboard/top-chat functions that reference `chattopdb` (a collection that's never defined):
+Removed both copies of leaderboard/top-chat functions that referenced `chattopdb` (a collection that's never defined):
 
-- `get_top_chats()`, `get_global_tops()`, `get_particulars()`, `get_particular_top()`, `update_particular_top()`
-- `get_userss()`, `get_user_top()`, `update_user_top()`, `get_topp_users()`
+- Removed `get_top_chats()`, `get_global_tops()`, `get_particulars()`, `get_particular_top()`, `update_particular_top()`
+- Removed `get_userss()`, `get_user_top()`, `update_user_top()`, `get_topp_users()`
 
-**Impact:** These functions would crash with `NameError` if called — but **nothing calls them** (verified: zero call sites). They're dead code, not active bugs.
+**Verification:**
+- ✅ Zero `chattopdb` references remain (`grep` returns nothing)
+- ✅ Both files pass syntax checks
+- ✅ No call sites existed (verified: zero call sites before removal)
 
-### 3. Commented-out code in `restart.py`
+### 3. Commented-out code in `restart.py` — ✅ FIXED
 
-The `update_` (git pull) function has ~40 lines of commented-out Git update logic. Not a bug, just clutter.
+Removed ~40 lines of commented-out git update logic from the `update_` handler in `plugins/sudo/restart.py`.
+
+**Verification:**
+- ✅ File passes syntax check
+- ✅ Only the active `return` statement remains (git update is properly disabled with a clear message)
 
 ### 4. `pending_whispers` memory cache lost on restart
 
@@ -138,7 +145,22 @@ This is working correctly.
 
 **Optional remaining improvements:**
 
-1. Remove dead leaderboard functions from `utils/database.py` and `utils/database/database.py` (functions reference `chattopdb` which is never defined — but nothing calls them)
-2. Clean up commented-out git code in `restart.py` (~40 lines of commented-out update logic)
+1. Remove dead leaderboard functions from `utils/database.py` and `utils/database/database.py` — ✅ Complete
+2. Clean up commented-out git code in `restart.py` — ✅ Complete
 
-Would you like me to proceed with either of these?
+## 📋 Summary
+
+All fixes completed:
+
+| Fix | Status |
+|-----|--------|
+| Heroku removal (end-to-end) | ✅ Complete |
+| `print()` → `LOGGER` | ✅ Complete |
+| Dead leaderboard code removal | ✅ Complete |
+| Commented-out git code removal | ✅ Complete |
+
+**No active bugs found** — the bot is running in production with all core features working.
+
+### Remaining observation (not a bug):
+
+- `pending_whispers` memory cache lost on restart — whispers created in inline mode but not yet sent are lost if the bot restarts. Not critical since they were never actually sent. There is a fallback to `get_whisper(whisper_id)` for DB-stored whispers, but pending whispers aren't saved to DB until `chosen_inline_result` fires.
