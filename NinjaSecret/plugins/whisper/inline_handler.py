@@ -477,7 +477,7 @@ async def handle_inline_query(client, query: InlineQuery):
 
     except Exception as e:
         # Log error and return error response
-        print(f"Inline query error: {e}")
+        logger.error(f"Inline query error: {e}")
         results = [create_error_response("en")]
         await query.answer(results, cache_time=1, is_personal=True)
 

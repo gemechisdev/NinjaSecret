@@ -219,7 +219,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 )
             except Exception as e:
                 # If we can't edit the message, that's okay - the DB is updated
-                print(f"Could not update inline message with updated name: {e}")
+                logger.error(f"Could not update inline message with updated name: {e}")
 
         # Mark as read only if target is viewing (sender viewing doesn't count as "read")
         # Exception: if sender IS the target (self-whisper), then it counts as read
@@ -302,7 +302,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                                     reply_markup=None  # Remove the button
                                 )
                     except Exception as e:
-                        print(f"Failed to edit burned message: {e}")
+                        logger.error(f"Failed to edit burned message: {e}")
 
             # Handle reveal-on-read (!r modifier) when NOT burning
             # This edits the message to show who read it (like @psstrobot)
@@ -330,7 +330,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                         reply_markup=None  # Remove the button to prevent re-click
                     )
                 except Exception as e:
-                    print(f"Failed to edit revealed message: {e}")
+                    logger.error(f"Failed to edit revealed message: {e}")
 
         # Get sender name for display
         try:
@@ -380,7 +380,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         await callback_query.answer(display_content, show_alert=True)
 
     except Exception as e:
-        print(f"Whisper view error: {e}")
+        logger.error(f"Whisper view error: {e}")
         import traceback
         traceback.print_exc()
         await callback_query.answer(
@@ -440,7 +440,7 @@ async def handle_whisper_targets(client, callback_query: CallbackQuery, _):
         await callback_query.answer(info_text, show_alert=True)
 
     except Exception as e:
-        print(f"Whisper targets error: {e}")
+        logger.error(f"Whisper targets error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_targets']}",
             show_alert=True
@@ -468,7 +468,7 @@ async def handle_dashboard(client, callback_query: CallbackQuery, _):
         )
 
     except Exception as e:
-        print(f"Dashboard error: {e}")
+        logger.error(f"Dashboard error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_dashboard']}",
             show_alert=True
@@ -503,7 +503,7 @@ async def handle_stats(client, callback_query: CallbackQuery, _):
         )
 
     except Exception as e:
-        print(f"Stats error: {e}")
+        logger.error(f"Stats error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_stats']}",
             show_alert=True
@@ -551,7 +551,7 @@ async def handle_tutorial(client, callback_query: CallbackQuery, _):
         )
 
     except Exception as e:
-        print(f"Tutorial error: {e}")
+        logger.error(f"Tutorial error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_tutorial']}",
             show_alert=True
@@ -607,7 +607,7 @@ async def handle_styles(client, callback_query: CallbackQuery, _):
         )
 
     except Exception as e:
-        print(f"Styles error: {e}")
+        logger.error(f"Styles error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_styles']}",
             show_alert=True
@@ -661,7 +661,7 @@ async def handle_help(client, callback_query: CallbackQuery, _):
         )
 
     except Exception as e:
-        print(f"Help error: {e}")
+        logger.error(f"Help error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_help']}",
             show_alert=True
@@ -697,7 +697,7 @@ async def handle_settings(client, callback_query: CallbackQuery, _):
         )
 
     except Exception as e:
-        print(f"Settings error: {e}")
+        logger.error(f"Settings error: {e}")
         await callback_query.answer(
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_settings']}",
             show_alert=True

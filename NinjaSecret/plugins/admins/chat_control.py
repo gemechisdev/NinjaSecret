@@ -8,6 +8,7 @@ from pyrogram.errors import FloodWait, UserAdminInvalid, ChatAdminRequired
 from pyrogram.types import Message, ChatPermissions
 
 from NinjaSecret import app
+from NinjaSecret.logging import LOGGER
 from NinjaSecret.utils.admin_check import admin_check
 from NinjaSecret.utils.decorators.language import language
 from NinjaSecret.utils.extraction import extract_user
@@ -20,6 +21,8 @@ from NinjaSecret.utils.database import (
     slowmodedb,
 )
 from config import BANNED_USERS, OWNER_ID
+
+logger = LOGGER(__name__)
 
 # In-memory storage for performance
 forward_settings = {}
@@ -353,17 +356,17 @@ async def handle_text_messages(client, message: Message):
         links_setting = await get_links_setting(chat_id)
         if message.text and contains_links(message.text):
             # Log link detection for debugging
-            print(f"🔗 Link detected in message from user {user_id} in chat {chat_id}: {message.text[:100]}...")
+            logger.debug(f"🔗 Link detected in message from user {user_id} in chat {chat_id}: {message.text[:100]}...")
             
             if not links_setting.get("global_links", True):
                 # Global links are blocked
-                print(f"❌ Global links blocked, deleting message from user {user_id}")
+                logger.debug(f"❌ Global links blocked, deleting message from user {user_id}")
                 await message.delete()
                 return
 
             if not is_admin and not links_setting.get("non_admin_links", True):
                 # Non-admin links are blocked
-                print(f"❌ Non-admin links blocked, deleting message from user {user_id}")
+                logger.debug(f"❌ Non-admin links blocked, deleting message from user {user_id}")
                 await message.delete()
                 return
 
@@ -401,17 +404,17 @@ async def handle_other_messages(client, message: Message):
         links_setting = await get_links_setting(chat_id)
         if message.caption and contains_links(message.caption):
             # Log link detection in caption for debugging
-            print(f"🔗 Link detected in caption from user {user_id} in chat {chat_id}: {message.caption[:100]}...")
+            logger.debug(f"🔗 Link detected in caption from user {user_id} in chat {chat_id}: {message.caption[:100]}...")
             
             if not links_setting.get("global_links", True):
                 # Global links are blocked
-                print(f"❌ Global links blocked in caption, deleting message from user {user_id}")
+                logger.debug(f"❌ Global links blocked in caption, deleting message from user {user_id}")
                 await message.delete()
                 return
 
             if not is_admin and not links_setting.get("non_admin_links", True):
                 # Non-admin links are blocked
-                print(f"❌ Non-admin links blocked in caption, deleting message from user {user_id}")
+                logger.debug(f"❌ Non-admin links blocked in caption, deleting message from user {user_id}")
                 await message.delete()
                 return
 

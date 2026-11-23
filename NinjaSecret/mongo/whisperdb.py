@@ -553,8 +553,7 @@ async def resolve_target(token: str, app, chat_id=None) -> tuple:
             if display.strip():
                 return target_id, username, display.strip()
         except Exception as e:
-            # Log the error for debugging user resolution issues
-            print(f"Bot get_users failed for {ref}: {e}")
+            logger.error(f"Bot get_users failed for {ref}: {e}")
 
     # Fallback display if unresolved
     if not display or display == token:

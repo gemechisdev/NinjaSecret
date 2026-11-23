@@ -7,6 +7,7 @@ from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 
 from NinjaSecret import app
+from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import get_user_whisper_stats
 from NinjaSecret.utils.whisper_utils import (
     create_dashboard_keyboard,
@@ -14,6 +15,8 @@ from NinjaSecret.utils.whisper_utils import (
     NINJA_EMOJIS
 )
 from config import BANNED_USERS
+
+logger = LOGGER(__name__)
 
 # This will be called when user sends /start whisper
 @app.on_message(filters.command(["whisper"]) & filters.private & ~BANNED_USERS)
@@ -59,7 +62,7 @@ Ready to go stealth? {NINJA_EMOJIS['scroll']}"""
         )
 
     except Exception as e:
-        print(f"Whisper start error: {e}")
+        logger.error(f"Whisper start error: {e}")
         await message.reply_text(
             f"{NINJA_EMOJIS['see_no_evil']} Something went wrong! Please try again later."
         )
