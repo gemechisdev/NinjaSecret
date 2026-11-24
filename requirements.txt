@@ -12,7 +12,7 @@ pykeyboard
 python-dotenv
 pyyaml==6.0.1
 tgcrypto
-httpx==0.25.2
+httpx==0.28.1
 requests
 unidecode
 uvicorn
