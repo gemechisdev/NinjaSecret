@@ -59,6 +59,8 @@ async def store_whisper(data: Dict) -> str:
         "created_at": datetime.utcnow(),
         "read_at": None,
         "reader_id": None,
+        "readers": [],  # [{"user_id", "name", "read_at"}] - one entry per valid reader
+        "rich": True,  # card is a Rich Message (new format); legacy whispers lack this flag
         "status": "active"
     }
 
@@ -69,7 +71,11 @@ async def store_whisper(data: Dict) -> str:
 
         # Handle timer expiration
         if modifiers.get("timer"):
-            expires_at = datetime.utcnow() + timedelta(seconds=modifiers["timer"])
+            # The card already shows the expiry computed when the inline result was
+            # built, so store that exact value to keep card and database in sync.
+            expires_at = data.get("expires_at") or (
+                datetime.utcnow() + timedelta(seconds=modifiers["timer"])
+            )
             settings["expires_at"] = expires_at
 
         # Handle burn after reading
@@ -102,15 +108,76 @@ async def get_whisper(whisper_id: str) -> Optional[Dict]:
     return await whisperdb.find_one({"whisper_id": whisper_id})
 
 async def mark_whisper_read(whisper_id: str, reader_id: int):
-    """Mark whisper as read"""
+    """Record the first read (read_at / reader_id / status) for stats compatibility.
+
+    Only the first read is recorded, and a burned or expired whisper is never
+    flipped back to "read".
+    """
     await whisperdb.update_one(
-        {"whisper_id": whisper_id},
+        {
+            "whisper_id": whisper_id,
+            "read_at": None,
+            "status": {"$nin": ["burned", "expired"]},
+        },
         {"$set": {
             "read_at": datetime.utcnow(),
             "reader_id": reader_id,
             "status": "read"
         }}
     )
+
+async def add_whisper_reader(whisper_id: str, user_id: int, name: str):
+    """Atomically register `user_id` as a reader of the whisper.
+
+    Returns (is_new_reader, readers). The conditional update makes this safe
+    when several targets tap at the same moment, and a repeat tap by the same
+    user is reported as is_new_reader=False so callers skip the card edit.
+    """
+    result = await whisperdb.update_one(
+        {"whisper_id": whisper_id, "readers.user_id": {"$ne": user_id}},
+        {"$push": {"readers": {
+            "user_id": user_id,
+            "name": name,
+            "read_at": datetime.utcnow()
+        }}}
+    )
+    doc = await whisperdb.find_one({"whisper_id": whisper_id}, {"readers": 1})
+    return result.modified_count == 1, (doc or {}).get("readers") or []
+
+async def claim_burn(whisper_id: str) -> bool:
+    """Atomically mark a whisper burned. True only for the caller that did it."""
+    result = await whisperdb.update_one(
+        {"whisper_id": whisper_id, "status": {"$ne": "burned"}},
+        {"$set": {"status": "burned", "burned_at": datetime.utcnow()}}
+    )
+    return result.modified_count == 1
+
+async def link_target_id(whisper_id: str, user_id: int, username: Optional[str], primary: bool = False):
+    """Attach a user id to a target that was given as @username and never resolved.
+
+    `primary=True` (single-receiver whispers only) also fills the whisper's
+    top-level target_id / target_username when they were still empty.
+    """
+    import re
+    if username:
+        await whisperdb.update_one(
+            {
+                "whisper_id": whisper_id,
+                "targets": {"$elemMatch": {
+                    "username": {"$regex": f"^{re.escape(username)}$", "$options": "i"},
+                    "resolved_id": None
+                }}
+            },
+            {"$set": {"targets.$.resolved_id": user_id, "targets.$.target_id": user_id}}
+        )
+    if primary:
+        await whisperdb.update_one(
+            {"whisper_id": whisper_id, "target_id": None},
+            {"$set": {
+                "target_id": user_id,
+                "target_username": username.lower() if username else None
+            }}
+        )
 
 async def get_whisper_message(inline_message_id: str) -> Optional[Dict]:
     """Get whisper message by inline message ID"""
@@ -297,7 +364,10 @@ async def cleanup_expired_whispers():
 
     count = 0
     async for whisper in expired_whispers:
-        await mark_whisper_expired(whisper["inline_message_id"])
+        await whisperdb.update_one(
+            {"whisper_id": whisper["whisper_id"]},
+            {"$set": {"status": "expired"}}
+        )
         count += 1
 
     return count
@@ -328,6 +398,37 @@ async def get_active_timed_whispers() -> List[Dict]:
         whispers.append(whisper)
     
     return whispers
+
+
+async def get_whispers_pending_expiry_edit(limit: int = 50) -> List[Dict]:
+    """Rich whispers whose timer ran out but whose card still shows the secret.
+
+    Only whispers created with the rich format (`rich: True`) that have an
+    inline_message_id are returned. Burned/deleted ones already show a final card.
+    """
+    cursor = whisperdb.find({
+        "rich": True,
+        "settings.expires_at": {"$lt": datetime.utcnow()},
+        "inline_message_id": {"$nin": [None, ""]},
+        "expiry_edited": {"$ne": True},
+        "status": {"$ne": "burned"}
+    }).limit(limit)
+    return [w async for w in cursor]
+
+async def claim_expiry_edit(whisper_id: str) -> bool:
+    """Atomically claim the right to replace a whisper's card with the expired card."""
+    result = await whisperdb.update_one(
+        {"whisper_id": whisper_id, "expiry_edited": {"$ne": True}},
+        {"$set": {"expiry_edited": True, "status": "expired"}}
+    )
+    return result.modified_count == 1
+
+async def release_expiry_edit(whisper_id: str):
+    """Undo claim_expiry_edit after a transient failure so the edit is retried."""
+    await whisperdb.update_one(
+        {"whisper_id": whisper_id},
+        {"$set": {"expiry_edited": False}}
+    )
 
 
 # User Statistics Functions

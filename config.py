@@ -90,6 +90,13 @@ API_HASH = get_env("API_HASH", required=True)
 
 BOT_TOKEN = get_env("BOT_TOKEN", required=True)
 
+# Rich Messages (whisper cards) are sent through the raw Bot API.
+# Override BOT_API_BASE only if you run a local Bot API server.
+BOT_API_BASE = get_env("BOT_API_BASE", "https://api.telegram.org")
+
+# Colour of the "Read secret" button: "danger" (red, default) or "success" (green)
+WHISPER_BUTTON_STYLE = get_env("WHISPER_BUTTON_STYLE", "danger")
+
 MONGO_DB_URI = get_env("MONGO_DB_URI", required=True)
 
 BOT_NAME = get_env("BOT_NAME", "Ninja Secret🥷")

@@ -5,73 +5,25 @@ Handles periodic cleanup of expired whispers and maintenance tasks
 
 import asyncio
 from datetime import datetime, timedelta
-from pyrogram import enums
-from NinjaSecret.mongo.whisperdb import cleanup_expired_whispers, get_active_timed_whispers
+from NinjaSecret.mongo.whisperdb import (
+    cleanup_expired_whispers,
+    get_whispers_pending_expiry_edit,
+    claim_expiry_edit,
+    release_expiry_edit,
+)
 from NinjaSecret.logging import LOGGER
 
 # Cache cleanup configuration
 PENDING_WHISPER_MAX_AGE_SECONDS = 300  # 5 minutes - whispers not sent after this time are removed
 
-# Timer countdown update configuration
-# Base interval for checking whispers (5 seconds)
-TIMER_CHECK_INTERVAL_SECONDS = 5
-
-# Track when each whisper was last updated to implement smart update intervals
-# Key: whisper_id, Value: datetime of last update
-_last_update_times = {}
-
-
-def _should_update_whisper(whisper_id: str, time_remaining_seconds: float) -> bool:
-    """Determine if a whisper should be updated based on time remaining.
-    
-    Smart update intervals:
-    - Less than 5 minutes remaining: update every 5 seconds (every cycle)
-    - 5-30 minutes remaining: update every 1 minute
-    - 30 minutes - 1 hour remaining: update every 3 minutes
-    - More than 1 hour remaining: update every 5 minutes
-    
-    Args:
-        whisper_id: The whisper's unique ID
-        time_remaining_seconds: Seconds until the whisper expires
-        
-    Returns:
-        True if the whisper should be updated this cycle
-    """
-    now = datetime.utcnow()
-    last_update = _last_update_times.get(whisper_id)
-    
-    # Always update if never updated before
-    if last_update is None:
-        return True
-    
-    seconds_since_update = (now - last_update).total_seconds()
-    
-    # Determine update interval based on time remaining
-    if time_remaining_seconds <= 300:  # Less than 5 minutes
-        # Update every 5 seconds (every cycle)
-        return seconds_since_update >= 5
-    elif time_remaining_seconds <= 1800:  # 5-30 minutes
-        # Update every 1 minute
-        return seconds_since_update >= 60
-    elif time_remaining_seconds <= 3600:  # 30 minutes - 1 hour
-        # Update every 3 minutes
-        return seconds_since_update >= 180
-    else:  # More than 1 hour
-        # Update every 5 minutes
-        return seconds_since_update >= 300
-
-
-def _record_update(whisper_id: str):
-    """Record that a whisper was updated."""
-    _last_update_times[whisper_id] = datetime.utcnow()
-
-
-def _cleanup_update_times(active_whisper_ids: set):
-    """Remove update times for whispers that are no longer active."""
-    # Use set operations for efficient cleanup
-    expired_ids = set(_last_update_times.keys()) - active_whisper_ids
-    for wid in expired_ids:
-        del _last_update_times[wid]
+# Expiry watcher configuration
+# Timed cards show their countdown with <tg-time format="r">, which Telegram
+# clients tick themselves, so no periodic countdown edits are needed any more.
+# The watcher only has to swap the card for the "expired" card once time is up.
+EXPIRY_CHECK_INTERVAL_SECONDS = 15
+EXPIRY_EDIT_BATCH = 50
+# Small delay between edits to stay far below Telegram's rate limits
+EXPIRY_EDIT_DELAY_SECONDS = 0.1
 
 
 async def cleanup_pending_whispers_cache():
@@ -131,111 +83,57 @@ async def whisper_cleanup_task():
 
 
 async def timer_countdown_update_task():
-    """Background task to update timed whisper messages with current countdown.
-    
-    This task checks every 5 seconds but uses smart update intervals:
-    - Less than 5 minutes remaining: update every 5 seconds
-    - 5-30 minutes remaining: update every 1 minute  
-    - 30 minutes - 1 hour remaining: update every 3 minutes
-    - More than 1 hour remaining: update every 5 minutes
-    
-    This reduces API calls and avoids rate limiting while still providing
-    timely updates for whispers that are about to expire.
+    """Background task: replace expired timed cards with the "expired" card.
+
+    Name kept for compatibility with __main__.py. Every pass it
+      1. finds rich whispers whose timer ran out and whose card still shows the secret,
+      2. atomically claims each one (so two passes never edit the same card twice),
+      3. edits the card via the Rich Message API.
+
+    A transient failure (network, flood wait, 5xx) releases the claim so the
+    edit is retried on the next pass. Permanent failures (message deleted, ...)
+    keep the claim so they are not retried forever.
     """
-    # Import here to avoid circular imports
-    from NinjaSecret import app
-    from NinjaSecret.utils.whisper_utils import create_timer_countdown_message, create_whisper_keyboard
-    
+    from NinjaSecret.utils.rich_api import edit_rich_message, RichApiError, MessageNotModified
+    from NinjaSecret.utils.whisper_card import expired_card
+
     logger = LOGGER(__name__)
-    
-    # Small delay between individual message updates to avoid hitting rate limits
-    # Telegram allows ~30 messages per second for bots
-    UPDATE_DELAY_SECONDS = 0.1
-    
+
     while True:
         try:
-            # Get all active timed whispers with inline_message_id
-            timed_whispers = await get_active_timed_whispers()
-            
-            if timed_whispers:
-                updated_count = 0
-                skipped_count = 0
-                error_count = 0
-                
-                # Build set of active whisper IDs for cleanup
-                active_whisper_ids = set()
-                
-                for whisper in timed_whispers:
-                    try:
-                        inline_message_id = whisper.get("inline_message_id")
-                        whisper_id = whisper.get("whisper_id")
-                        settings = whisper.get("settings", {})
-                        expires_at = settings.get("expires_at")
-                        
-                        if not inline_message_id or not whisper_id:
-                            continue
-                        
-                        # Calculate time remaining in seconds first to check if expired
-                        if not expires_at:
-                            continue
-                            
-                        time_remaining_seconds = (expires_at - datetime.utcnow()).total_seconds()
-                        
-                        # Skip if expired (let cleanup task handle it) - check early to avoid unnecessary processing
-                        if time_remaining_seconds <= 0:
-                            continue
-                        
-                        # Add to active set only for non-expired whispers
-                        active_whisper_ids.add(whisper_id)
-                        
-                        # Check if we should update this whisper based on smart intervals
-                        if not _should_update_whisper(whisper_id, time_remaining_seconds):
-                            skipped_count += 1
-                            continue
-                        
-                        # Create the updated message with current time remaining
-                        updated_message = create_timer_countdown_message(whisper)
-                        
-                        if updated_message:
-                            # Edit the inline message to show updated countdown
-                            # Using app.edit_inline_text similar to how !reveal uses
-                            # callback_query.edit_message_text()
-                            await app.edit_inline_text(
-                                inline_message_id=inline_message_id,
-                                text=updated_message,
-                                parse_mode=enums.ParseMode.MARKDOWN,
-                                reply_markup=create_whisper_keyboard(whisper_id)
-                            )
-                            
-                            # Record that we updated this whisper
-                            _record_update(whisper_id)
-                            updated_count += 1
-                            
-                            # Small delay between updates to avoid rate limiting
-                            await asyncio.sleep(UPDATE_DELAY_SECONDS)
-                            
-                    except Exception as e:
-                        # Silently handle individual whisper update errors
-                        # Common errors: message not modified, message deleted, etc.
-                        error_count += 1
-                        # Only log if it's not a common "message not modified" error
-                        error_str = str(e).lower()
-                        if "not modified" not in error_str:
-                            logger.debug(f"Timer update failed for whisper {whisper.get('whisper_id', 'unknown')}: {e}")
-                
-                # Clean up tracking for expired whispers
-                _cleanup_update_times(active_whisper_ids)
-                
-                if updated_count > 0:
-                    logger.debug(f"Updated {updated_count} timed whisper messages (skipped {skipped_count} not due yet)")
-            
-            # Wait before next check cycle
-            await asyncio.sleep(TIMER_CHECK_INTERVAL_SECONDS)
-            
+            pending = await get_whispers_pending_expiry_edit(EXPIRY_EDIT_BATCH)
+
+            for whisper in pending:
+                whisper_id = whisper.get("whisper_id")
+                inline_message_id = whisper.get("inline_message_id")
+                if not whisper_id or not inline_message_id:
+                    continue
+
+                # Another pass (or process) may have claimed it already
+                if not await claim_expiry_edit(whisper_id):
+                    continue
+
+                try:
+                    await edit_rich_message(expired_card(), inline_message_id=inline_message_id)
+                except MessageNotModified:
+                    pass
+                except RichApiError as e:
+                    if e.transient:
+                        await release_expiry_edit(whisper_id)
+                        logger.warning(f"Expiry edit for {whisper_id} will be retried: {e}")
+                    else:
+                        logger.info(f"Expiry edit for {whisper_id} skipped: {e}")
+                except Exception as e:
+                    await release_expiry_edit(whisper_id)
+                    logger.error(f"Expiry edit for {whisper_id} failed unexpectedly: {e}")
+
+                await asyncio.sleep(EXPIRY_EDIT_DELAY_SECONDS)
+
+            await asyncio.sleep(EXPIRY_CHECK_INTERVAL_SECONDS)
+
         except Exception as e:
-            logger.error(f"Timer countdown update task error: {e}")
-            # Wait before retrying on error
-            await asyncio.sleep(TIMER_CHECK_INTERVAL_SECONDS)
+            logger.error(f"Expiry watcher error: {e}")
+            await asyncio.sleep(EXPIRY_CHECK_INTERVAL_SECONDS)
 
 
 def start_cleanup_task():
@@ -255,4 +153,4 @@ def start_timer_countdown_task():
     Called from __main__.py after bot initialization.
     """
     asyncio.create_task(timer_countdown_update_task())
-    LOGGER(__name__).info("Timer countdown update task started (smart intervals based on time remaining)")
+    LOGGER(__name__).info("Whisper expiry watcher started")

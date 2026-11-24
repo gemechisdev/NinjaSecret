@@ -13,6 +13,10 @@ from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import (
     get_whisper,
     mark_whisper_read,
+    add_whisper_reader,
+    claim_burn,
+    link_target_id,
+    attach_inline_message_id,
     get_user_whisper_stats,
     update_user_stats,
     upsert_user,
@@ -20,7 +24,16 @@ from NinjaSecret.mongo.whisperdb import (
     clear_recent_targets
 )
 from NinjaSecret.utils.decorators.language import languageCB
+from NinjaSecret.utils.rich_api import edit_rich_message, RichApiError, MessageNotModified
+from NinjaSecret.utils.whisper_card import (
+    card_from_whisper,
+    card_targets,
+    burned_card_from_whisper,
+    deleted_card,
+    is_everyone as card_is_everyone,
+)
 from NinjaSecret.utils.whisper_utils import (
+    get_content_for_user,
     create_unauthorized_access_text,
     create_unauthorized_keyboard,
     format_user_stats,
@@ -36,6 +49,88 @@ from NinjaSecret.misc import SUDOERS
 
 # Get logger for this module
 logger = LOGGER(__name__)
+
+def _reader_display_name(user) -> str:
+    """Full name of a Telegram user, falling back to @username / id."""
+    name = (user.first_name or "").strip()
+    if user.last_name:
+        name = f"{name} {user.last_name}".strip()
+    if name:
+        return name
+    return f"@{user.username}" if user.username else str(user.id)
+
+
+async def _edit_card(callback_query: CallbackQuery, whisper: dict, card: dict) -> None:
+    """Replace the whisper card with `card` through the raw Rich Message API.
+
+    Never raises: a failed edit must not stop the secret from opening.
+    An identical card (MessageNotModified) is expected and ignored.
+    """
+    try:
+        inline_id = callback_query.inline_message_id or whisper.get("inline_message_id")
+        if inline_id:
+            await edit_rich_message(card, inline_message_id=inline_id)
+        elif callback_query.message:
+            await edit_rich_message(
+                card,
+                chat_id=callback_query.message.chat.id,
+                message_id=callback_query.message.id,
+            )
+        else:
+            logger.warning(f"No message reference to edit for whisper {whisper.get('whisper_id')}")
+    except MessageNotModified:
+        pass
+    except RichApiError as e:
+        logger.error(f"Rich edit failed for whisper {whisper.get('whisper_id')}: {e}")
+    except Exception:
+        logger.exception("Unexpected error while editing whisper card")
+
+
+async def _record_read(callback_query: CallbackQuery, whisper: dict) -> None:
+    """Register a valid read, then update the card (progress, reveal, burn, delete).
+
+    Called only after the secret popup was shown. Rules:
+      * a repeat read by the same person changes nothing (no edit, no error);
+      * burn/delete wait until every target read (@all: first read);
+      * burned/deleted/expired cards are final and never rebuilt.
+    """
+    whisper_id = whisper["whisper_id"]
+    user = callback_query.from_user
+    is_new, _readers = await add_whisper_reader(whisper_id, user.id, _reader_display_name(user))
+    await mark_whisper_read(whisper_id, user.id)
+    if not is_new:
+        return
+
+    targets = card_targets(whisper)
+    await link_target_id(
+        whisper_id,
+        user.id,
+        user.username,
+        primary=targets is not None and len(targets) == 1,
+    )
+
+    fresh = await get_whisper(whisper_id) or whisper
+    if not fresh.get("rich"):
+        return  # sent before the rich format existed: its message cannot be rebuilt
+    if fresh.get("status") in ("burned", "expired"):
+        return  # terminal state wins over a late progress edit
+
+    settings = fresh.get("settings") or {}
+    readers = fresh.get("readers") or []
+    targets = card_targets(fresh)
+
+    if settings.get("burn_after_reading"):
+        all_read = targets is None or len(readers) >= len(targets)
+        if all_read:
+            if await claim_burn(whisper_id):  # only one concurrent reader wins
+                if settings.get("reveal_on_read"):
+                    await _edit_card(callback_query, fresh, burned_card_from_whisper(fresh))
+                else:
+                    await _edit_card(callback_query, fresh, deleted_card())
+            return
+
+    await _edit_card(callback_query, fresh, card_from_whisper(fresh))
+
 
 @app.on_callback_query(filters.regex(r"whisper_view_(.+)") & ~BANNED_USERS)
 @languageCB
@@ -149,198 +244,30 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             return
 
         # Always update user info when they interact (names can change over time)
-        # This ensures we always have the most up-to-date user information
-        from NinjaSecret.core.mongo import mongodb
-        
-        # Update the clicking user's information in our database
         await upsert_user({
             "user_id": user_id,
             "username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
             "first_name": callback_query.from_user.first_name,
             "last_name": callback_query.from_user.last_name
         })
-        
-        # If target clicked and wasn't resolved before, link them now
-        if is_target and not target_id:
-            # Update the whisper with the resolved target_id and fresh display name
-            display_name = callback_query.from_user.first_name
-            if callback_query.from_user.last_name:
-                display_name += f" {callback_query.from_user.last_name}"
-            
-            # Update target mention with actual name now
-            target_mention = f"[{display_name}](tg://user?id={user_id})"
-            
-            await mongodb.whispers.update_one(
-                {"whisper_id": whisper_id},
-                {"$set": {
-                    "target_id": user_id,
-                    "target_username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
-                }}
-            )
-            
-            # Don't edit the message for default whispers to preserve original delivery header
-            # Only edit for special modifiers where we want to show the resolved name
-            # This prevents changing "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ ᴅᴇʟɪᴠᴇʀʏ 🥷" to "🤫 sᴇᴄʀᴇᴛ sʜᴜʀɪᴋᴇɴ 🥷"
-            # The original header is preserved and looks better for default whispers
-            
-        elif is_target and target_id:
-            # Target was already resolved, update their display name if changed
-            display_name = callback_query.from_user.first_name
-            if callback_query.from_user.last_name:
-                display_name += f" {callback_query.from_user.last_name}"
-            
-            # Update target username only, keep target_mentions as-is (combined list for all targets)
-            await mongodb.whispers.update_one(
-                {"whisper_id": whisper_id},
-                {"$set": {
-                    "target_username": callback_query.from_user.username.lower() if callback_query.from_user.username else None,
-                }}
-            )
-            
-            # Try to update the inline message to show the updated name
-            try:
-                from NinjaSecret.utils.whisper_utils import create_whisper_keyboard
-                from strings import get_string
-                language = get_string("en")
-                
-                # Use the existing combined target_mentions from the whisper data
-                message_text = language['whisper_simple_message'].format(whisper.get("target_mentions", target_mention))
-                
-                # Use callback_query.edit_message_text() which is a bound method that
-                # automatically uses inline_message_id from the callback query for inline messages.
-                await callback_query.edit_message_text(
-                    text=message_text,
-                    parse_mode=enums.ParseMode.MARKDOWN,
-                    reply_markup=create_whisper_keyboard(whisper_id)
-                )
-            except Exception as e:
-                # If we can't edit the message, that's okay - the DB is updated
-                logger.error(f"Could not update inline message with updated name: {e}")
 
-        # Mark as read only if target is viewing (sender viewing doesn't count as "read")
-        # Exception: if sender IS the target (self-whisper), then it counts as read
-        should_mark_read = False
-        if not whisper.get("read_at"):
-            if is_target and not is_sender:
-                # Target (not sender) is viewing - mark as read
-                should_mark_read = True
-            elif is_sender and is_target:
-                # Sender is also the target (self-whisper) - mark as read
-                should_mark_read = True
+        # With rich buttons chosen_inline_result may arrive without inline_message_id,
+        # so remember it from this callback (needed for edits and timer expiry).
+        if callback_query.inline_message_id and not whisper.get("inline_message_id"):
+            await attach_inline_message_id(whisper_id, callback_query.inline_message_id)
+            whisper["inline_message_id"] = callback_query.inline_message_id
 
-        if should_mark_read:
-            await mark_whisper_read(whisper_id, user_id)
-
-            # Handle burn after reading
-            if settings.get("burn_after_reading"):
-                should_burn = False
-                original_token = whisper.get("original_target_token", "")
-
-                # Check if this is a single target or @all/@everyone (burn immediately)
-                if original_token.lower() in ["@all", "@everyone"] or "," not in original_token:
-                    should_burn = True
-                else:
-                    # Multiple targets - would need complex tracking, for now burn immediately
-                    # TODO: Implement proper multi-target burn tracking
-                    should_burn = True
-
-                if should_burn:
-                    # Burn the whisper
-                    from NinjaSecret.core.mongo import mongodb
-                    await mongodb.whispers.update_one(
-                        {"whisper_id": whisper_id},
-                        {"$set": {"status": "burned"}}
-                    )
-
-                    # Edit the message to show it was read and remove button
-                    try:
-                        # Get target's display name
-                        target_display_name = callback_query.from_user.first_name
-                        if callback_query.from_user.username:
-                            target_display_name = f"@{callback_query.from_user.username}"
-
-                        # Get original target display for the message (with mentions if available)
-                        target_for_display = whisper.get("target_mentions")
-                        if not target_for_display:
-                            # Fallback to original token
-                            original_target = whisper.get("original_target_token", "Target")
-                            if original_target.lower() in ["@all", "@everyone"]:
-                                target_for_display = "Everyone"
-                            else:
-                                target_for_display = original_target
-
-                        # Check if we should reveal who read it when burning
-                        # Three distinct behaviors:
-                        # !burn (!b) = reveal_on_read=True + burn_after_reading=True -> shows who read and burns
-                        # !delete (!d, !del) = burn_after_reading=True only -> silent delete (no reader shown)
-                        # !reveal (!r) = reveal_on_read=True only -> handled in elif below (shows reader, no burn)
-                        if settings.get("reveal_on_read"):
-                            # Show who read it (burn with reveal)
-                            burned_message = _['whisper_burn_message'].format(target_for_display, target_display_name)
-                            await callback_query.edit_message_text(
-                                text=burned_message,
-                                parse_mode=enums.ParseMode.MARKDOWN,
-                                reply_markup=None  # Remove the button
-                            )
-                        else:
-                            # Silent delete (!d/!delete) - try to delete the message entirely,
-                            # fall back to replacing with short funny text if deletion is not possible
-                            deleted = False
-                            try:
-                                if callback_query.message:
-                                    await callback_query.message.delete()
-                                    deleted = True
-                            except Exception:
-                                pass
-                            if not deleted:
-                                await callback_query.edit_message_text(
-                                    text=_['whisper_delete_message'],
-                                    reply_markup=None  # Remove the button
-                                )
-                    except Exception as e:
-                        logger.error(f"Failed to edit burned message: {e}")
-
-            # Handle reveal-on-read (!r modifier) when NOT burning
-            # This edits the message to show who read it (like @psstrobot)
-            # Note: When burn_after_reading is also set, it's handled above (to prevent double-edit)
-            # Note: For multi-target whispers, only the first reader is revealed (message can only be edited once)
-            elif settings.get("reveal_on_read"):
-                try:
-                    # Build clickable read status with user's full name
-                    reader = callback_query.from_user
-                    reader_name = reader.first_name
-                    if reader.last_name:
-                        reader_name += " " + reader.last_name
-                    # Escape HTML special characters using standard library
-                    reader_name = html.escape(reader_name)
-                    
-                    # Create tappable name linking to profile
-                    revealed_text = _['whisper_reveal_message'].format(reader_name, reader.id)
-                    
-                    # Use callback_query.edit_message_text() which is a bound method that
-                    # automatically uses inline_message_id from the callback query for inline messages.
-                    # No need to manually pass inline_message_id - Pyrogram handles it internally.
-                    await callback_query.edit_message_text(
-                        text=revealed_text,
-                        parse_mode=enums.ParseMode.HTML,
-                        reply_markup=None  # Remove the button to prevent re-click
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to edit revealed message: {e}")
-
-        # Get sender name for display
-        try:
-            sender = await app.get_users(sender_id)
-            sender_name = f"@{sender.username}" if sender.username else sender.first_name
-        except Exception:
-            sender_name = "Someone"
+        # Only a real target's read counts. Opens by the sender, the owner or sudo
+        # users never change the card. For @all whispers everyone but those is a reader.
+        if card_is_everyone(whisper):
+            counts_as_read = is_target and not (is_sender or is_owner or is_sudo)
+        else:
+            counts_as_read = is_target
 
         # Get the whisper content (no truncation - user should have been warned during creation)
         content = whisper['content']
-        
+
         # Handle dual message content with new logic
-        from NinjaSecret.utils.whisper_utils import get_content_for_user
-        
         display_content = get_content_for_user(
             content=content,
             user_id=user_id,
@@ -349,7 +276,7 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             is_owner=is_owner,
             is_sudo=is_sudo
         )
-        
+
         # If None returned, user has no access to either message
         if display_content is None:
             await callback_query.answer(
@@ -357,12 +284,6 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
                 show_alert=True
             )
             return
-
-        # Add special features info if present
-        settings = whisper.get("settings", {})
-
-        # Timer info is now displayed on the inline message itself (updated every 5 seconds)
-        # so we don't need to show it in the callback alert anymore
 
         # Add emoji prefix based on modifier type to show in popup
         # Only !cute and !vip display emoji prefix in callback alert
@@ -372,7 +293,8 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
         elif modifier_type == 'cute':
             display_content = f"💕 {display_content}"
 
-        # Show as alert (popup) with enhanced content
+        # Show the secret first. If this fails the reader did not see it,
+        # so nothing is marked as read (the generic handler below reports it).
         await callback_query.answer(display_content, show_alert=True)
 
     except Exception as e:
@@ -383,6 +305,14 @@ async def handle_whisper_view(client, callback_query: CallbackQuery, _):
             f"{NINJA_EMOJIS['see_no_evil']} {_['whisper_error_viewing']}",
             show_alert=True
         )
+        return
+
+    # Read tracking and card edits happen after the popup and can never break it.
+    if counts_as_read:
+        try:
+            await _record_read(callback_query, whisper)
+        except Exception:
+            logger.exception("Failed to record whisper read")
 
 @app.on_callback_query(filters.regex(r"whisper_targets_(.+)") & ~BANNED_USERS)
 @languageCB

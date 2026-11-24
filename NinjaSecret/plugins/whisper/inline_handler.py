@@ -31,6 +31,7 @@ from NinjaSecret.mongo.whisperdb import (
     get_recent_targets,
     get_user_by_id
 )
+from NinjaSecret.utils.rich_api import answer_inline_query
 from NinjaSecret.utils.whisper_utils import (
     create_whisper_inline_result,
     create_empty_query_response,
@@ -156,7 +157,31 @@ def is_single_target_valid(part: str) -> bool:
 
     return False
 
-def create_unified_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, target_mentions: str = None, lang: str = "en") -> Dict:
+def compute_expires_at(modifiers: dict):
+    """Expiry for a timed whisper, computed once when the inline result is built.
+
+    The same value is shown on the card (<tg-time>) and stored with the whisper,
+    so the countdown the receiver sees always matches the database.
+    """
+    timer = (modifiers or {}).get("timer")
+    return datetime.utcnow() + timedelta(seconds=timer) if timer else None
+
+
+def to_raw_result(result: Dict) -> Dict:
+    """Bot API JSON for an inline whisper result (pyrogram cannot carry rich_message)."""
+    raw = {
+        "type": "article",
+        "id": result["id"],
+        "title": result["title"],
+        "description": result["description"],
+        "input_message_content": result["input_message_content"],
+    }
+    if result.get("thumb_url"):
+        raw["thumbnail_url"] = result["thumb_url"]
+    return raw
+
+
+def create_unified_whisper_inline_result(whisper_id: str, content: str, targets: list, modifiers: dict, target_display: str, target_mentions: str = None, lang: str = "en", expires_at=None) -> Dict:
     """Create unified inline query result that handles all whisper types (with or without modifiers)
     
     This function replaces the old create_simple_whisper_inline_result and create_enhanced_whisper_inline_result
@@ -212,7 +237,7 @@ def create_unified_whisper_inline_result(whisper_id: str, content: str, targets:
     # Always use create_whisper_inline_result which handles both styled and plain whispers
     # When modifiers is empty dict {}, it creates a plain whisper with classic ninja styling
     # (see create_whisper_inline_result in whisper_utils.py for default styling logic)
-    return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang)
+    return create_whisper_inline_result(whisper_id, content, targets_dict, modifiers, lang, expires_at)
 
 from config import BANNED_USERS
 
@@ -306,6 +331,9 @@ async def handle_inline_query(client, query: InlineQuery):
                     else:
                         target_mention = target_ref
                     
+                    # Timer expiry is fixed now so the card and the database agree
+                    expires_at = compute_expires_at(modifiers)
+
                     # Cache whisper data temporarily (don't save to DB yet)
                     # Will be saved to DB only when user actually sends it (in chosen_inline_result handler)
                     store_data = {
@@ -317,6 +345,7 @@ async def handle_inline_query(client, query: InlineQuery):
                         "original_target_token": target_ref,
                         "all_targets": [(target_user_id, target_username, target_ref, display_name)],
                         "target_mentions": target_mention,
+                        "expires_at": expires_at,
                         "created_at": datetime.utcnow()  # Track when cached for cleanup
                     }
                     
@@ -334,7 +363,8 @@ async def handle_inline_query(client, query: InlineQuery):
                         modifiers,
                         display_name,
                         target_mention,
-                        "en"
+                        "en",
+                        expires_at
                     )
                     
                     # Convert to Pyrogram format - preserve style from result_data
@@ -352,20 +382,10 @@ async def handle_inline_query(client, query: InlineQuery):
                         # Simple result, show target name with lightning emoji
                         final_title = f"{NINJA_EMOJIS['lightning']} {display_name} (Recent)"
                     
-                    pyrogram_result = InlineQueryResultArticle(
-                        id=result_data["id"],
-                        title=final_title,
-                        description=result_data["description"],
-                        thumb_url=result_data.get("thumb_url"),
-                        input_message_content=InputTextMessageContent(
-                            message_text=result_data["input_message_content"]["message_text"],
-                            parse_mode=enums.ParseMode.MARKDOWN
-                        ),
-                        reply_markup=result_data.get("reply_markup")
-                    )
-                    results.append(pyrogram_result)
-                
-                await query.answer(results, cache_time=1, is_personal=True)
+                    result_data["title"] = final_title
+                    results.append(to_raw_result(result_data))
+
+                await answer_inline_query(query.id, results, cache_time=1, is_personal=True)
                 return
             else:
                 # No recent targets, show error with guidance
@@ -386,6 +406,7 @@ async def handle_inline_query(client, query: InlineQuery):
             return
 
         # Parse multiple targets
+        language = get_string("en")  # must exist before the loop: @all uses it
         target_tokens = [token.strip() for token in target_token.split(",")]
         resolved_targets = []
         display_names = []
@@ -395,7 +416,6 @@ async def handle_inline_query(client, query: InlineQuery):
             # Handle special @all/@everyone cases
             if token.lower() in ["@all", "@everyone"]:
                 resolved_targets.append((None, None, token, language['whisper_everyone']))
-                language = get_string("en")  # Default language for now
                 everyone_text = language['whisper_everyone']
                 display_names.append(everyone_text)
                 target_mentions.append(everyone_text)
@@ -445,11 +465,15 @@ async def handle_inline_query(client, query: InlineQuery):
         # For simplified storage, use the first target (maintaining compatibility)
         primary_target = resolved_targets[0] if resolved_targets else (None, None, target_token)
 
+        # Timer expiry is fixed now so the card and the database agree
+        expires_at = compute_expires_at(modifiers)
+
         # Cache whisper data temporarily (don't save to DB yet)
         # Will be saved to DB only when user actually sends it (in chosen_inline_result handler)
         store_data = {
             "whisper_id": whisper_id,
             "content": message_content,
+            "expires_at": expires_at,
             "sender_id": query.from_user.id,
             "target_username": primary_target[1],
             "target_id": primary_target[0],
@@ -467,25 +491,13 @@ async def handle_inline_query(client, query: InlineQuery):
         pending_whispers[whisper_id] = store_data
 
         # Create inline result using unified function that handles all cases
-        result = create_unified_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en")
-
-        # Convert to Pyrogram format
-        pyrogram_result = InlineQueryResultArticle(
-            id=result["id"],
-            title=result["title"],
-            description=result["description"],
-            thumb_url=result.get("thumb_url"),
-            input_message_content=InputTextMessageContent(
-                message_text=result["input_message_content"]["message_text"],
-                parse_mode=enums.ParseMode.MARKDOWN
-            ),
-            reply_markup=result.get("reply_markup")
-        )
+        result = create_unified_whisper_inline_result(whisper_id, message_content, resolved_targets, modifiers, combined_display, combined_mentions, "en", expires_at)
 
         # Store whisper data temporarily for when the message is actually sent
         # We'll use the chosen inline result handler for this
 
-        await query.answer([pyrogram_result], cache_time=1, is_personal=True)
+        # Rich message results must go through the raw Bot API
+        await answer_inline_query(query.id, [to_raw_result(result)], cache_time=1, is_personal=True)
 
         # No need to store temp data - whisper is already in database
 

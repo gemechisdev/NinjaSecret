@@ -10,6 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from pyrogram import enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
 from strings import get_string
+from NinjaSecret.utils.whisper_card import whisper_card, modifiers_from_settings
 
 # Ninja-themed emojis and styling
 NINJA_EMOJIS = {
@@ -379,11 +380,18 @@ def get_time_remaining_text(expires_at: datetime) -> str:
     else:
         return f"{remaining.seconds}s"
 
-def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Dict], modifiers: Dict, lang: str = "en") -> Dict:
+def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Dict], modifiers: Dict, lang: str = "en", expires_at: Optional[datetime] = None) -> Dict:
     """Create inline query result for whisper
     
+    The returned dict is a raw Bot API InlineQueryResultArticle whose
+    input_message_content carries a Rich Message (`rich_message`). Send it with
+    NinjaSecret.utils.rich_api.answer_inline_query(); pyrogram cannot send it.
+    The Read button lives inside the rich message, so there is no reply_markup.
+
     Args:
         content: Can be either a string (single message) or a dict with 'public' and 'private' keys (dual message)
+        expires_at: Expiry (naive UTC) shown on timed cards. Must be the same value
+            that is stored with the whisper, so the card never disagrees with the database.
     """
     language = get_string(lang)
 
@@ -451,16 +459,36 @@ def create_whisper_inline_result(whisper_id: str, content: str, targets: List[Di
 
     description_parts.append(language["whisper_inline_desc_style"].format(modifiers.get('style', 'ᴄʟᴀssɪᴄ').title()))
 
+    is_everyone = any(t.get("type") == "all" for t in targets)
+    if is_everyone:
+        card_targets = None
+    else:
+        card_targets = [
+            (
+                t.get("resolved_id") or t.get("target_id"),
+                t.get("display_name") or t.get("username"),
+                t.get("username"),
+            )
+            for t in targets
+        ]
+
+    if modifiers.get("timer") and expires_at is None:
+        expires_at = datetime.utcnow() + timedelta(seconds=modifiers["timer"])
+
+    rich_message = whisper_card(
+        whisper_id,
+        card_targets,
+        modifiers=modifiers_from_settings(modifiers),
+        expires_at=expires_at if modifiers.get("timer") else None,
+        read=0,  # a freshly posted card is never read (no eye on single-receiver cards)
+    )
+
     return {
         "type": "article",
         "id": whisper_id,
         "title": language["whisper_inline_title"].format(style_emoji),
         "description": "\n".join(description_parts),
-        "input_message_content": {
-            "message_text": create_whisper_posted_message(content, targets, modifiers, lang),
-            "parse_mode": enums.ParseMode.MARKDOWN
-        },
-        "reply_markup": create_whisper_keyboard(whisper_id)
+        "input_message_content": {"rich_message": rich_message},
     }
 
 def format_timer_display(seconds: int) -> str:

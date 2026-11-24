@@ -9,12 +9,15 @@ from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
 from NinjaSecret import app
 from NinjaSecret.logging import LOGGER
 from NinjaSecret.mongo.whisperdb import get_user_whisper_stats
+from NinjaSecret.misc import SUDOERS
+from NinjaSecret.utils.rich_api import send_rich_message, RichApiError
+from NinjaSecret.utils.whisper_card import whisper_card
 from NinjaSecret.utils.whisper_utils import (
     create_dashboard_keyboard,
     format_user_stats,
     NINJA_EMOJIS
 )
-from config import BANNED_USERS
+from config import BANNED_USERS, OWNER_ID
 
 logger = LOGGER(__name__)
 
@@ -66,6 +69,34 @@ Ready to go stealth? {NINJA_EMOJIS['scroll']}"""
         await message.reply_text(
             f"{NINJA_EMOJIS['see_no_evil']} Something went wrong! Please try again later."
         )
+
+@app.on_message(filters.command(["richtest"]) & ~BANNED_USERS)
+async def rich_message_test(client, message: Message):
+    """Owner/sudo only: send sample whisper cards through sendRichMessage.
+
+    Use it after deploying to confirm the Bot API accepts rich messages:
+    it sends a single-receiver card (unread, then read) and a two-receiver card.
+    """
+    user = message.from_user
+    if not user or not (user.id == OWNER_ID or user.id in SUDOERS):
+        return
+
+    me = (user.id, user.first_name or "You", user.username)
+    other = (987654321, "SONAN")
+    samples = [
+        ("single, unread", whisper_card("richtest", [me])),
+        ("single, read (eye)", whisper_card("richtest", [me], read=1)),
+        ("two receivers", whisper_card("richtest", [me, other], read=1)),
+    ]
+    report = []
+    for title, card in samples:
+        try:
+            await send_rich_message(message.chat.id, card)
+            report.append(f"✅ {title}")
+        except RichApiError as e:
+            report.append(f"❌ {title}: {e}")
+    await message.reply_text("sendRichMessage test:\n" + "\n".join(report))
+
 
 def create_whisper_start_keyboard() -> InlineKeyboardMarkup:
     """Create keyboard for whisper start integration"""
