@@ -24,6 +24,7 @@ def log_message(message):
 
 def run_bot():
     global bot_process, bot_start_time
+    crash_streak = 0  # consecutive short-lived runs; drives restart backoff
     log_message("=== ENTERED run_bot() ===")
     while True:
         try:
@@ -54,8 +55,15 @@ def run_bot():
 
             return_code = bot_process.returncode
             uptime = int(time.time() - bot_start_time)
-            log_message(f"NinjaSecret exited after {uptime}s with code {return_code}, restarting in 5s...")
-            time.sleep(5)
+            # Restarting instantly makes every crash a fresh bot login. Telegram answers
+            # rapid repeated logins with FLOOD_WAIT / 500 RPC_CALL_FAIL, so back off.
+            if uptime < 60:
+                crash_streak += 1
+            else:
+                crash_streak = 0
+            delay = min(5 * (2 ** max(crash_streak - 1, 0)), 300)
+            log_message(f"NinjaSecret exited after {uptime}s with code {return_code}, restarting in {delay}s...")
+            time.sleep(delay)
 
         except Exception as e:  # Catch *everything* to prevent thread crash
             log_message(f"ERROR in run_bot: {type(e).__name__}: {e}")

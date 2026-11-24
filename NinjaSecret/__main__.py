@@ -5,6 +5,7 @@ import psutil
 import os
 from sys import argv
 from pyrogram import idle
+from pyrogram.errors import InternalServerError
 
 import config
 from NinjaSecret import LOGGER, app
@@ -152,10 +153,25 @@ async def handle_flood_wait_error(error, attempt, max_retries, component_name):
         return False  # Stop retrying
 
 
-async def start_bot_with_retry(max_retries=None, base_delay=1):
-    """Start the bot with retry mechanism for flood wait errors"""
+def _is_transient_error(error) -> bool:
+    """Server-side / network hiccups that are safe to retry (not auth or config errors)."""
+    if isinstance(error, InternalServerError):
+        return True
+    if isinstance(error, (asyncio.TimeoutError, TimeoutError, ConnectionError, OSError)):
+        return True
+    msg = str(error)
+    return any(
+        marker in msg
+        for marker in ("RPC_CALL_FAIL", "[500", "[502", "[503", "[504", "Timeout", "Connection")
+    )
+
+
+async def start_bot_with_retry(max_retries=None, base_delay=5, max_delay=120):
+    """Start the bot, retrying on flood waits and transient Telegram/network errors."""
     if max_retries is None:
         max_retries = config.BOT_STARTUP_MAX_RETRIES
+    max_retries = max(1, max_retries)
+
     for attempt in range(max_retries):
         try:
             await app.start()
@@ -163,23 +179,32 @@ async def start_bot_with_retry(max_retries=None, base_delay=1):
             return True
         except Exception as e:
             error_msg = str(e)
+            is_last = attempt >= max_retries - 1
+
             if "FLOOD_WAIT" in error_msg or "420" in error_msg:
                 should_continue = await handle_flood_wait_error(e, attempt, max_retries, "Bot")
                 if should_continue:
                     continue
-                else:
-                    raise e
-            else:
-                # Non-flood wait error, re-raise immediately
-                LOGGER(__name__).error(f"Non-flood wait error during bot start: {e}")
-                raise e
+                raise
 
-    return False
+            if _is_transient_error(e) and not is_last:
+                delay = min(base_delay * (2 ** attempt), max_delay)
+                LOGGER(__name__).warning(
+                    f"Transient Telegram error during bot start "
+                    f"(attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s..."
+                )
+                # Make sure a half-open client doesn't linger before the next attempt
+                try:
+                    await app.stop()
+                except Exception:
+                    pass
+                await asyncio.sleep(delay)
+                continue
 
+            LOGGER(__name__).error(f"Error during bot start (giving up): {e}")
+            raise
 
-
-
-
+    raise RuntimeError(f"Bot failed to start after {max_retries} attempts")
 
 
 async def init():
